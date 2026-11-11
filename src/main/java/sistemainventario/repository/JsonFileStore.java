@@ -1,6 +1,6 @@
 package sistemainventario.repository;
 
-import sistemainventario.exception.PersistenciaException;
+import sistemainventario.exception.PersistenceException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +14,7 @@ import java.util.Optional;
  * Lectura y escritura de un archivo de texto JSON en disco.
  *
  * <p><b>SRP:</b> en P2 la lógica de E/S estaba repetida en
- * {@code JsonRepository} y en {@code ConfiguracionGlobalRepository}. Ahora
+ * {@code JsonRepository} y en {@code GlobalConfigRepository}. Ahora
  * ambos delegan en esta clase, que solo sabe manejar archivos.</p>
  *
  * <p>La escritura es segura: primero se escribe un archivo temporal y luego
@@ -40,7 +40,7 @@ public class JsonFileStore {
 
     /**
      * @return el contenido del archivo, o vacío si todavía no existe
-     * @throws PersistenciaException si el archivo existe pero no se puede leer
+     * @throws PersistenceException si el archivo existe pero no se puede leer
      */
     public Optional<String> leer() {
         if (!existe()) {
@@ -49,7 +49,7 @@ public class JsonFileStore {
         try {
             return Optional.of(Files.readString(archivo, StandardCharsets.UTF_8));
         } catch (IOException e) {
-            throw new PersistenciaException("No se pudo leer " + archivo.getFileName(), e);
+            throw new PersistenceException("No se pudo leer " + archivo.getFileName(), e);
         }
     }
 
@@ -57,7 +57,7 @@ public class JsonFileStore {
      * Reemplaza el contenido del archivo de forma segura.
      *
      * @param contenido texto JSON a guardar
-     * @throws PersistenciaException si no se puede escribir
+     * @throws PersistenceException si no se puede escribir
      */
     public void escribir(String contenido) {
         Path temporal = archivo.resolveSibling(archivo.getFileName() + ".tmp");
@@ -65,7 +65,7 @@ public class JsonFileStore {
             Files.writeString(temporal, contenido, StandardCharsets.UTF_8);
             reemplazar(temporal);
         } catch (IOException e) {
-            throw new PersistenciaException("No se pudo guardar " + archivo.getFileName(), e);
+            throw new PersistenceException("No se pudo guardar " + archivo.getFileName(), e);
         }
     }
 
@@ -85,13 +85,13 @@ public class JsonFileStore {
      * Crea una carpeta (y sus padres) si no existe.
      *
      * @param directorio carpeta a crear
-     * @throws PersistenciaException si el sistema operativo no lo permite
+     * @throws PersistenceException si el sistema operativo no lo permite
      */
     public static void crearDirectorio(Path directorio) {
         try {
             Files.createDirectories(directorio);
         } catch (IOException e) {
-            throw new PersistenciaException("No se pudo crear la carpeta " + directorio, e);
+            throw new PersistenceException("No se pudo crear la carpeta " + directorio, e);
         }
     }
 }

@@ -1,0 +1,208 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+skinparam package {
+  BorderColor #1e4a35
+  FontColor #14281d
+}
+skinparam note {
+  BackgroundColor #fdf8ea
+  BorderColor #d4a72c
+}
+hide empty members
+
+title Diagrama de clases — paquete model (dominio)
+package model {
+abstract class IdentifiedEntity {
+  - id : String
+  + tieneId() : boolean
+  + getEtiqueta() : String
+  + equals(otro : Object) : boolean
+  + hashCode() : int
+}
+class Product {
+  - nombre : String
+  - codigo : String
+  - descripcion : String
+  - categoria : String
+  - categoriaId : String
+  - proveedorId : String
+  - precioCompra : double
+  - precioVenta : double
+  - stock : int
+  - stockMin : int
+  - tipo : String
+  - requiereVencimiento : boolean
+  - fechaVencimiento : String
+  + validar(hoy : LocalDate)
+  + getEstado() : String
+  + estaAgotado() : boolean
+  + estaBajoStock() : boolean
+  + tieneStockPara(cantidad : int) : boolean
+  + aumentarStock(cantidad : int)
+  + disminuirStock(cantidad : int)
+  + verificarStockDisponible(cantidad : int)
+  + tienePrecioCompra() : boolean
+  + getUtilidadUnitaria() : double
+  + getMargen() : double
+  + getUtilidadEstimadaStock() : double
+  + getFechaVencimientoComoFecha() : Optional<LocalDate>
+  + estaVencido(hoy : LocalDate) : boolean
+  + venceDentroDe(dias : int, hoy : LocalDate) : boolean
+  + coincideCon(texto : String) : boolean
+  + perteneceACategoria(nombreCategoria : String) : boolean
+  + contenidoEtiquetaQR() : String
+  + idDesdeEtiquetaQR(contenido : String) : Optional<String> {static}
+  + getEtiqueta() : String
+}
+class Category {
+  - nombre : String
+  - descripcion : String
+  + validar()
+  + getEtiqueta() : String
+}
+class Supplier {
+  - nombre : String
+  - contacto : String
+  - telefono : String
+  - email : String
+  - direccion : String
+  - categoria : String
+  - activo : boolean
+  + validar()
+  + coincideCon(texto : String) : boolean
+  + getEtiqueta() : String
+  + toString() : String
+}
+class Profile {
+  - nombre : String
+  - descripcion : String
+  - color : String
+  - tipoNegocio : String
+  - fechaCreacion : String
+  - configuracion : Map<String, String>
+  + validar()
+  + actualizarDatos(nuevoNombre : String, nuevaDescripcion : String, nuevoColor : String)
+  + getPerfilNegocio() : BusinessType
+  + requiereControlVencimiento() : boolean
+  + getConfig(clave : String, defecto : String) : String
+  + setConfig(clave : String, valor : String)
+  + getEtiqueta() : String
+}
+enum BusinessType {
+  BOUTIQUE
+  FARMACIA
+  FERRETERIA
+  SUPERMERCADO
+  TIENDA_BARRIO
+  TECNOLOGIA
+  NINGUNO
+  - etiqueta : String
+  - categoriasPredefinidas : List<String>
+  - requiereVencimiento : boolean
+  - sugerencias : Suggestions
+  + desdeClave(clave : String) : BusinessType {static}
+  + getEtiqueta() : String
+  + tieneCategorias() : boolean
+  + requiereControlVencimiento() : boolean
+  + describir() : Map<String, Object>
+}
+class GlobalConfig {
+  - perfiles : List<Profile>
+  - perfilActivoId : String
+  - version : String
+  + getPerfilActivo() : Profile
+  + tienePerfiles() : boolean
+  + tienePerfilActivo() : boolean
+}
+abstract class InventoryMovement {
+  - productoId : String
+  - cantidad : int
+  - fecha : String
+  + aplicarA(producto : Product) {abstract}
+  + getPrefijoId() : String {abstract}
+  + validar()
+  + registrar(nuevoId : String, fechaRegistro : String)
+}
+class StockEntry {
+  - proveedorId : String
+  - precioUnitario : double
+  - observacion : String
+  + aplicarA(producto : Product)
+  + getPrefijoId() : String
+}
+class StockExit {
+  - motivo : String
+  - tipo : String
+  + aplicarA(producto : Product)
+  + getPrefijoId() : String
+}
+class Sale {
+  - cliente : String
+  - metodoPago : String
+  - observacion : String
+  - fecha : String
+  - estado : String
+  - items : List<SaleItem>
+  - total : double
+  + agregarItem(producto : Product, cantidad : int, precioUnitario : double) : SaleItem
+  + validar()
+  + completar(nuevoId : String, fechaRegistro : String)
+  + calcularTotal() : double
+  + recalcularTotal()
+  + getTotalUnidades() : int
+  + cantidadesPorProducto() : Map<String, Integer>
+  + estaCompletada() : boolean
+  + getEstado() : String
+}
+class SaleItem {
+  - productoId : String
+  - nombreProducto : String
+  - cantidad : int
+  - precioUnitario : double
+  - subtotal : double
+  + validar()
+  + getSubtotal() : double
+  ~ sincronizarSubtotal()
+}
+class Backup {
+  - nombre : String
+  - fecha : String
+  - tamanoBytes : long
+}
+}
+package exception {
+class ValidationException {
+}
+class PersistenceException {
+}
+}
+
+class RuntimeException
+IdentifiedEntity <|-- Product
+IdentifiedEntity <|-- Category
+IdentifiedEntity <|-- Supplier
+IdentifiedEntity <|-- Profile
+IdentifiedEntity <|-- Sale
+IdentifiedEntity <|-- InventoryMovement
+InventoryMovement <|-- StockEntry
+InventoryMovement <|-- StockExit
+Sale "1" *-- "1..*" SaleItem : items
+GlobalConfig "1" o-- "*" Profile : perfiles
+Profile ..> BusinessType : tipoNegocio
+InventoryMovement ..> Product : aplicarA()
+Sale ..> Product : agregarItem()
+RuntimeException <|-- ValidationException
+RuntimeException <|-- PersistenceException
+note bottom of Product : Getters y setters omitidos
+
+@enduml

@@ -1,6 +1,6 @@
 package sistemainventario.repository;
 
-import sistemainventario.model.EntidadConId;
+import sistemainventario.model.IdentifiedEntity;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +16,7 @@ import java.util.function.Predicate;
  *
  * @param <T> tipo de entidad administrada
  */
-public interface Repository<T extends EntidadConId> {
+public interface Repository<T extends IdentifiedEntity> {
 
     /** @return copia de todas las entidades almacenadas */
     List<T> listarTodos();
