@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tbalance</title>
+  <title>TBalance</title>
   <link rel="stylesheet" href="css/fuentes.css" />
   <style>
     body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
@@ -29,7 +29,6 @@
     .kpi-card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
     .kpi-card:hover { transform: translateY(-2px); }
 
-    .nav-active { border-left: 3px solid #d4821b; padding-left: calc(0.75rem - 3px) !important; }
 
     input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px rgba(212,130,27,0.18); }
     select { transition: background 0.15s, border-color 0.15s; }
@@ -44,6 +43,7 @@
     .section-panel.active { animation: fadeIn 0.2s ease; }
   </style>
   <link rel="stylesheet" href="css/tailwind.css" />
+  <link rel="stylesheet" href="css/tbalance.css" />
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans antialiased">
 
@@ -53,68 +53,50 @@
   <aside id="sidebar" class="w-[210px] min-w-[210px] bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 flex flex-col shadow-sm z-20">
 
     <div class="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100 dark:border-gray-700">
-      <div class="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center shadow-md">
-        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+      <div class="tb-logo w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 7h14M12 7v12.5M8.5 19.5h7"/><path d="M6.5 7 4 12.5a2.5 2.5 0 0 0 5 0zM17.5 7 15 12.5a2.5 2.5 0 0 0 5 0z" fill="currentColor" fill-opacity=".22"/>
         </svg>
       </div>
-      <span class="font-bold text-[15px] text-gray-900 dark:text-white tracking-tight">Tbalance</span>
+      <span class="font-bold text-[15px] text-gray-900 dark:text-white tracking-tight">TBalance</span>
     </div>
 
     <nav class="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
       <a href="#" class="nav-item nav-active flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-all" data-section="dashboard">
-        <svg class="w-[18px] h-[18px] flex-shrink-0 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h4A1.5 1.5 0 0 1 11 5.5v5A1.5 1.5 0 0 1 9.5 12h-4A1.5 1.5 0 0 1 4 10.5zM13 5.5A1.5 1.5 0 0 1 14.5 4h4A1.5 1.5 0 0 1 20 5.5v2A1.5 1.5 0 0 1 18.5 9h-4A1.5 1.5 0 0 1 13 7.5zM13 13.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-4a1.5 1.5 0 0 1-1.5-1.5zM4 17.5A1.5 1.5 0 0 1 5.5 16h4a1.5 1.5 0 0 1 1.5 1.5v1A1.5 1.5 0 0 1 9.5 20h-4A1.5 1.5 0 0 1 4 18.5z"/></svg>
         Dashboard
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="productos">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9M7.8 5.2l8.4 4.6"/></svg>
         Productos
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="categorias">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.6V5A1.5 1.5 0 0 1 5 3.5h6.6c.4 0 .78.16 1.06.44l7.4 7.4a1.5 1.5 0 0 1 0 2.12l-6.6 6.6a1.5 1.5 0 0 1-2.12 0l-7.4-7.4a1.5 1.5 0 0 1-.44-1.06z"/><path d="M9.4 8a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0z"/></svg>
         Categorias
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="proveedores">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3.2v2.8h-7"/><path d="M8.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0zM18.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0z"/></svg>
         Proveedores
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="entradas">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v5.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V13M12 3.5v10M8 9.5l4 4 4-4"/></svg>
         Entradas
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="salidas">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 8V4m0 0L3 8m4-4l4 4M17 16v4m0 0l4-4m-4 4l-4-4M7 12h10"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v5.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V13M12 14V4M8 8l4-4 4 4"/></svg>
         Salidas
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="ventas">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-2.4-1.6-2.4 1.6-2.4-1.6-2.4 1.6L6 20.5z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/></svg>
         Ventas
       </a>
       <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="perfiles">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10v9a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-9"/><path d="M3 5.5 4.6 3.5h14.8L21 5.5v1.7a2.5 2.5 0 0 1-4.5 1.5 2.5 2.5 0 0 1-4.5 0 2.5 2.5 0 0 1-4.5 0A2.5 2.5 0 0 1 3 7.2z"/><path d="M10 20v-5h4v5"/></svg>
         Perfiles
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="respaldos">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-        </svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6.5c0 1.7-3.6 3-8 3s-8-1.3-8-3 3.6-3 8-3 8 1.3 8 3z"/><path d="M4 6.5v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5M4 11.5v6c0 1.7 3.6 3 8 3 1 0 1.9-.07 2.8-.2"/><path d="m16.5 19 1.6 1.5 3-3.2"/></svg>
         Respaldos
       </a>
     </nav>
@@ -143,6 +125,14 @@
           class="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400 text-gray-700 dark:text-gray-200 placeholder-gray-400 transition" />
       </div>
       <div class="flex items-center gap-3">
+        <button onclick="openModalVentaQR()" class="tb-top-btn sec" title="Vender escaneando las etiquetas QR con la cámara">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></svg>
+          Venta por QR
+        </button>
+        <button onclick="openModalVenta()" class="tb-top-btn pri">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Nueva venta
+        </button>
         <div id="profile-selector" class="relative">
           <button id="profile-selector-btn" onclick="toggleProfileMenu()" class="flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 rounded-xl transition">
             <div id="profile-avatar" class="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">?</div>
@@ -172,123 +162,64 @@
 
       <!-- DASHBOARD -->
       <div id="sec-dashboard" class="section-panel active">
-        <div class="flex items-center justify-between mb-6">
+        <div class="tb-saludo">
           <div>
-            <h1 class="text-xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-            <p class="text-xs text-gray-400 mt-0.5">Resumen general del sistema</p>
+            <h1 id="dash-saludo" class="tb-titulo">Hola</h1>
+            <p id="dash-fecha" class="tb-subtitulo">Resumen general del sistema</p>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-          <div class="kpi-card bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative">
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Productos</p>
-                <p id="dash-total" class="text-3xl font-extrabold text-gray-900 dark:text-white">0</p>
-                <p class="text-xs text-green-500 font-medium mt-1">en inventario</p>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-                </svg>
-              </div>
-            </div>
+        <div class="tb-kpis">
+          <div class="kpi-card tb-kpi k-prod">
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9M7.8 5.2l8.4 4.6"/></svg></span>
+            <div><p class="tb-kpi-label">Productos</p><p class="tb-kpi-num"><span id="dash-total">0</span><small>en inventario</small></p></div>
           </div>
-
-          <div class="kpi-card bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative">
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Bajo Stock</p>
-                <p id="dash-bajo-stock" class="text-3xl font-extrabold text-gray-900 dark:text-white">0</p>
-                <p class="text-xs text-yellow-500 font-medium mt-1">requieren atencion</p>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-              </div>
-            </div>
+          <div class="kpi-card tb-kpi k-bajo">
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17h.01"/></svg></span>
+            <div><p class="tb-kpi-label">Bajo stock</p><p class="tb-kpi-num"><span id="dash-bajo-stock">0</span><small>requieren atención</small></p></div>
           </div>
-
-          <div class="kpi-card bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative">
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Ventas Registradas</p>
-                <p id="dash-ventas" class="text-3xl font-extrabold text-gray-900 dark:text-white">0</p>
-                <p class="text-xs text-green-500 font-medium mt-1">operaciones</p>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                </svg>
-              </div>
-            </div>
+          <div class="kpi-card tb-kpi k-ven">
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-2.4-1.6-2.4 1.6-2.4-1.6-2.4 1.6L6 20.5z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/></svg></span>
+            <div><p class="tb-kpi-label">Ventas registradas</p><p class="tb-kpi-num"><span id="dash-ventas">0</span><small>operaciones</small></p></div>
           </div>
-
-          <div class="kpi-card bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative">
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Proveedores</p>
-                <p id="dash-proveedores" class="text-3xl font-extrabold text-gray-900 dark:text-white">0</p>
-                <p class="text-xs text-gray-400 font-medium mt-1">registrados</p>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/>
-                </svg>
-              </div>
-            </div>
+          <div class="kpi-card tb-kpi k-prov">
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3.2v2.8h-7"/><path d="M8.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0zM18.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0z"/></svg></span>
+            <div><p class="tb-kpi-label">Proveedores</p><p class="tb-kpi-num"><span id="dash-proveedores">0</span><small>registrados</small></p></div>
           </div>
         </div>
 
-        <!-- KPIs de vencimiento (solo Farmacia / Supermercado / Tienda de barrio) -->
-        <div id="dash-venc-grid" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div class="kpi-card bg-white dark:bg-gray-800 rounded-2xl p-5 border border-red-100 dark:border-red-900/40 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative">
-            <div class="flex items-start justify-between mb-3">
+        <div class="tb-dash-grid">
+          <div class="tb-col">
+            <!-- Utilidad estimada del inventario (la calcula InventoryService en Java) -->
+            <div class="tb-utilidad-card">
               <div>
-                <p class="text-xs font-semibold text-red-500 uppercase tracking-wider mb-1">Vencidos</p>
-                <p id="dash-vencidos" class="text-3xl font-extrabold text-red-600 dark:text-red-400">0</p>
-                <p class="text-xs text-red-400 font-medium mt-1">fuera de plazo</p>
+                <p class="tb-uc-label">Utilidad estimada del inventario</p>
+                <p id="dash-utilidad" class="tb-uc-valor">$0</p>
               </div>
-              <div class="w-11 h-11 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-              </div>
+              <p id="dash-utilidad-nota" class="tb-uc-nota">Lo que ganaría vendiendo todo el stock a los precios registrados.</p>
+            </div>
+            <div class="tb-card">
+              <div class="tb-card-head"><h2>Por reponer</h2><span id="dash-reponer-count">0 productos</span></div>
+              <div id="dash-reponer" class="tb-reponer"></div>
             </div>
           </div>
-          <div class="kpi-card bg-white dark:bg-gray-800 rounded-2xl p-5 border border-orange-100 dark:border-orange-900/40 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative">
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <p class="text-xs font-semibold text-orange-500 uppercase tracking-wider mb-1">Por vencer &lt; 7 días</p>
-                <p id="dash-venc7" class="text-3xl font-extrabold text-orange-600 dark:text-orange-400">0</p>
-                <p class="text-xs text-orange-400 font-medium mt-1">atencion inmediata</p>
-              </div>
-              <div class="w-11 h-11 rounded-xl bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
-              </div>
+          <div class="tb-col">
+            <div class="tb-card">
+              <div class="tb-card-head"><h2>Ventas de 14 días</h2><span id="dash-ventas14-total">$0</span></div>
+              <div id="dash-ventas14" class="tb-barras"></div>
             </div>
-          </div>
-          <div class="kpi-card bg-white dark:bg-gray-800 rounded-2xl p-5 border border-yellow-100 dark:border-yellow-900/40 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative">
-            <div class="flex items-start justify-between mb-3">
-              <div>
-                <p class="text-xs font-semibold text-yellow-600 uppercase tracking-wider mb-1">Por vencer &lt; 30 días</p>
-                <p id="dash-venc30" class="text-3xl font-extrabold text-yellow-600 dark:text-yellow-400">0</p>
-                <p class="text-xs text-yellow-500 font-medium mt-1">planificar reposicion</p>
+            <!-- Vencimientos (solo perfiles que controlan vencimiento) -->
+            <div id="dash-venc-grid" class="tb-card hidden">
+              <div class="tb-card-head"><h2>Vencimientos</h2></div>
+              <div class="tb-venc-pills">
+                <span class="tb-pill crit"><b id="dash-vencidos">0</b> vencidos</span>
+                <span class="tb-pill warn"><b id="dash-venc7">0</b> en 7 días</span>
+                <span class="tb-pill soft"><b id="dash-venc30">0</b> en 30 días</span>
               </div>
-              <div class="w-11 h-11 rounded-xl bg-yellow-50 dark:bg-yellow-900/30 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-              </div>
+              <ul id="dash-venc-alerts" class="tb-venc-lista"></ul>
             </div>
           </div>
         </div>
-
-        <!-- Alertas de vencimiento -->
-        <div id="dash-venc-alerts" class="hidden mb-6 space-y-2"></div>
 
         <!-- Calendario lite (usa fecha del sistema) -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 mb-6">
@@ -361,7 +292,7 @@
             </div>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
+            <table class="w-full text-sm tb-tabla-productos">
               <thead>
                 <tr class="bg-gray-50 dark:bg-gray-700/50">
                   <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
@@ -369,6 +300,7 @@
                   <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categoria</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Precio</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Utilidad</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vencimiento</th>
@@ -627,9 +559,23 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Precio *</label>
-          <input id="prod-precio" type="number" min="0" step="0.01" placeholder="0.00"
+          <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Precio de compra *</label>
+          <input id="prod-precio-compra" type="number" min="0" step="0.01" placeholder="Lo que le cuesta" oninput="actualizarUtilidadForm()"
             class="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-400 transition placeholder-gray-400"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Precio de venta *</label>
+          <input id="prod-precio" type="number" min="0" step="0.01" placeholder="Lo que cobra" oninput="actualizarUtilidadForm()"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-400 transition placeholder-gray-400"/>
+        </div>
+        <div id="prod-utilidad" class="col-span-2 tb-utilidad" data-estado="vacio">
+          <div class="tb-utilidad-fila">
+            <span class="tb-utilidad-label">Utilidad por unidad</span>
+            <span id="prod-utilidad-valor" class="tb-utilidad-valor">—</span>
+            <span id="prod-utilidad-margen" class="tb-utilidad-margen"></span>
+          </div>
+          <div class="tb-utilidad-barra"><i id="prod-utilidad-barra"></i></div>
+          <p id="prod-utilidad-nota" class="tb-utilidad-nota">Escriba el precio de compra y el de venta para ver cuánto gana por unidad.</p>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Stock *</label>
@@ -641,7 +587,7 @@
           <input id="prod-stock-min" type="number" min="0" placeholder="10"
             class="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-400 transition placeholder-gray-400"/>
         </div>
-        <div>
+        <div class="col-span-2">
           <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Categoria</label>
           <select id="prod-categoria" class="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-400 transition">
             <option value="">Seleccionar...</option>
@@ -1675,6 +1621,15 @@ function fmtFecha(f) { return f ? f.split('T')[0] : '—'; }
 function getNombreProd(id) { const p=state.productos.find(x=>x.id===id); return p?p.nombre:'—'; }
 function getNombreProv(id) { const p=state.proveedores.find(x=>x.id===id); return p?p.nombre:'—'; }
 
+// Celda de utilidad por unidad en la tabla de productos
+function celdaUtilidad(p) {
+  const compra = Number(p.precioCompra || 0), venta = Number(p.precioVenta || p.precio || 0);
+  if (compra <= 0 || venta <= 0) return '<span class="tb-sin-costo">Sin precio de compra</span>';
+  const u = venta - compra, m = Math.round(u / venta * 100);
+  return '<div class="tb-util-celda' + (u < 0 ? ' perdida' : '') + '"><span class="tb-util-v">' + (u < 0 ? '- $' : '$') + fmt(Math.abs(u)) + '</span>'
+       + '<span class="tb-util-m">' + m + '%</span><span class="tb-util-barra"><i style="width:' + Math.max(0, Math.min(100, m)) + '%"></i></span></div>';
+}
+
 function catPill(cat) {
   const m = {
     'electronicos':  { bg:'bg-red-50 dark:bg-red-900/20',     text:'text-red-600 dark:text-red-400'     },
@@ -1724,12 +1679,87 @@ function closeModalOnOverlay(e, id) {
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────
+function actualizarSaludo() {
+  const h = new Date().getHours();
+  const saludo = h < 12 ? 'Buenos días' : (h < 19 ? 'Buenas tardes' : 'Buenas noches');
+  document.getElementById('dash-saludo').textContent = saludo;
+  const fecha = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+  const perfil = state.perfilActivo && state.perfilActivo.nombre ? state.perfilActivo.nombre + ' · ' : '';
+  document.getElementById('dash-fecha').textContent = perfil + fecha.charAt(0).toUpperCase() + fecha.slice(1);
+}
+
+// Productos en el mínimo o agotados, los más urgentes primero
+function actualizarPorReponer() {
+  const caja = document.getElementById('dash-reponer');
+  const lista = state.productos.filter(function(p) { return p.stock <= (p.stockMin ?? 10); })
+    .sort(function(a, b) { return (a.stock / Math.max(a.stockMin || 1, 1)) - (b.stock / Math.max(b.stockMin || 1, 1)); });
+  document.getElementById('dash-reponer-count').textContent = lista.length + (lista.length === 1 ? ' producto' : ' productos');
+  if (!lista.length) { caja.innerHTML = '<p class="tb-vacio">Todo el stock está por encima del mínimo.</p>'; return; }
+  caja.innerHTML = lista.slice(0, 5).map(function(p) {
+    const agotado = p.stock <= 0;
+    const compra = Number(p.precioCompra || 0), venta = Number(p.precioVenta || p.precio || 0);
+    const util = compra > 0 && venta > 0 ? '$' + fmt(venta - compra) + '<small> / u.</small>' : '<small>sin precio de compra</small>';
+    const prov = p.proveedorId ? getNombreProv(p.proveedorId) : (p.categoria || '');
+    return '<div class="tb-rr"><div class="tb-rn"><b>' + esc(p.nombre) + '</b><small>' + esc(prov || '—') + '</small></div>'
+      + '<span class="tb-pill ' + (agotado ? 'crit' : 'warn') + '">' + (agotado ? 'Agotado' : p.stock + ' de ' + (p.stockMin ?? 10)) + '</span>'
+      + '<span class="tb-ru">' + util + '</span>'
+      + '<button class="tb-btn-suave" onclick="registrarEntradaDe(\'' + p.id + '\')">'
+      + '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v5.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V13M12 3.5v10M8 9.5l4 4 4-4"/></svg>Entrada</button></div>';
+  }).join('');
+}
+
+function registrarEntradaDe(id) {
+  openModalEntrada();
+  document.getElementById('ent-producto').value = id;
+}
+
+// Total vendido por día en las últimas dos semanas
+function actualizarVentas14() {
+  const caja = document.getElementById('dash-ventas14');
+  const dias = [];
+  const hoy = _todayLocal();
+  for (let i = 13; i >= 0; i--) { const d = new Date(hoy); d.setDate(d.getDate() - i); dias.push({ iso: _toIsoLocal(d), dia: d.getDate(), total: 0 }); }
+  state.ventas.forEach(function(v) {
+    const f = String(v.fecha || '').slice(0, 10);
+    const d = dias.find(function(x) { return x.iso === f; });
+    if (d) d.total += Number(v.total || 0);
+  });
+  const max = Math.max.apply(null, dias.map(function(d) { return d.total; }));
+  const suma = dias.reduce(function(a, d) { return a + d.total; }, 0);
+  document.getElementById('dash-ventas14-total').textContent = '$' + fmt(suma);
+  caja.innerHTML = dias.map(function(d, i) {
+    const h = max > 0 ? Math.max(6, d.total / max * 100) : 6;
+    const hoyCls = i === 13 ? ' hoy' : '';
+    return '<div class="tb-barra' + hoyCls + '" title="' + d.iso + ': $' + fmt(d.total) + '"><i style="height:' + h + '%"></i><span>' + (i === 13 ? 'Hoy' : d.dia) + '</span></div>';
+  }).join('') + (suma === 0 ? '<p class="tb-vacio tb-barras-vacio">Aún no hay ventas en estos 14 días.</p>' : '');
+}
+
+function actualizarUtilidadDashboard() {
+  const valor = document.getElementById('dash-utilidad');
+  const nota  = document.getElementById('dash-utilidad-nota');
+  let est = null;
+  try {
+    const r = state.perfilActivo ? window.javaBridge.obtenerEstadisticas() : '';
+    if (r && r.indexOf('ERROR') !== 0) est = JSON.parse(r);
+  } catch (e) { console.error('Error leyendo estadísticas:', e); }
+  if (!est) { valor.textContent = '$0'; nota.textContent = 'Lo que ganaría vendiendo todo el stock a los precios registrados.'; return; }
+  valor.textContent = '$' + fmt(est.utilidadEstimada || 0);
+  const sin = est.sinPrecioCompra || 0;
+  nota.textContent = sin > 0
+    ? 'Lo que ganaría vendiendo todo el stock. ' + sin + (sin === 1 ? ' producto no tiene' : ' productos no tienen') + ' precio de compra y no se cuenta' + (sin === 1 ? '' : 'n') + '.'
+    : 'Lo que ganaría vendiendo todo el stock a los precios registrados.';
+}
+
 function actualizarDashboard() {
   const bajoStock = state.productos.filter(p => p.stock > 0 && p.stock <= (p.stockMin ?? 10)).length;
   document.getElementById('dash-total').textContent = state.productos.length;
   document.getElementById('dash-bajo-stock').textContent = bajoStock;
   document.getElementById('dash-ventas').textContent = state.ventas.length;
   document.getElementById('dash-proveedores').textContent = state.proveedores.length;
+  actualizarUtilidadDashboard();
+  actualizarSaludo();
+  actualizarPorReponer();
+  actualizarVentas14();
 
   // KPIs de vencimiento
   const requiereVenc = !!window.javaBridge.requiereControlVencimiento();
@@ -1760,36 +1790,14 @@ function actualizarDashboard() {
   document.getElementById('dash-venc30').textContent   = porVencer30.length;
   vencGrid.classList.remove('hidden');
 
-  // Alertas visuales
-  const alerts = [];
-  if (vencidos.length) {
-    const top = vencidos.slice(0, 3).map(x => `<b>${escapeHtml(x.p.nombre)}</b> (vencido hace ${Math.abs(x.dias)} d)`).join(', ');
-    alerts.push(`<div class="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 rounded-xl text-sm text-red-700 dark:text-red-300">
-      <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-      <span><b>${vencidos.length} producto(s) vencido(s):</b> ${top}${vencidos.length>3?' y más':''}.</span>
-    </div>`);
-  }
-  if (porVencer7.length) {
-    const top = porVencer7.slice(0, 3).map(x => `<b>${escapeHtml(x.p.nombre)}</b> (en ${x.dias} d)`).join(', ');
-    alerts.push(`<div class="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-900/40 rounded-xl text-sm text-orange-700 dark:text-orange-300">
-      <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-      <span><b>${porVencer7.length} producto(s) por vencer en menos de 7 días:</b> ${top}${porVencer7.length>3?' y más':''}.</span>
-    </div>`);
-  }
-  if (porVencer30.length && !porVencer7.length) {
-    const top = porVencer30.slice(0, 3).map(x => `<b>${escapeHtml(x.p.nombre)}</b> (en ${x.dias} d)`).join(', ');
-    alerts.push(`<div class="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/40 rounded-xl text-sm text-yellow-700 dark:text-yellow-300">
-      <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      <span><b>${porVencer30.length} producto(s) por vencer en menos de 30 días:</b> ${top}${porVencer30.length>3?' y más':''}.</span>
-    </div>`);
-  }
-  if (alerts.length) {
-    alertsBox.innerHTML = alerts.join('');
-    alertsBox.classList.remove('hidden');
-  } else {
-    alertsBox.classList.add('hidden');
-    alertsBox.innerHTML = '';
-  }
+  // Lista de vencimientos: primero los vencidos, luego los más próximos
+  const lista = vencidos.concat(porVencer7, porVencer30).slice(0, 6);
+  alertsBox.innerHTML = lista.length ? lista.map(function(x) {
+    const cls = x.dias < 0 ? 'crit' : (x.dias < 7 ? 'warn' : 'soft');
+    const txt = x.dias < 0 ? 'Venció hace ' + Math.abs(x.dias) + ' d' : (x.dias === 0 ? 'Vence hoy' : 'Vence en ' + x.dias + ' d');
+    return '<li><span class="tb-dot ' + cls + '"></span><span class="tb-vn">' + escapeHtml(x.p.nombre) + '</span><span class="tb-vt ' + cls + '">' + txt + '</span></li>';
+  }).join('') : '<li class="tb-vacio">Ningún producto vence en los próximos 30 días.</li>';
+  alertsBox.classList.remove('hidden');
 }
 
 // ── PRODUCTOS ──────────────────────────────────────────────
@@ -1813,7 +1821,7 @@ function renderTablaProductos() {
   const tbody  = document.getElementById('tabla-productos');
 
   if (pagina.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-16 text-gray-400 text-sm">No se encontraron productos.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-16 text-gray-400 text-sm">No se encontraron productos.</td></tr>';
   } else {
     const requiereVenc = !!window.javaBridge.requiereControlVencimiento();
     tbody.innerHTML = pagina.map(p => {
@@ -1847,6 +1855,7 @@ function renderTablaProductos() {
           <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ' + bg + ' ' + text + '">' + esc(p.categoria||'—') + '</span>\
         </td>\
         <td class="px-4 py-3.5 text-sm font-semibold text-gray-800 dark:text-white">$' + fmt(p.precioVenta || p.precio || 0) + '</td>\
+        <td class="px-4 py-3.5">' + celdaUtilidad(p) + '</td>\
         <td class="px-4 py-3.5 text-sm font-bold ' + stockColor + '">' + p.stock + '</td>\
         <td class="px-4 py-3.5">\
           <div class="flex items-center gap-1.5">\
@@ -1919,13 +1928,14 @@ function poblarFiltroCategorias() {
 function openModalProducto() {
   state.editMode = { tabla: 'productos', id: null };
   document.getElementById('modal-prod-title').textContent = 'Agregar Producto';
-  ['prod-id','prod-nombre','prod-codigo','prod-precio','prod-stock','prod-stock-min','prod-desc','prod-fecha-venc'].forEach(function(id) {
+  ['prod-id','prod-nombre','prod-codigo','prod-precio-compra','prod-precio','prod-stock','prod-stock-min','prod-desc','prod-fecha-venc'].forEach(function(id) {
     const el = document.getElementById(id); if (el) el.value='';
   });
   document.getElementById('prod-categoria').value = '';
   document.getElementById('prod-proveedor').value = '';
   document.getElementById('prod-requiere-venc').value = 'false';
   document.getElementById('prod-error').classList.add('hidden');
+  actualizarUtilidadForm();
   // Poblar selects
   const catSel = document.getElementById('prod-categoria');
   const catsList = Array.isArray(state.categorias) ? state.categorias : [];
@@ -1996,7 +2006,9 @@ function editarProducto(id) {
   document.getElementById('prod-nombre').value    = p.nombre || '';
   document.getElementById('prod-codigo').value    = p.codigo || '';
   document.getElementById('prod-categoria').value = p.categoria || '';
+  document.getElementById('prod-precio-compra').value = p.precioCompra || '';
   document.getElementById('prod-precio').value    = p.precioVenta || p.precio || '';
+  actualizarUtilidadForm();
   document.getElementById('prod-stock').value     = p.stock || '';
   document.getElementById('prod-stock-min').value = p.stockMin || '';
   document.getElementById('prod-desc').value      = p.descripcion || '';
@@ -2009,11 +2021,36 @@ function editarProducto(id) {
   openModal('modal-producto');
 }
 
+// Utilidad por unidad mientras se escriben los precios
+function actualizarUtilidadForm() {
+  const compra = parseFloat(document.getElementById('prod-precio-compra').value) || 0;
+  const venta  = parseFloat(document.getElementById('prod-precio').value) || 0;
+  const caja   = document.getElementById('prod-utilidad');
+  const valor  = document.getElementById('prod-utilidad-valor');
+  const margen = document.getElementById('prod-utilidad-margen');
+  const barra  = document.getElementById('prod-utilidad-barra');
+  const nota   = document.getElementById('prod-utilidad-nota');
+  if (compra <= 0 || venta <= 0) {
+    caja.dataset.estado = 'vacio'; valor.textContent = '—'; margen.textContent = ''; barra.style.width = '0';
+    nota.textContent = 'Escriba el precio de compra y el de venta para ver cuánto gana por unidad.';
+    return;
+  }
+  const u = venta - compra;
+  const m = u / venta * 100;
+  caja.dataset.estado = u < 0 ? 'perdida' : 'ganancia';
+  valor.textContent = (u < 0 ? '- $' : '$') + fmt(Math.abs(u));
+  margen.textContent = m.toFixed(0) + '% de margen';
+  barra.style.width = Math.max(0, Math.min(100, m)) + '%';
+  nota.textContent = u < 0 ? 'El precio de venta es menor que el de compra: este producto se vende a pérdida.'
+                           : 'De cada venta de $' + fmt(venta) + ', $' + fmt(compra) + ' son costo y $' + fmt(u) + ' es ganancia.';
+}
+
 function submitProducto() {
   const id       = document.getElementById('prod-id').value.trim();
   const nombre   = document.getElementById('prod-nombre').value.trim();
   const codigo   = document.getElementById('prod-codigo').value.trim();
   const categoria = document.getElementById('prod-categoria').value;
+  const precioCompra = parseFloat(document.getElementById('prod-precio-compra').value) || 0;
   const precio   = parseFloat(document.getElementById('prod-precio').value) || 0;
   const stock    = parseInt(document.getElementById('prod-stock').value) || 0;
   const stockMin = parseInt(document.getElementById('prod-stock-min').value) || 0;
@@ -2025,6 +2062,9 @@ function submitProducto() {
 
   if (!nombre) {
     errEl.textContent = 'El nombre es obligatorio.'; errEl.classList.remove('hidden'); return;
+  }
+  if (precioCompra <= 0 || precio <= 0) {
+    errEl.textContent = 'Escriba el precio de compra y el precio de venta para poder calcular la utilidad.'; errEl.classList.remove('hidden'); return;
   }
   if (requiereVenc && (!fechaVenc || fechaVenc === '')) {
     errEl.textContent = 'La fecha de vencimiento es obligatoria si requiere control.'; errEl.classList.remove('hidden'); return;
@@ -2045,7 +2085,7 @@ function submitProducto() {
     categoria: categoria,
     categoriaId: categoria,
     proveedorId: proveedorId,
-    precioCompra: 0,
+    precioCompra: precioCompra,
     precioVenta: precio,
     stock: stock,
     stockMin: stockMin,
@@ -2084,7 +2124,7 @@ function renderGridCategorias() {
       <div class="flex items-start justify-between mb-3">\
         <div class="w-11 h-11 rounded-xl ' + col.bg + ' flex items-center justify-center">\
           <svg class="w-5 h-5 ' + col.icon + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">\
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>\
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.5 11.6V5A1.5 1.5 0 0 1 5 3.5h6.6c.4 0 .78.16 1.06.44l7.4 7.4a1.5 1.5 0 0 1 0 2.12l-6.6 6.6a1.5 1.5 0 0 1-2.12 0l-7.4-7.4a1.5 1.5 0 0 1-.44-1.06zM9.4 8a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0z"/>\
           </svg>\
         </div>\
         <div class="flex gap-1">\
