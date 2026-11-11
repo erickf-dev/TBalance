@@ -1,21 +1,21 @@
 package sistemainventario;
 
-import sistemainventario.exception.ValidacionException;
-import sistemainventario.model.Respaldo;
-import sistemainventario.repository.ArchivadorZip;
-import sistemainventario.repository.ConfiguracionGlobalRepository;
-import sistemainventario.repository.DirectorioPerfiles;
-import sistemainventario.repository.EtiquetaRepository;
+import sistemainventario.exception.ValidationException;
+import sistemainventario.model.Backup;
+import sistemainventario.repository.ZipArchiver;
+import sistemainventario.repository.GlobalConfigRepository;
+import sistemainventario.repository.ProfileDirectory;
+import sistemainventario.repository.LabelRepository;
 import sistemainventario.repository.JsonFileStore;
-import sistemainventario.repository.PerfilRepository;
-import sistemainventario.repository.RespaldoRepository;
-import sistemainventario.service.FabricaServiciosPerfil;
-import sistemainventario.service.GestorConfiguracionGlobal;
-import sistemainventario.service.GestorEtiquetas;
-import sistemainventario.service.GestorPerfiles;
-import sistemainventario.service.GestorRespaldo;
-import sistemainventario.service.ServiciosPerfil;
-import sistemainventario.util.GeneradorQR;
+import sistemainventario.repository.ProfileRepository;
+import sistemainventario.repository.BackupRepository;
+import sistemainventario.service.ProfileServicesFactory;
+import sistemainventario.service.GlobalConfigService;
+import sistemainventario.service.LabelService;
+import sistemainventario.service.ProfileService;
+import sistemainventario.service.BackupService;
+import sistemainventario.service.ProfileServices;
+import sistemainventario.util.QrGenerator;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,19 +44,19 @@ public final class AppContext {
     private static AppContext instancia;
 
     private final Path directorioDatos;
-    private final GestorRespaldo gestorRespaldo;
-    private final GestorEtiquetas gestorEtiquetas;
-    private GestorPerfiles gestorPerfiles;
-    private ServiciosPerfil serviciosActivos;
+    private final BackupService gestorRespaldo;
+    private final LabelService gestorEtiquetas;
+    private ProfileService gestorPerfiles;
+    private ProfileServices serviciosActivos;
 
     private AppContext(Path directorioDatos) {
         this.directorioDatos = directorioDatos;
         JsonFileStore.crearDirectorio(directorioDatos);
         Path carpetaRespaldos = directorioDatos.resolveSibling(CARPETA_RESPALDOS);
-        this.gestorRespaldo = new GestorRespaldo(directorioDatos,
-                new RespaldoRepository(carpetaRespaldos), new ArchivadorZip());
-        this.gestorEtiquetas = new GestorEtiquetas(new GeneradorQR(),
-                new EtiquetaRepository(directorioDatos.resolveSibling(CARPETA_ETIQUETAS)));
+        this.gestorRespaldo = new BackupService(directorioDatos,
+                new BackupRepository(carpetaRespaldos), new ZipArchiver());
+        this.gestorEtiquetas = new LabelService(new QrGenerator(),
+                new LabelRepository(directorioDatos.resolveSibling(CARPETA_ETIQUETAS)));
         recargar();
     }
 
@@ -66,12 +66,12 @@ public final class AppContext {
      */
     public void recargar() {
         JsonFileStore.crearDirectorio(directorioDatos);
-        DirectorioPerfiles directorios = new DirectorioPerfiles(directorioDatos);
-        this.gestorPerfiles = new GestorPerfiles(
-                new PerfilRepository(directorioDatos),
-                new GestorConfiguracionGlobal(new ConfiguracionGlobalRepository(directorioDatos)),
+        ProfileDirectory directorios = new ProfileDirectory(directorioDatos);
+        this.gestorPerfiles = new ProfileService(
+                new ProfileRepository(directorioDatos),
+                new GlobalConfigService(new GlobalConfigRepository(directorioDatos)),
                 directorios,
-                new FabricaServiciosPerfil(directorios));
+                new ProfileServicesFactory(directorios));
         this.serviciosActivos = gestorPerfiles.resolverPerfilInicial()
                 .map(gestorPerfiles::crearServicios)
                 .orElse(null);
@@ -83,17 +83,17 @@ public final class AppContext {
      * @param nombre archivo .zip a restaurar
      * @return la copia automática del estado anterior
      */
-    public Respaldo restaurarRespaldo(String nombre) {
-        Respaldo copiaPrevia = gestorRespaldo.restaurar(nombre);
+    public Backup restaurarRespaldo(String nombre) {
+        Backup copiaPrevia = gestorRespaldo.restaurar(nombre);
         recargar();
         return copiaPrevia;
     }
 
-    public GestorRespaldo getGestorRespaldo() {
+    public BackupService getGestorRespaldo() {
         return gestorRespaldo;
     }
 
-    public GestorEtiquetas getGestorEtiquetas() {
+    public LabelService getGestorEtiquetas() {
         return gestorEtiquetas;
     }
 
@@ -105,22 +105,22 @@ public final class AppContext {
         return instancia;
     }
 
-    public GestorPerfiles getGestorPerfiles() {
+    public ProfileService getGestorPerfiles() {
         return gestorPerfiles;
     }
 
     /** @return servicios del perfil activo, si lo hay */
-    public Optional<ServiciosPerfil> getServiciosActivos() {
+    public Optional<ProfileServices> getServiciosActivos() {
         return Optional.ofNullable(serviciosActivos);
     }
 
     /**
      * @return servicios del perfil activo
-     * @throws ValidacionException si no hay perfil activo
+     * @throws ValidationException si no hay perfil activo
      */
-    public ServiciosPerfil requerirServiciosActivos() {
+    public ProfileServices requerirServiciosActivos() {
         return getServiciosActivos()
-                .orElseThrow(() -> new ValidacionException("No hay un perfil activo"));
+                .orElseThrow(() -> new ValidationException("No hay un perfil activo"));
     }
 
     /**

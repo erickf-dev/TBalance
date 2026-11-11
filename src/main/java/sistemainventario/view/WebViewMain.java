@@ -8,8 +8,8 @@ import javafx.stage.Stage;
 import netscape.javascript.JSObject;
 import sistemainventario.AppContext;
 import sistemainventario.bridge.JavaBridge;
-import sistemainventario.bridge.WebViewNotificador;
-import sistemainventario.model.Perfil;
+import sistemainventario.bridge.WebViewNotifier;
+import sistemainventario.model.Profile;
 
 import java.net.URL;
 
@@ -67,7 +67,7 @@ public class WebViewMain {
      */
     public void actualizarTitulo(Stage ventana) {
         String nombre = contexto.getGestorPerfiles().getPerfilActivo()
-                .map(Perfil::getNombre)
+                .map(Profile::getNombre)
                 .orElse("Sin perfil activo");
         ventana.setTitle("TBalance — " + nombre);
     }
@@ -88,7 +88,7 @@ public class WebViewMain {
     }
 
     private void registrarBridge() {
-        bridge = new JavaBridge(contexto, new WebViewNotificador(motor));
+        bridge = new JavaBridge(contexto, new WebViewNotifier(motor));
         JSObject ventanaJs = (JSObject) motor.executeScript("window");
         ventanaJs.setMember("javaBridge", bridge);
     }

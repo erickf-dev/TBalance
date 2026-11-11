@@ -1,7 +1,7 @@
 package sistemainventario.bridge;
 
 import sistemainventario.AppContext;
-import sistemainventario.dispositivo.WebcamCamara;
+import sistemainventario.dispositivo.WebcamCamera;
 
 /**
  * Objeto expuesto a JavaScript como {@code window.javaBridge}.
@@ -10,10 +10,10 @@ import sistemainventario.dispositivo.WebcamCamara;
  * eventos de la vista web. En P2 esta clase tenía 338 líneas y mezclaba
  * conversión JSON, reglas de negocio, generación de IDs y manejo de
  * errores. Ahora solo delega en controladores por caso de uso
- * ({@link PerfilController}, {@link InventarioController},
- * {@link CatalogoController}, {@link TransaccionController},
- * {@link RespaldoController}, {@link EtiquetaController},
- * {@link EscaneoController}), cada uno con
+ * ({@link ProfileController}, {@link InventoryController},
+ * {@link CatalogController}, {@link TransactionController},
+ * {@link BackupController}, {@link LabelController},
+ * {@link ScanController}), cada uno con
  * <b>alta cohesión</b>.</p>
  *
  * <p>Los nombres y firmas de los métodos públicos se mantienen idénticos a
@@ -21,24 +21,24 @@ import sistemainventario.dispositivo.WebcamCamara;
  */
 public class JavaBridge {
 
-    private final PerfilController perfiles;
-    private final InventarioController inventario;
-    private final CatalogoController catalogo;
-    private final TransaccionController transacciones;
-    private final RespaldoController respaldos;
-    private final EtiquetaController etiquetas;
-    private final EscaneoController escaneo;
-    private final NotificadorVista notificador;
+    private final ProfileController perfiles;
+    private final InventoryController inventario;
+    private final CatalogController catalogo;
+    private final TransactionController transacciones;
+    private final BackupController respaldos;
+    private final LabelController etiquetas;
+    private final ScanController escaneo;
+    private final ViewNotifier notificador;
 
-    public JavaBridge(AppContext contexto, NotificadorVista notificador) {
+    public JavaBridge(AppContext contexto, ViewNotifier notificador) {
         this.notificador = notificador;
-        this.perfiles = new PerfilController(contexto, notificador);
-        this.inventario = new InventarioController(contexto);
-        this.catalogo = new CatalogoController(contexto);
-        this.transacciones = new TransaccionController(contexto);
-        this.respaldos = new RespaldoController(contexto, notificador);
-        this.etiquetas = new EtiquetaController(contexto, new EscritorioAbridor());
-        this.escaneo = new EscaneoController(contexto, WebcamCamara::new, notificador);
+        this.perfiles = new ProfileController(contexto, notificador);
+        this.inventario = new InventoryController(contexto);
+        this.catalogo = new CatalogController(contexto);
+        this.transacciones = new TransactionController(contexto);
+        this.respaldos = new BackupController(contexto, notificador);
+        this.etiquetas = new LabelController(contexto, new DesktopFileOpener());
+        this.escaneo = new ScanController(contexto, WebcamCamera::new, notificador);
     }
 
     // ── Perfiles ────────────────────────────────────────────────────────
@@ -220,7 +220,7 @@ public class JavaBridge {
     }
 
     public void mostrarToast(String mensaje, String tipo) {
-        notificador.ejecutarScript("showToast(" + RespuestaBridge.literalJs(mensaje)
-                + ", " + RespuestaBridge.literalJs(tipo) + ")");
+        notificador.ejecutarScript("showToast(" + BridgeResponse.literalJs(mensaje)
+                + ", " + BridgeResponse.literalJs(tipo) + ")");
     }
 }

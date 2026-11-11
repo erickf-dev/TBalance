@@ -1,8 +1,8 @@
 package sistemainventario.repository;
 
 import com.google.gson.JsonParseException;
-import sistemainventario.exception.PersistenciaException;
-import sistemainventario.model.EntidadConId;
+import sistemainventario.exception.PersistenceException;
+import sistemainventario.model.IdentifiedEntity;
 import sistemainventario.util.IdGenerator;
 import sistemainventario.util.JsonUtil;
 
@@ -20,14 +20,14 @@ import java.util.stream.Collectors;
  *
  * <p><b>OCP:</b> está cerrada a modificación y abierta a extensión. Cada
  * entidad nueva solo necesita una subclase que indique el nombre del
- * archivo y la clase (ver {@link ProductoRepository}).</p>
+ * archivo y la clase (ver {@link ProductRepository}).</p>
  *
  * <p><b>SRP:</b> se ocupa del CRUD sobre la caché; la E/S de disco la delega
  * en {@link JsonFileStore} y la lógica de negocio vive en los servicios.</p>
  *
- * @param <T> tipo de entidad, siempre subclase de {@link EntidadConId}
+ * @param <T> tipo de entidad, siempre subclase de {@link IdentifiedEntity}
  */
-public abstract class JsonRepository<T extends EntidadConId> implements Repository<T> {
+public abstract class JsonRepository<T extends IdentifiedEntity> implements Repository<T> {
 
     private final JsonFileStore almacen;
     private final Class<T> tipo;
@@ -97,7 +97,7 @@ public abstract class JsonRepository<T extends EntidadConId> implements Reposito
     @Override
     public String siguienteIdNumerico() {
         return IdGenerator.siguienteNumerico(
-                cache.stream().map(EntidadConId::getId).collect(Collectors.toList()));
+                cache.stream().map(IdentifiedEntity::getId).collect(Collectors.toList()));
     }
 
     /** @return ruta del archivo JSON administrado */
@@ -120,7 +120,7 @@ public abstract class JsonRepository<T extends EntidadConId> implements Reposito
                     .<List<T>>map(json -> new ArrayList<>(JsonUtil.fromJsonList(json, tipo)))
                     .orElseGet(ArrayList::new);
         } catch (JsonParseException e) {
-            throw new PersistenciaException("El archivo " + almacen.getArchivo().getFileName()
+            throw new PersistenceException("El archivo " + almacen.getArchivo().getFileName()
                     + " tiene un formato JSON invalido", e);
         }
     }
