@@ -1,81 +1,66 @@
-# TBalance — Sistema de Inventario (Programación III)
+# TBalance — Sistema de Inventario
 
-Aplicación de escritorio en **Java 17 + JavaFX (WebView)** para gestionar el inventario de pequeños negocios mediante perfiles independientes, con persistencia local en archivos **JSON**.
+Aplicación de escritorio en **Java 17 + JavaFX** para llevar el inventario de pequeños negocios con perfiles independientes, ventas, copias de seguridad y venta por QR con la webcam. Los datos se guardan en archivos **JSON** locales y funciona sin internet.
 
-> Este proyecto es la **evolución del "Sistema de Inventario TBalance"** desarrollado en Programación II. En el primer avance de Programación III se **reestructuró la arquitectura** aplicando patrones GRASP, principios SOLID y Código Limpio, **sin modificar la persistencia JSON ni la interfaz web**: los datos creados con la versión de P2 se siguen leyendo sin migraciones manuales.
+Proyecto de aula de **Programación de Computadores III (SS462)** — Universidad Popular del Cesar. Docente: Ing. Esp. Alfredo Bautista. Evolución del sistema TBalance de Programación II.
 
-- **Universidad:** Universidad Popular del Cesar — Programación de Computadores III (SS462)
-- **Docente:** Ing. Esp. Alfredo Bautista
-- **Repositorio:** https://github.com/kjhosepmercadom/TBalance
-- **Equipo:** Kevin Mercado ([@kjhosepmercadom](https://github.com/kjhosepmercadom)) — líder e integrador · Dair Quintero ([@djosequintero](https://github.com/djosequintero)) · Reinaldo Padilla ([@rjpadillap](https://github.com/rjpadillap))
+## Equipo
 
-## Arquitectura en capas
+| Integrante | GitHub | Rol |
+|---|---|---|
+| Kevin Jhosep Mercado | [@kjhosepmercadom](https://github.com/kjhosepmercadom) | Líder e integrador: servicios, `AppContext`, controladores del bridge, versiones |
+| Reinaldo Padilla Pedroza | [@rjpadillap](https://github.com/rjpadillap) | Persistencia y dispositivos: repositorios JSON, respaldos, QR y cámara |
+| Dair José Quintero | [@djosequintero](https://github.com/djosequintero) | Modelo de dominio, interfaz web y documentación |
 
-| Paquete | Responsabilidad |
-|---|---|
-| `model` | Entidades del dominio y sus reglas (Experto en Información). |
-| `exception` | Excepciones de dominio (`ValidacionException`) y de persistencia (`PersistenciaException`). |
-| `repository` | Acceso a datos JSON detrás de la interfaz `Repository<T>`. |
-| `service` | Casos de uso y reglas de negocio (`Gestor*`). |
-| `bridge` | Controladores GRASP que atienden los eventos de la vista web. |
-| `view` | Ventana JavaFX con el `WebView`. |
-| `dispositivo` | Acceso a la cámara del computador detrás de la interfaz `Camara`. |
-| `util` | Utilidades sin estado (fechas, IDs, texto, JSON). |
+## Documentación
 
-Detalle en [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) y trazabilidad de principios en [`docs/TRAZABILIDAD.md`](docs/TRAZABILIDAD.md).
+| Fase | Documento | Contenido |
+|---|---|---|
+| 1 | [Especificación y planificación](docs/FASE1_Especificacion.md) | Resumen, introducción, planteamiento, estado del arte, objetivos, requerimientos, gestión con Git, conclusiones y bibliografía |
+| 2 | [Arquitectura y diseño](docs/FASE2_Arquitectura_y_Diseno.md) | Diagrama de paquetes, diagrama de clases, descripción de cada clase, relaciones, herencia e interfaces, mockups, GRASP y SOLID |
+| 3 | [Desarrollo e implementación](docs/FASE3_Desarrollo.md) | Clases, herencia y polimorfismo, colecciones, persistencia, interfaz gráfica, buenas prácticas y evidencia de Git |
+| 4 | [Documentación técnica](docs/FASE4_Documentacion_Tecnica.md) | Arquitectura, diagramas finales, modelo de datos, diccionario de datos, tabla consolidada y reporte de Git |
+| — | [Trazabilidad](docs/TRAZABILIDAD.md) | GRASP, SOLID y código limpio con enlaces al código |
 
 ## Cómo ejecutar
 
-**IntelliJ IDEA:** `File > Open` y seleccionar `pom.xml` (abrir como proyecto). Esperar a que Maven descargue las dependencias y ejecutar la clase `sistemainventario.Launcher` (botón ▶).
+**IntelliJ IDEA:** `File > Open`, seleccionar `pom.xml` (abrir como proyecto), esperar a que Maven descargue las dependencias y ejecutar `sistemainventario.Launcher`.
 
-**Maven (terminal):**
+**Terminal:**
 
 ```bash
 mvn clean javafx:run
 ```
 
-Requisitos: JDK 17 o superior (se recomienda **JDK 21**; con JDK 26 JavaFX 21 se cierra al iniciar). JavaFX, Gson, ZXing y webcam-capture se descargan automáticamente con Maven.
+Requisitos: JDK 17 o superior (se recomienda **JDK 21**). JavaFX, Gson, ZXing y webcam-capture se descargan con Maven.
+
+## Estructura
+
+```
+src/main/java/sistemainventario/
+├── AppContext, Main, Launcher   arranque y composición
+├── model/        entidades del dominio
+├── exception/    excepciones del proyecto
+├── repository/   acceso a datos (JSON, respaldos, etiquetas)
+├── service/      casos de uso
+├── bridge/       controladores que atienden la vista
+├── view/         ventana JavaFX con el WebView
+├── dispositivo/  cámara
+└── util/         utilidades (fechas, IDs, texto, JSON, QR)
+src/main/resources/html/   interfaz (HTML, Tailwind CSS, css/tbalance.css, JavaScript y fuentes)
+docs/                      documentación por fases, diagramas e imágenes
+```
 
 ## Datos
 
-Los datos se guardan en `~/.inventariopro/data/` (en Windows `C:\Users\<usuario>\.inventariopro\data\`):
-
 ```
-configuracion-global.json      perfil activo y lista de perfiles
-perfiles.json                  perfiles creados
-perfiles/<ID>/productos.json   categorias.json  proveedores.json
-perfiles/<ID>/entradas.json    salidas.json     ventas.json
+~/.inventariopro/data/configuracion-global.json   perfil activo y lista de perfiles
+~/.inventariopro/data/perfiles.json               perfiles creados
+~/.inventariopro/data/perfiles/<ID>/              productos, categorias, proveedores, entradas, salidas y ventas (.json)
+~/.inventariopro/respaldos/                       copias de seguridad .zip
+~/.inventariopro/etiquetas/                       etiquetas QR .png
 ```
 
-## Copias de seguridad
+## Ramas
 
-Sección **Respaldos** del menú lateral:
-
-- **Crear copia:** genera `~/.inventariopro/respaldos/TBalance_<fecha>_<hora>.zip` con todos los perfiles y sus datos.
-- **Restaurar:** reemplaza los datos actuales por los de la copia elegida. Antes guarda automáticamente una copia del estado actual (`TBalance_antes-de-restaurar_...zip`), así que una restauración siempre se puede deshacer.
-- **Eliminar:** borra el archivo de la copia.
-
-Clases involucradas: `ArchivadorZip` y `RespaldoRepository` (persistencia), `GestorRespaldo` (servicio), `AppContext.recargar()` y `RespaldoController` (bridge).
-
-## Venta por QR
-
-Cada producto tiene su etiqueta con código QR; se imprime, se pega en el producto y al vender basta con mostrarla a la webcam.
-
-1. **Generar etiquetas (Productos):** el icono QR de cada fila muestra la etiqueta y permite **Guardar imagen** (`~/.inventariopro/etiquetas/etiqueta_<id>_<fecha>.png`). El botón **Etiquetas QR** genera hojas tamaño carta de 18 etiquetas (3 × 6) con todos los productos, listas para imprimir.
-2. **Vender (Ventas → Venta por QR):** se enciende la cámara del computador. Cada vez que una etiqueta aparece frente a ella, el producto se agrega a la venta con 1 unidad (si ya estaba, suma una más). Luego se ajustan las cantidades con − / + y se pulsa **Registrar Venta**. También se puede agregar un producto sin escanear desde la lista.
-
-El QR contiene un texto corto (`TBalance`, el ID y el precio) para que la webcam lo lea con facilidad; el nombre va impreso al lado. Una etiqueta que se queda quieta frente a la cámara cuenta una sola vez; para sumar otra unidad se retira unos 2 segundos y se vuelve a mostrar, o se usa el botón +.
-
-Librerías (se descargan con Maven y funcionan sin internet): **ZXing** para crear y leer los códigos QR y **webcam-capture** para la cámara. Clases involucradas: `GeneradorQR` y `LectorQR` (util), `Camara` y `WebcamCamara` (dispositivo), `EtiquetaRepository`, `Producto.contenidoEtiquetaQR()` / `idDesdeEtiquetaQR()`, `GestorEtiquetas` y `EscanerVentaQR` (servicio), `EtiquetaController` y `EscaneoController` (bridge).
-
-## Gestión con Git
-
-| Rama | Uso |
-|---|---|
-| `main` | Versiones entregadas al docente (solo recibe fusiones desde `dev`). |
-| `dev` | Integración del equipo; recibe los Pull Requests de las ramas `feature/*`. |
-| `feature/dair-*` | Trabajo de Dair Quintero (modelo de dominio). |
-| `feature/reinaldo-*` | Trabajo de Reinaldo Padilla (persistencia JSON). |
-| `feature/kevin-*` | Trabajo de Kevin Mercado (servicios y controladores). |
-
-Convención de commits: `tipo(alcance): descripción` — tipos `feat`, `refactor`, `fix`, `docs`, `build`, `chore`.
+`main` (versiones entregadas) ← `dev` (integración) ← `feature/<integrante>-<funcionalidad>` (una por tarea, con Pull Request aprobado por otro integrante). Detalle en la [Fase 1](docs/FASE1_Especificacion.md#53-estrategia-de-ramas).
