@@ -1,0 +1,111 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+skinparam package {
+  BorderColor #1e4a35
+  FontColor #14281d
+}
+skinparam note {
+  BackgroundColor #fdf8ea
+  BorderColor #d4a72c
+}
+hide empty members
+
+title Diagrama de clases — paquete repository (acceso a datos)
+package repository {
+interface Repository<T extends IdentifiedEntity> {
+  + listarTodos() : List<T>
+  + buscarPorId(id : String) : Optional<T>
+  + existe(id : String) : boolean
+  + filtrar(condicion : Predicate<T>) : List<T>
+  + agregar(entidad : T)
+  + actualizar(entidad : T) : boolean
+  + eliminar(id : String) : boolean
+  + siguienteIdNumerico() : String
+}
+abstract class JsonRepository<T extends IdentifiedEntity> {
+  - almacen : JsonFileStore
+  - tipo : Class<T>
+  - cache : List<T>
+  + listarTodos() : List<T>
+  + buscarPorId(id : String) : Optional<T>
+  + existe(id : String) : boolean
+  + filtrar(condicion : Predicate<T>) : List<T>
+  + agregar(entidad : T)
+  + actualizar(entidad : T) : boolean
+  + eliminar(id : String) : boolean
+  + siguienteIdNumerico() : String
+}
+class JsonFileStore {
+  - archivo : Path
+  + existe() : boolean
+  + leer() : Optional<String>
+  + escribir(contenido : String)
+  + crearDirectorio(directorio : Path) {static}
+}
+class ProductRepository {
+}
+class CategoryRepository {
+}
+class SupplierRepository {
+}
+class StockEntryRepository {
+}
+class StockExitRepository {
+}
+class SaleRepository {
+}
+class ProfileRepository {
+}
+class GlobalConfigRepository {
+  - almacen : JsonFileStore
+  + existe() : boolean
+  + cargar() : GlobalConfig
+  + guardar(configuracion : GlobalConfig)
+}
+class ProfileDirectory {
+  - directorioBase : Path
+  + resolver(perfilId : String) : Path
+  + crear(perfilId : String) : Path
+  + eliminar(perfilId : String)
+}
+class ZipArchiver {
+  + comprimir(carpeta : Path, destino : Path)
+  + extraer(archivoZip : Path, carpeta : Path) : int
+}
+class BackupRepository {
+  - carpeta : Path
+  + listar() : List<Backup>
+  + rutaExistente(nombre : String) : Path
+  + rutaNueva(nombre : String) : Path
+  + describir(ruta : Path) : Backup
+  + eliminar(nombre : String)
+}
+class LabelRepository {
+  - carpeta : Path
+  + guardar(nombre : String, imagen : BufferedImage) : Path
+  + aDataUri(imagen : BufferedImage) : String
+}
+}
+
+Repository <|.. JsonRepository
+JsonRepository "1" *-- "1" JsonFileStore : almacen
+GlobalConfigRepository "1" *-- "1" JsonFileStore : almacen
+JsonRepository <|-- ProductRepository
+JsonRepository <|-- CategoryRepository
+JsonRepository <|-- SupplierRepository
+JsonRepository <|-- StockEntryRepository
+JsonRepository <|-- StockExitRepository
+JsonRepository <|-- SaleRepository
+JsonRepository <|-- ProfileRepository
+
+@enduml

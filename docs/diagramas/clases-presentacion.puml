@@ -1,0 +1,187 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+skinparam package {
+  BorderColor #1e4a35
+  FontColor #14281d
+}
+skinparam note {
+  BackgroundColor #fdf8ea
+  BorderColor #d4a72c
+}
+hide empty members
+
+title Diagrama de clases — paquetes bridge, view y dispositivo
+package sistemainventario {
+class Main {
+  + start(ventanaPrincipal : Stage)
+  + main(args : String[]) {static}
+}
+class Launcher {
+  + main(args : String[]) {static}
+}
+class AppContext
+}
+package view {
+class WebViewMain {
+  - contexto : AppContext
+  - motor : WebEngine
+  - bridge : JavaBridge
+  + show(ventana : Stage)
+  + actualizarTitulo(ventana : Stage)
+}
+}
+package bridge {
+class JavaBridge {
+  - perfiles : ProfileController
+  - inventario : InventoryController
+  - catalogo : CatalogController
+  - transacciones : TransactionController
+  - respaldos : BackupController
+  - etiquetas : LabelController
+  - escaneo : ScanController
+  - notificador : ViewNotifier
+  + listarPerfiles() : String
+  + obtenerPerfilActivo() : String
+  + obtenerSugerencias() : String
+  + requiereControlVencimiento() : boolean
+  + obtenerTiposNegocio() : String
+  + crearPerfil(jsonPerfil : String) : String
+  .. 35 métodos más que delegan ..
+}
+class ProfileController {
+  - contexto : AppContext
+  - notificador : ViewNotifier
+  + listarPerfiles() : String
+  + obtenerPerfilActivo() : String
+  + obtenerSugerencias() : String
+  + requiereControlVencimiento() : boolean
+  + obtenerTiposNegocio() : String
+  + crearPerfil(jsonPerfil : String) : String
+  + editarPerfil(jsonPerfil : String) : String
+  + eliminarPerfil(id : String) : String
+  + seleccionarPerfil(id : String) : String
+}
+class InventoryController {
+  - contexto : AppContext
+  + obtenerProductos() : String
+  + buscarProductos(texto : String) : String
+  + filtrarProductosPorCategoria(categoria : String) : String
+  + obtenerProductosVencidos() : String
+  + obtenerProductosPorVencer(dias : int) : String
+  + guardarProducto(jsonProducto : String) : String
+  + eliminarProducto(id : String) : String
+  + obtenerEstadisticas(incluirVencimientos : boolean) : String
+}
+class CatalogController {
+  - contexto : AppContext
+  + obtenerCategorias() : String
+  + guardarCategoria(jsonCategoria : String) : String
+  + eliminarCategoria(id : String) : String
+  + obtenerProveedores() : String
+  + guardarProveedor(jsonProveedor : String) : String
+  + eliminarProveedor(id : String) : String
+}
+class TransactionController {
+  - contexto : AppContext
+  + obtenerEntradas() : String
+  + registrarEntrada(jsonEntrada : String) : String
+  + obtenerSalidas() : String
+  + registrarSalida(jsonSalida : String) : String
+  + obtenerVentas() : String
+  + crearVenta(jsonVenta : String) : String
+}
+class BackupController {
+  - contexto : AppContext
+  - notificador : ViewNotifier
+  + listarRespaldos() : String
+  + crearRespaldo() : String
+  + restaurarRespaldo(nombre : String) : String
+  + eliminarRespaldo(nombre : String) : String
+  + obtenerCarpetaRespaldos() : String
+}
+class LabelController {
+  - contexto : AppContext
+  - abridor : FileOpener
+  + obtenerEtiquetaQR(productoId : String) : String
+  + guardarEtiquetaQR(productoId : String) : String
+  + generarHojaEtiquetas() : String
+}
+class ScanController {
+  - contexto : AppContext
+  - fabricaCamara : Supplier<Camera>
+  - vista : ViewNotifier
+  - sesionActiva : AtomicBoolean
+  - hiloActual : Thread
+  + iniciarEscaneoQR() : String
+  + detenerEscaneoQR() : String
+  + estaEscaneando() : boolean
+}
+class BridgeResponse {
+  + json(objeto : Object) : String {static}
+  + error(mensaje : String) : String {static}
+  + ejecutar(accion : Supplier<String>) : String {static}
+  + ejecutarOk(accion : Runnable) : String {static}
+  + literalJs(texto : String) : String {static}
+}
+interface ViewNotifier {
+  + ejecutarScript(script : String)
+}
+class WebViewNotifier {
+  - motor : WebEngine
+  + ejecutarScript(script : String)
+}
+interface FileOpener {
+  + abrir(ruta : Path)
+}
+class DesktopFileOpener {
+  + abrir(ruta : Path)
+}
+}
+package dispositivo {
+interface Camera {
+  + abrir()
+  + capturar() : BufferedImage
+  + cerrar()
+}
+class WebcamCamera {
+  - webcam : Webcam
+  + abrir()
+  + capturar() : BufferedImage
+  + cerrar()
+}
+}
+
+class Application
+Application <|-- Main
+Launcher ..> Main
+Main ..> WebViewMain
+WebViewMain *-- JavaBridge : bridge
+JavaBridge *-- ProfileController
+JavaBridge *-- InventoryController
+JavaBridge *-- CatalogController
+JavaBridge *-- TransactionController
+JavaBridge *-- BackupController
+JavaBridge *-- LabelController
+JavaBridge *-- ScanController
+JavaBridge o-- ViewNotifier
+ViewNotifier <|.. WebViewNotifier
+FileOpener <|.. DesktopFileOpener
+Camera <|.. WebcamCamera
+ScanController o-- Camera : fabricaCamara
+ScanController o-- ViewNotifier
+LabelController o-- FileOpener
+ProfileController o-- ViewNotifier
+BackupController o-- ViewNotifier
+JavaBridge ..> AppContext
+
+@enduml
