@@ -1,0 +1,184 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+skinparam package {
+  BorderColor #1e4a35
+  FontColor #14281d
+}
+skinparam note {
+  BackgroundColor #fdf8ea
+  BorderColor #d4a72c
+}
+hide empty members
+
+title Diagrama de clases — paquete service y raíz de composición
+package sistemainventario {
+class AppContext {
+  - directorioDatos : Path
+  - gestorRespaldo : BackupService
+  - gestorEtiquetas : LabelService
+  - gestorPerfiles : ProfileService
+  - serviciosActivos : ProfileServices
+  + recargar()
+  + restaurarRespaldo(nombre : String) : Backup
+  + get() : AppContext {static}
+  + requerirServiciosActivos() : ProfileServices
+  + activarPerfil(perfilId : String)
+  + eliminarPerfil(perfilId : String)
+  + esPrimerArranque() : boolean
+}
+}
+package service {
+abstract class EntityService<T extends IdentifiedEntity> {
+  # repositorio : Repository<T>
+  + listarTodos() : List<T>
+  + buscarPorId(id : String) : Optional<T>
+  + obtener(id : String) : T
+  + guardar(entidad : T) : T
+  + eliminar(id : String) : boolean
+  # validar(entidad : T) {abstract}
+  # generarId() : String {abstract}
+  # nombreEntidad() : String {abstract}
+}
+class InventoryService {
+  # validar(producto : Product)
+  # generarId() : String
+  # nombreEntidad() : String
+  + registrarCambioDeStock(producto : Product)
+  + buscarPorTexto(texto : String) : List<Product>
+  + filtrarPorCategoria(categoria : String) : List<Product>
+  + getUtilidadEstimadaInventario() : double
+  + getSinPrecioCompra() : List<Product>
+  + getBajoStock() : List<Product>
+  + getAgotados() : List<Product>
+  + getVencidos() : List<Product>
+  + getPorVencer(dias : int) : List<Product>
+}
+class CategoryService {
+  # validar(categoria : Category)
+  # generarId() : String
+  # nombreEntidad() : String
+  + crearPredefinidas(tipoNegocio : BusinessType)
+}
+class SupplierService {
+  # validar(proveedor : Supplier)
+  # generarId() : String
+  # nombreEntidad() : String
+  + buscar(texto : String) : List<Supplier>
+}
+class MovementService {
+  - inventario : InventoryService
+  - entradas : Repository<StockEntry>
+  - salidas : Repository<StockExit>
+  + listarEntradas() : List<StockEntry>
+  + listarSalidas() : List<StockExit>
+  + registrarEntrada(entrada : StockEntry) : StockEntry
+  + registrarSalida(salida : StockExit) : StockExit
+}
+class SaleService {
+  - inventario : InventoryService
+  - ventas : Repository<Sale>
+  + registrar(venta : Sale) : Sale
+  + listarTodas() : List<Sale>
+}
+class ProfileServices <<record>> {
+  - inventario : InventoryService
+  - categorias : CategoryService
+  - proveedores : SupplierService
+  - movimientos : MovementService
+  - ventas : SaleService
+}
+class ProfileServicesFactory {
+  - directorios : ProfileDirectory
+  + crear(perfilId : String) : ProfileServices
+}
+class ProfileService {
+  - perfiles : Repository<Profile>
+  - configuracion : GlobalConfigService
+  - directorios : ProfileDirectory
+  - fabricaServicios : ProfileServicesFactory
+  + listarTodos() : List<Profile>
+  + buscarPorId(id : String) : Optional<Profile>
+  + getPerfilActivo() : Optional<Profile>
+  + esPrimerArranque() : boolean
+  + resolverPerfilInicial() : Optional<String>
+  + crear(datos : Profile) : Profile
+  + actualizar(cambios : Profile) : Profile
+  + eliminar(id : String)
+  + seleccionar(id : String) : Optional<ProfileServices>
+  + crearServicios(id : String) : ProfileServices
+}
+class GlobalConfigService {
+  - repositorio : GlobalConfigRepository
+  + esPrimerArranque() : boolean
+  + establecerPerfilActivo(perfilId : String)
+  + sincronizarPerfiles(perfiles : List<Profile>)
+}
+class BackupService {
+  - directorioDatos : Path
+  - respaldos : BackupRepository
+  - archivador : ZipArchiver
+  + listar() : List<Backup>
+  + crear() : Backup
+  + restaurar(nombre : String) : Backup
+  + eliminar(nombre : String)
+}
+class LabelService {
+  - generadorQR : QrGenerator
+  - etiquetas : LabelRepository
+  + vistaPrevia(producto : Product) : String
+  + guardarEtiqueta(producto : Product) : Path
+  + guardarHojas(productos : List<Product>) : List<Path>
+  + dibujarEtiqueta(producto : Product) : BufferedImage
+}
+class QrSaleScanner {
+  - lector : QrReader
+  - reloj : LongSupplier
+  - ultimoContenido : String
+  - ultimaLectura : long
+  + procesar(cuadro : BufferedImage, inventario : InventoryService) : Optional<Product>
+}
+}
+package util {
+class QrGenerator {
+  + generar(contenido : String, tamanoPx : int) : BufferedImage
+}
+class QrReader {
+  - pistas : Map<DecodeHintType, Object>
+  + leer(imagen : BufferedImage) : Optional<String>
+}
+}
+
+interface Repository<T>
+EntityService <|-- InventoryService
+EntityService <|-- CategoryService
+EntityService <|-- SupplierService
+EntityService o-- Repository : repositorio
+MovementService o-- InventoryService
+SaleService o-- InventoryService
+ProfileServices *-- InventoryService
+ProfileServices *-- CategoryService
+ProfileServices *-- SupplierService
+ProfileServices *-- MovementService
+ProfileServices *-- SaleService
+ProfileServicesFactory ..> ProfileServices : crea
+ProfileService o-- ProfileServicesFactory
+ProfileService o-- GlobalConfigService
+AppContext *-- ProfileService
+AppContext *-- BackupService
+AppContext *-- LabelService
+AppContext o-- ProfileServices : serviciosActivos
+LabelService o-- QrGenerator
+QrSaleScanner o-- QrReader
+QrSaleScanner ..> InventoryService : procesar()
+
+@enduml

@@ -1,0 +1,78 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+hide circle
+hide empty methods
+title Modelo entidad-relación de los datos guardados (JSON)
+entity "Profile" as P {
+  * id : String <<PK>>
+  --
+  nombre, descripcion, color
+  tipoNegocio, fechaCreacion
+  configuracion
+}
+entity "Category" as CA {
+  * id : String <<PK>>
+  --
+  nombre, descripcion
+}
+entity "Supplier" as PR {
+  * id : String <<PK>>
+  --
+  nombre, contacto, telefono, email
+  direccion, categoria, activo
+}
+entity "Product" as PO {
+  * id : String <<PK>>
+  --
+  categoriaId <<FK>>
+  proveedorId <<FK>>
+  nombre, codigo, descripcion, categoria
+  precioCompra, precioVenta, stock, stockMin
+  tipo, requiereVencimiento, fechaVencimiento
+}
+entity "StockEntry" as EN {
+  * id : String <<PK>>
+  --
+  productoId <<FK>>
+  proveedorId <<FK>>
+  cantidad, fecha, precioUnitario, observacion
+}
+entity "StockExit" as SA {
+  * id : String <<PK>>
+  --
+  productoId <<FK>>
+  cantidad, fecha, motivo, tipo
+}
+entity "Sale" as VE {
+  * id : String <<PK>>
+  --
+  cliente, metodoPago, observacion
+  fecha, estado, total
+}
+entity "SaleItem" as IV {
+  productoId <<FK>>
+  --
+  nombreProducto, cantidad
+  precioUnitario, subtotal
+}
+P ||--o{ CA : tiene
+P ||--o{ PR : tiene
+P ||--o{ PO : tiene
+P ||--o{ EN : tiene
+P ||--o{ SA : tiene
+P ||--o{ VE : tiene
+CA |o--o{ PO : agrupa
+PR |o--o{ PO : provee
+PO ||--o{ EN : recibe
+PR |o--o{ EN : entrega
+PO ||--o{ SA : registra
+VE ||--|{ IV : contiene
+PO ||--o{ IV : vendido en
+@enduml

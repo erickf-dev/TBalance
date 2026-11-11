@@ -1,0 +1,66 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+skinparam package {
+  BorderColor #1e4a35
+  FontColor #14281d
+}
+skinparam note {
+  BackgroundColor #fdf8ea
+  BorderColor #d4a72c
+}
+hide empty members
+
+title Diagrama de paquetes organizados por capas — TBalance v3.2.0
+
+left to right direction
+skinparam packageStyle folder
+package "Capa de presentación" as P #f2f8f4 {
+  package "resources/html" as html
+  package view
+  package bridge
+}
+package "Capa de lógica de negocio" as N #f2f8f4 {
+  package service
+  package model
+}
+package "Capa de acceso a datos" as D #f2f8f4 {
+  package repository
+  package dispositivo
+}
+package "Transversales" as T #fbfbf8 {
+  package util
+  package exception
+}
+package "sistemainventario (raíz)" as R #fbfbf8 {
+  package "AppContext, Main, Launcher" as raiz
+}
+html ..> bridge : window.javaBridge
+view ..> bridge
+view ..> model
+bridge ..> service
+bridge ..> model
+bridge ..> dispositivo
+bridge ..> raiz
+service ..> repository
+service ..> model
+repository ..> model
+raiz ..> service
+raiz ..> repository
+raiz ..> view
+model ..> util
+model ..> exception
+service ..> util
+repository ..> exception
+dispositivo ..> exception
+
+@enduml
