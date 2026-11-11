@@ -165,6 +165,28 @@ public class Product extends IdentifiedEntity {
         }
     }
 
+    // ── Utilidad (Experto) ──────────────────────────────────────────────
+
+    /** @return {@code true} si se registró el precio de compra (necesario para estimar la utilidad) */
+    public boolean tienePrecioCompra() {
+        return precioCompra > 0;
+    }
+
+    /** @return ganancia por unidad: precio de venta menos precio de compra (negativa si se vende a pérdida) */
+    public double getUtilidadUnitaria() {
+        return precioVenta - precioCompra;
+    }
+
+    /** @return porcentaje de la venta que es ganancia, o 0 si el precio de venta es 0 */
+    public double getMargen() {
+        return precioVenta > 0 ? getUtilidadUnitaria() / precioVenta * 100 : 0;
+    }
+
+    /** @return utilidad que dejaría vender todo el stock actual a los precios registrados */
+    public double getUtilidadEstimadaStock() {
+        return getUtilidadUnitaria() * Math.max(stock, 0);
+    }
+
     // ── Vencimiento (Experto) ───────────────────────────────────────────
 
     /** @return la fecha de vencimiento si está controlada y es válida */

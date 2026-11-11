@@ -66,6 +66,8 @@ public class InventoryController {
             estadisticas.put("totalProductos", inventario.listarTodos().size());
             estadisticas.put("bajoStock", inventario.getBajoStock().size());
             estadisticas.put("agotados", inventario.getAgotados().size());
+            estadisticas.put("utilidadEstimada", inventario.getUtilidadEstimadaInventario());
+            estadisticas.put("sinPrecioCompra", inventario.getSinPrecioCompra().size());
             estadisticas.put("totalCategorias", servicios.categorias().listarTodos().size());
             estadisticas.put("totalProveedores", servicios.proveedores().listarTodos().size());
             estadisticas.put("totalVentas", servicios.ventas().getTotalVentas());

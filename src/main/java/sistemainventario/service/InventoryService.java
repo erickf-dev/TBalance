@@ -71,6 +71,24 @@ public class InventoryService extends EntityService<Product> {
         return repositorio.filtrar(producto -> producto.perteneceACategoria(categoria));
     }
 
+    /**
+     * Utilidad estimada del inventario: lo que se ganaría vendiendo todo el
+     * stock de los productos que tienen precio de compra.
+     *
+     * @return suma de {@link Product#getUtilidadEstimadaStock()}
+     */
+    public double getUtilidadEstimadaInventario() {
+        return repositorio.listarTodos().stream()
+                .filter(Product::tienePrecioCompra)
+                .mapToDouble(Product::getUtilidadEstimadaStock)
+                .sum();
+    }
+
+    /** @return productos sin precio de compra, cuya utilidad no se puede estimar */
+    public List<Product> getSinPrecioCompra() {
+        return repositorio.filtrar(producto -> !producto.tienePrecioCompra());
+    }
+
     /** @return productos con stock en el mínimo o por debajo (sin estar agotados) */
     public List<Product> getBajoStock() {
         return repositorio.filtrar(Product::estaBajoStock);
