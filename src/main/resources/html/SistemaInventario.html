@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="es" class="light">
+<html lang="es" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TBalance</title>
   <link rel="stylesheet" href="css/fuentes.css" />
   <style>
-    body { font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    body { font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 9999px; }
@@ -30,7 +30,7 @@
     .kpi-card:hover { transform: translateY(-2px); }
 
 
-    input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px rgba(212,130,27,0.18); }
+    input:focus, select:focus { outline: none; box-shadow: 0 0 0 3px rgba(49,93,83,0.28); }
     select { transition: background 0.15s, border-color 0.15s; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -44,6 +44,44 @@
   </style>
   <link rel="stylesheet" href="css/tailwind.css" />
   <link rel="stylesheet" href="css/tbalance.css" />
+  <link rel="stylesheet" href="css/tbalance-vistas.css" />
+  <link rel="icon" type="image/png" sizes="256x256" href="img/tbalance-app-256.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="img/tbalance-app-192.png" />
+  <link rel="icon" type="image/png" sizes="128x128" href="img/tbalance-app-128.png" />
+  <link rel="apple-touch-icon" href="img/tbalance-app-192.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#315D53" />
+  <script>
+  // Cuando la interfaz se abre en Edge (DesktopBrowserApp), window.javaBridge se crea aquí:
+  // cada llamada viaja al servidor local de Java y espera la respuesta, igual que en JavaFX.
+  // Los avisos de Java (ViewNotifier) llegan por un flujo de eventos y se ejecutan al recibirlos.
+  (function () {
+    if (window.javaBridge || !/^https?:$/.test(location.protocol)) return;
+    var clave = new URLSearchParams(location.search).get('t');
+    if (!clave) return;
+    function llamar(metodo, argumentos) {
+      var x = new XMLHttpRequest();
+      x.open('POST', '/bridge/' + encodeURIComponent(metodo), false);
+      x.setRequestHeader('Content-Type', 'application/json');
+      x.setRequestHeader('X-TB-Token', clave);
+      x.send(JSON.stringify(argumentos));
+      if (x.status !== 200) throw new Error('El programa no respondió (' + x.status + ')');
+      var r = JSON.parse(x.responseText);
+      if (!r.ok) throw new Error(r.error);
+      return r.v === null ? undefined : r.v;
+    }
+    window.javaBridge = new Proxy({}, {
+      get: function (_, nombre) {
+        if (typeof nombre !== 'string' || nombre === 'then' || nombre === 'toJSON') return undefined;
+        return function () { return llamar(nombre, Array.prototype.slice.call(arguments)); };
+      }
+    });
+    var eventos = new EventSource('/eventos?t=' + clave);
+    eventos.onmessage = function (e) {
+      try { (0, eval)(e.data); } catch (err) { console.error('[TBalance] aviso de Java:', err); }
+    };
+  })();
+  </script>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans antialiased">
 
@@ -53,50 +91,51 @@
   <aside id="sidebar" class="w-[210px] min-w-[210px] bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 flex flex-col shadow-sm z-20">
 
     <div class="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100 dark:border-gray-700">
-      <div class="tb-logo w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center">
-        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5 7h14M12 7v12.5M8.5 19.5h7"/><path d="M6.5 7 4 12.5a2.5 2.5 0 0 0 5 0zM17.5 7 15 12.5a2.5 2.5 0 0 0 5 0z" fill="currentColor" fill-opacity=".22"/>
-        </svg>
-      </div>
+      <div class="tb-logo"><svg class="tb-logo-svg" viewBox="0 0 64 64" aria-hidden="true"><path class="tb-logo-a" d="M11 9h43.5c3.3 0 4.6 2.3 3.3 5.2l-2.6 6.2c-1 2.4-2.9 3.6-5.5 3.6H11c-3.9 0-6-2.1-6-6v-3c0-3.9 2.1-6 6-6z"/><path class="tb-logo-a" d="M19.5 27.5h12v22.5a6 6 0 0 1-12 0z"/><path class="tb-logo-b" d="M35 27.5h13.8c2.4 0 3.4 1.7 2.5 3.9l-2.7 6.6c-1.9 4.6-5.5 8.2-10.1 10.1l-3.5 1.5z"/></svg></div>
       <span class="font-bold text-[15px] text-gray-900 dark:text-white tracking-tight">TBalance</span>
     </div>
 
     <nav class="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
+      <span id="tb-nav-ind" aria-hidden="true"></span>
       <a href="#" class="nav-item nav-active flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-all" data-section="dashboard">
-        <svg class="w-[18px] h-[18px] flex-shrink-0 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h4A1.5 1.5 0 0 1 11 5.5v5A1.5 1.5 0 0 1 9.5 12h-4A1.5 1.5 0 0 1 4 10.5zM13 5.5A1.5 1.5 0 0 1 14.5 4h4A1.5 1.5 0 0 1 20 5.5v2A1.5 1.5 0 0 1 18.5 9h-4A1.5 1.5 0 0 1 13 7.5zM13 13.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5v5a1.5 1.5 0 0 1-1.5 1.5h-4a1.5 1.5 0 0 1-1.5-1.5zM4 17.5A1.5 1.5 0 0 1 5.5 16h4a1.5 1.5 0 0 1 1.5 1.5v1A1.5 1.5 0 0 1 9.5 20h-4A1.5 1.5 0 0 1 4 18.5z"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></svg>
         Dashboard
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="productos">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9M7.8 5.2l8.4 4.6"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /> <path d="M12 22V12" /> <polyline points="3.29 7 12 12 20.71 7" /> <path d="m7.5 4.27 9 5.15" /></svg>
         Productos
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="categorias">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.6V5A1.5 1.5 0 0 1 5 3.5h6.6c.4 0 .78.16 1.06.44l7.4 7.4a1.5 1.5 0 0 1 0 2.12l-6.6 6.6a1.5 1.5 0 0 1-2.12 0l-7.4-7.4a1.5 1.5 0 0 1-.44-1.06z"/><path d="M9.4 8a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0z"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></svg>
         Categorias
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="proveedores">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3.2v2.8h-7"/><path d="M8.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0zM18.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0z"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" /> <path d="M15 18H9" /> <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" /> <circle cx="17" cy="18" r="2" /> <circle cx="7" cy="18" r="2" /></svg>
         Proveedores
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="entradas">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v5.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V13M12 3.5v10M8 9.5l4 4 4-4"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /></svg>
         Entradas
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="salidas">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v5.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V13M12 14V4M8 8l4-4 4 4"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /> <path d="m17 8-5-5-5 5" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /></svg>
         Salidas
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="ventas">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-2.4-1.6-2.4 1.6-2.4-1.6-2.4 1.6L6 20.5z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="M18 17V9" /> <path d="M13 17V5" /> <path d="M8 17v-3" /></svg>
         Ventas
+      </a>
+      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="informes">
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="m19 9-5 5-4-4-3 3" /></svg>
+        Informes
       </a>
       <div class="my-2 border-t border-gray-100 dark:border-gray-700"></div>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="perfiles">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10v9a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-9"/><path d="M3 5.5 4.6 3.5h14.8L21 5.5v1.7a2.5 2.5 0 0 1-4.5 1.5 2.5 2.5 0 0 1-4.5 0 2.5 2.5 0 0 1-4.5 0A2.5 2.5 0 0 1 3 7.2z"/><path d="M10 20v-5h4v5"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></svg>
         Perfiles
       </a>
       <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-800 dark:hover:text-white transition-all" data-section="respaldos">
-        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6.5c0 1.7-3.6 3-8 3s-8-1.3-8-3 3.6-3 8-3 8 1.3 8 3z"/><path d="M4 6.5v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5M4 11.5v6c0 1.7 3.6 3 8 3 1 0 1.9-.07 2.8-.2"/><path d="m16.5 19 1.6 1.5 3-3.2"/></svg>
+        <svg class="w-[18px] h-[18px] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3" /> <path d="M3 5V19A9 3 0 0 0 21 19V5" /> <path d="M3 12A9 3 0 0 0 21 12" /></svg>
         Respaldos
       </a>
     </nav>
@@ -117,20 +156,18 @@
   <div class="flex-1 flex flex-col overflow-hidden">
 
     <header class="h-14 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between px-6 shadow-sm z-10 flex-shrink-0">
-      <div class="relative w-72">
-        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
+      <div id="tb-buscador" class="relative w-72 tb-oculto">
+        <svg class="tb-buscar-ico" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></svg>
         <input id="header-search" type="text" placeholder="Buscar productos..."
           class="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-400 text-gray-700 dark:text-gray-200 placeholder-gray-400 transition" />
       </div>
       <div class="flex items-center gap-3">
-        <button onclick="openModalVentaQR()" class="tb-top-btn sec" title="Vender escaneando las etiquetas QR con la cámara">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></svg>
+        <button onclick="openModalVentaQR()" class="tb-top-btn sec tb-solo-ventas tb-oculto" title="Vender escaneando las etiquetas QR con la cámara">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="5" height="5" x="3" y="3" rx="1" /> <rect width="5" height="5" x="16" y="3" rx="1" /> <rect width="5" height="5" x="3" y="16" rx="1" /> <path d="M21 16h-3a2 2 0 0 0-2 2v3" /> <path d="M21 21v.01" /> <path d="M12 7v3a2 2 0 0 1-2 2H7" /> <path d="M3 12h.01" /> <path d="M12 3h.01" /> <path d="M12 16v.01" /> <path d="M16 12h1" /> <path d="M21 12v.01" /> <path d="M12 21v-1" /></svg>
           Venta por QR
         </button>
-        <button onclick="openModalVenta()" class="tb-top-btn pri">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <button onclick="openModalVenta()" class="tb-top-btn pri tb-solo-ventas tb-oculto">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /> <path d="M12 5v14" /></svg>
           Nueva venta
         </button>
         <div id="profile-selector" class="relative">
@@ -171,58 +208,60 @@
 
         <div class="tb-kpis">
           <div class="kpi-card tb-kpi k-prod">
-            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9M7.8 5.2l8.4 4.6"/></svg></span>
-            <div><p class="tb-kpi-label">Productos</p><p class="tb-kpi-num"><span id="dash-total">0</span><small>en inventario</small></p></div>
+            <div><p class="tb-kpi-label">Productos</p><p class="tb-kpi-num"><span id="dash-total">0</span></p><p class="tb-kpi-sub">en inventario</p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /> <path d="M12 22V12" /> <polyline points="3.29 7 12 12 20.71 7" /> <path d="m7.5 4.27 9 5.15" /></svg></span>
           </div>
           <div class="kpi-card tb-kpi k-bajo">
-            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17h.01"/></svg></span>
-            <div><p class="tb-kpi-label">Bajo stock</p><p class="tb-kpi-num"><span id="dash-bajo-stock">0</span><small>requieren atención</small></p></div>
+            <div><p class="tb-kpi-label">Bajo stock</p><p class="tb-kpi-num"><span id="dash-bajo-stock">0</span></p><p class="tb-kpi-sub">requieren atención</p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></svg></span>
           </div>
           <div class="kpi-card tb-kpi k-ven">
-            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h12v17l-2.4-1.6-2.4 1.6-2.4-1.6-2.4 1.6L6 20.5z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/></svg></span>
-            <div><p class="tb-kpi-label">Ventas registradas</p><p class="tb-kpi-num"><span id="dash-ventas">0</span><small>operaciones</small></p></div>
+            <div><p class="tb-kpi-label">Ventas registradas</p><p class="tb-kpi-num"><span id="dash-ventas">0</span></p><p class="tb-kpi-sub">operaciones</p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21v-6" /> <path d="M12 21V9" /> <path d="M19 21V3" /></svg></span>
           </div>
           <div class="kpi-card tb-kpi k-prov">
-            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3.2v2.8h-7"/><path d="M8.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0zM18.8 17.5a1.8 1.8 0 1 1-3.6 0 1.8 1.8 0 0 1 3.6 0z"/></svg></span>
-            <div><p class="tb-kpi-label">Proveedores</p><p class="tb-kpi-num"><span id="dash-proveedores">0</span><small>registrados</small></p></div>
+            <div><p class="tb-kpi-label">Proveedores</p><p class="tb-kpi-num"><span id="dash-proveedores">0</span></p><p class="tb-kpi-sub">registrados</p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" /> <path d="M15 18H9" /> <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" /> <circle cx="17" cy="18" r="2" /> <circle cx="7" cy="18" r="2" /></svg></span>
           </div>
         </div>
 
-        <div class="tb-dash-grid">
-          <div class="tb-col">
-            <!-- Utilidad estimada del inventario (la calcula InventoryService en Java) -->
-            <div class="tb-utilidad-card">
-              <div>
-                <p class="tb-uc-label">Utilidad estimada del inventario</p>
-                <p id="dash-utilidad" class="tb-uc-valor">$0</p>
-              </div>
+        <div class="tb-fila tb-fila-a">
+          <!-- Utilidad estimada del inventario (la calcula InventoryService en Java) -->
+          <div class="tb-utilidad-card">
+            <div class="tb-uc-main">
+              <p class="tb-uc-label">Utilidad estimada del inventario</p>
+              <p id="dash-utilidad" class="tb-uc-valor">$0</p>
+            </div>
+            <div class="tb-uc-lado">
+              <span class="tb-uc-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7" /> <path d="M12 19V5" /></svg></span>
               <p id="dash-utilidad-nota" class="tb-uc-nota">Lo que ganaría vendiendo todo el stock a los precios registrados.</p>
             </div>
-            <div class="tb-card">
-              <div class="tb-card-head"><h2>Por reponer</h2><span id="dash-reponer-count">0 productos</span></div>
-              <div id="dash-reponer" class="tb-reponer"></div>
-            </div>
           </div>
-          <div class="tb-col">
-            <div class="tb-card">
-              <div class="tb-card-head"><h2>Ventas de 14 días</h2><span id="dash-ventas14-total">$0</span></div>
-              <div id="dash-ventas14" class="tb-barras"></div>
+          <div class="tb-card tb-ventas-card">
+            <div class="tb-card-head"><h2>Ventas de 14 días<a href="#" class="tb-ver-mas" onclick="showSection('informes'); return false;">Ver informes →</a></h2><span id="dash-ventas14-total" class="tb-card-cifra">$0</span></div>
+            <div id="dash-ventas14" class="tb-linea"></div>
+          </div>
+        </div>
+
+        <div class="tb-fila tb-fila-b">
+          <div class="tb-card tb-reponer-card">
+            <div class="tb-card-head"><h2>Por reponer</h2><span id="dash-reponer-count">0 productos</span></div>
+            <div id="dash-reponer" class="tb-reponer"></div>
+          </div>
+          <!-- Vencimientos (solo perfiles que controlan vencimiento) -->
+          <div id="dash-venc-grid" class="tb-card tb-venc-card hidden">
+            <div class="tb-card-head"><h2>Vencimientos</h2><span id="dash-venc-activos">0 activos</span></div>
+            <div class="tb-venc-pills">
+              <span class="tb-pill crit"><b id="dash-vencidos">0</b> vencidos</span>
+              <span class="tb-pill warn"><b id="dash-venc7">0</b> en 7 días</span>
+              <span class="tb-pill soft"><b id="dash-venc30">0</b> en 30 días</span>
             </div>
-            <!-- Vencimientos (solo perfiles que controlan vencimiento) -->
-            <div id="dash-venc-grid" class="tb-card hidden">
-              <div class="tb-card-head"><h2>Vencimientos</h2></div>
-              <div class="tb-venc-pills">
-                <span class="tb-pill crit"><b id="dash-vencidos">0</b> vencidos</span>
-                <span class="tb-pill warn"><b id="dash-venc7">0</b> en 7 días</span>
-                <span class="tb-pill soft"><b id="dash-venc30">0</b> en 30 días</span>
-              </div>
-              <ul id="dash-venc-alerts" class="tb-venc-lista"></ul>
-            </div>
+            <ul id="dash-venc-alerts" class="tb-venc-lista"></ul>
           </div>
         </div>
 
         <!-- Calendario lite (usa fecha del sistema) -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 mb-6">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5 mb-6 tb-calendario">
           <div class="flex items-center justify-between mb-3">
             <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <svg class="w-4 h-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -436,18 +475,7 @@
             <h1 class="text-xl font-bold text-gray-900 dark:text-white">Ventas</h1>
             <p class="text-xs text-gray-400 mt-0.5">Registro de ventas realizadas</p>
           </div>
-          <div class="flex items-center gap-2">
-          <button id="btn-venta-qr" onclick="openModalVentaQR()" title="Abre la camara y agrega los productos escaneando su etiqueta QR"
-            class="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all duration-150">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg>
-            Venta por QR
-          </button>
-          <button onclick="openModalVenta()"
-            class="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-150">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-            Nueva Venta
-          </button>
-          </div>
+          
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
           <div class="overflow-x-auto">
@@ -458,11 +486,79 @@
                 <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Cantidad</th>
                 <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Precio Unit.</th>
                 <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Total</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Pago</th>
                 <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
                 <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Accion</th>
               </tr></thead>
               <tbody id="tabla-ventas" class="divide-y divide-gray-50 dark:divide-gray-700"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- INFORMES (ReportService calcula; aquí solo se muestra) -->
+      <div id="sec-informes" class="section-panel">
+        <div class="tb-inf-cabeza">
+          <div>
+            <h1 class="text-xl font-bold text-gray-900 dark:text-white">Informes</h1>
+            <p id="inf-etiqueta" class="text-xs text-gray-400 mt-0.5">Ventas, utilidad y productos más vendidos</p>
+          </div>
+          <div class="tb-inf-acciones">
+            <button class="tb-top-btn" onclick="exportarInformeExcel()" title="Guarda el informe como archivo de Excel en Documentos/TBalance"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M8 13h2" /> <path d="M14 13h2" /> <path d="M8 17h2" /> <path d="M14 17h2" /></svg> Excel</button>
+            <button class="tb-top-btn" onclick="exportarInformePdf()" title="Abre la ventana de impresión: elija Guardar como PDF"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" /></svg> PDF</button>
+          </div>
+        </div>
+
+        <div class="tb-inf-filtros">
+          <div class="tb-segmento" id="inf-periodos" role="tablist" aria-label="Período del informe">
+            <span class="tb-segmento-ind" aria-hidden="true"></span>
+            <button data-p="hoy" onclick="elegirPeriodo('hoy')">Hoy</button>
+            <button data-p="semana" onclick="elegirPeriodo('semana')" class="activo">Semana</button>
+            <button data-p="mes" onclick="elegirPeriodo('mes')">Mes</button>
+            <button data-p="anio" onclick="elegirPeriodo('anio')">Año</button>
+            <button data-p="rango" onclick="elegirPeriodo('rango')">Rango</button>
+          </div>
+          <div id="inf-rango" class="tb-inf-rango hidden">
+            <input type="date" id="inf-desde" onchange="cargarInforme()" aria-label="Desde" />
+            <span>a</span>
+            <input type="date" id="inf-hasta" onchange="cargarInforme()" aria-label="Hasta" />
+          </div>
+          <span id="inf-comparado" class="tb-inf-comparado"></span>
+        </div>
+
+        <div class="tb-kpis">
+          <div class="kpi-card tb-kpi k-ven"><div><p class="tb-kpi-label">Ventas</p><p class="tb-kpi-num"><span id="inf-ventas">$0</span></p><p class="tb-kpi-sub" id="inf-ventas-d"></p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="M18 17V9" /> <path d="M13 17V5" /> <path d="M8 17v-3" /></svg></span></div>
+          <div class="kpi-card tb-kpi k-prov"><div><p class="tb-kpi-label">Número de ventas</p><p class="tb-kpi-num"><span id="inf-num">0</span></p><p class="tb-kpi-sub" id="inf-num-d"></p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M10 9H8" /> <path d="M16 13H8" /> <path d="M16 17H8" /></svg></span></div>
+          <div class="kpi-card tb-kpi k-bajo"><div><p class="tb-kpi-label">Ticket promedio</p><p class="tb-kpi-num"><span id="inf-ticket">$0</span></p><p class="tb-kpi-sub" id="inf-ticket-d"></p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></svg></span></div>
+          <div class="kpi-card tb-kpi k-prod"><div><p class="tb-kpi-label">Utilidad <span id="inf-margen" class="tb-margen"></span></p><p class="tb-kpi-num"><span id="inf-util">$0</span></p><p class="tb-kpi-sub" id="inf-util-d"></p></div>
+            <span class="tb-kpi-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 7h6v6" /> <path d="m22 7-8.5 8.5-5-5L2 17" /></svg></span></div>
+        </div>
+
+        <div class="tb-card tb-inf-grafica">
+          <div class="tb-card-head"><h2>Ventas y utilidad</h2>
+            <span class="tb-leyenda"><i class="v"></i>Ventas <i class="u"></i>Utilidad</span></div>
+          <div id="inf-grafica" class="tb-inf-barras"></div>
+        </div>
+
+        <div class="tb-fila">
+          <div class="tb-card tb-inf-top">
+            <div class="tb-card-head"><h2>Productos más vendidos</h2>
+              <div class="tb-segmento tb-segmento-mini" id="inf-orden">
+                <span class="tb-segmento-ind" aria-hidden="true"></span>
+                <button data-o="unidades" class="activo" onclick="ordenarTop('unidades')">Unidades</button>
+                <button data-o="ventas" onclick="ordenarTop('ventas')">Dinero</button>
+                <button data-o="utilidad" onclick="ordenarTop('utilidad')">Utilidad</button>
+              </div>
+            </div>
+            <div id="inf-top"></div>
+          </div>
+          <div class="tb-card tb-inf-pagos">
+            <div class="tb-card-head"><h2>Métodos de pago</h2></div>
+            <div id="inf-pagos"></div>
+            <p id="inf-sin-costo" class="tb-inf-nota hidden"></p>
           </div>
         </div>
       </div>
@@ -805,6 +901,14 @@
             class="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-400 transition placeholder-gray-400"/>
         </div>
       </div>
+      <div class="tb-pago-sel">
+        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Método de pago</label>
+        <div class="tb-pago-opciones" id="ven-metodos" role="radiogroup" aria-label="Método de pago"><button type="button" role="radio" data-m="Efectivo" onclick="tbPagoElegir('ven', 'Efectivo')" class="activo" aria-checked="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="12" x="2" y="6" rx="2" /> <circle cx="12" cy="12" r="2" /> <path d="M6 12h.01M18 12h.01" /></svg><span>Efectivo</span></button><button type="button" role="radio" data-m="Nequi" onclick="tbPagoElegir('ven', 'Nequi')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></svg><span>Nequi</span></button><button type="button" role="radio" data-m="Daviplata" onclick="tbPagoElegir('ven', 'Daviplata')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></svg><span>Daviplata</span></button><button type="button" role="radio" data-m="Bre-B" onclick="tbPagoElegir('ven', 'Bre-B')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></svg><span>Bre-B</span></button><button type="button" role="radio" data-m="Transferencia Bancolombia" onclick="tbPagoElegir('ven', 'Transferencia Bancolombia')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 18v-7" /> <path d="M11.119 2.205a2 2 0 0 1 1.762 0l7.84 3.846A.5.5 0 0 1 20.5 7h-17a.5.5 0 0 1-.22-.949z" /> <path d="M14 18v-7" /> <path d="M18 18v-7" /> <path d="M3 22h18" /> <path d="M6 18v-7" /></svg><span>Bancolombia</span></button><button type="button" role="radio" data-m="Tarjeta débito" onclick="tbPagoElegir('ven', 'Tarjeta débito')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2" /> <line x1="2" x2="22" y1="10" y2="10" /> <path d="M6 14h2" /></svg><span>Débito</span></button><button type="button" role="radio" data-m="Tarjeta crédito" onclick="tbPagoElegir('ven', 'Tarjeta crédito')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2" /> <line x1="2" x2="22" y1="10" y2="10" /> <path d="M6 14h2" /></svg><span>Crédito</span></button><button type="button" role="radio" data-m="Fiado" onclick="tbPagoElegir('ven', 'Fiado')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /> <path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></svg><span>Fiado</span></button></div>
+        <div class="tb-pago-extra">
+          <input id="ven-cliente" type="text" placeholder="Cliente (opcional)" aria-label="Cliente" />
+          <input id="ven-referencia" type="text" class="hidden" placeholder="N.º de comprobante (opcional)" aria-label="Comprobante" />
+        </div>
+      </div>
       <div class="bg-brand-50 dark:bg-brand-900/20 rounded-xl px-4 py-3 flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">Total</span>
         <span id="ven-total-display" class="text-lg font-extrabold text-brand-600 dark:text-brand-400">$0.00</span>
@@ -857,6 +961,16 @@
       <div class="flex flex-col min-h-0">
         <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Productos de la venta</p>
         <div id="vqr-items" class="flex-1 overflow-y-auto space-y-2 pr-1" style="max-height:300px"></div>
+<div class="mt-3">
+      <div class="tb-pago-sel">
+        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Método de pago</label>
+        <div class="tb-pago-opciones" id="vqr-metodos" role="radiogroup" aria-label="Método de pago"><button type="button" role="radio" data-m="Efectivo" onclick="tbPagoElegir('vqr', 'Efectivo')" class="activo" aria-checked="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="12" x="2" y="6" rx="2" /> <circle cx="12" cy="12" r="2" /> <path d="M6 12h.01M18 12h.01" /></svg><span>Efectivo</span></button><button type="button" role="radio" data-m="Nequi" onclick="tbPagoElegir('vqr', 'Nequi')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></svg><span>Nequi</span></button><button type="button" role="radio" data-m="Daviplata" onclick="tbPagoElegir('vqr', 'Daviplata')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></svg><span>Daviplata</span></button><button type="button" role="radio" data-m="Bre-B" onclick="tbPagoElegir('vqr', 'Bre-B')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></svg><span>Bre-B</span></button><button type="button" role="radio" data-m="Transferencia Bancolombia" onclick="tbPagoElegir('vqr', 'Transferencia Bancolombia')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 18v-7" /> <path d="M11.119 2.205a2 2 0 0 1 1.762 0l7.84 3.846A.5.5 0 0 1 20.5 7h-17a.5.5 0 0 1-.22-.949z" /> <path d="M14 18v-7" /> <path d="M18 18v-7" /> <path d="M3 22h18" /> <path d="M6 18v-7" /></svg><span>Bancolombia</span></button><button type="button" role="radio" data-m="Tarjeta débito" onclick="tbPagoElegir('vqr', 'Tarjeta débito')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2" /> <line x1="2" x2="22" y1="10" y2="10" /> <path d="M6 14h2" /></svg><span>Débito</span></button><button type="button" role="radio" data-m="Tarjeta crédito" onclick="tbPagoElegir('vqr', 'Tarjeta crédito')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2" /> <line x1="2" x2="22" y1="10" y2="10" /> <path d="M6 14h2" /></svg><span>Crédito</span></button><button type="button" role="radio" data-m="Fiado" onclick="tbPagoElegir('vqr', 'Fiado')" aria-checked="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /> <path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></svg><span>Fiado</span></button></div>
+        <div class="tb-pago-extra">
+          <input id="vqr-cliente" type="text" placeholder="Cliente (opcional)" aria-label="Cliente" />
+          <input id="vqr-referencia" type="text" class="hidden" placeholder="N.º de comprobante (opcional)" aria-label="Comprobante" />
+        </div>
+      </div>
+</div>
         <div class="bg-brand-50 dark:bg-brand-900/20 rounded-xl px-4 py-3 flex items-center justify-between mt-3">
           <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">Total <span id="vqr-unidades" class="font-normal text-gray-400"></span></span>
           <span id="vqr-total" class="text-lg font-extrabold text-brand-600 dark:text-brand-400">$0.00</span>
@@ -990,7 +1104,7 @@
       <div>
         <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Color identificador</label>
         <div id="perfil-color-picker" class="flex flex-wrap gap-2">
-          <button type="button" data-color="#d4821b" class="color-opt w-9 h-9 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 ring-brand-500" style="background:#d4821b"></button>
+          <button type="button" data-color="#315D53" class="color-opt w-9 h-9 rounded-xl ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 ring-brand-500" style="background:#315D53"></button>
           <button type="button" data-color="#3b82f6" class="color-opt w-9 h-9 rounded-xl ring-0" style="background:#3b82f6"></button>
           <button type="button" data-color="#10b981" class="color-opt w-9 h-9 rounded-xl ring-0" style="background:#10b981"></button>
           <button type="button" data-color="#ef4444" class="color-opt w-9 h-9 rounded-xl ring-0" style="background:#ef4444"></button>
@@ -1025,6 +1139,56 @@
 </div>
 
 <!-- Toast -->
+
+<!-- ASISTENTE (burbuja flotante; la conversación la maneja Java con AssistantService) -->
+<div id="tb-asistente" class="tb-asis">
+  <section id="tb-asis-panel" class="tb-asis-panel" aria-label="Asistente de TBalance" aria-hidden="true">
+    <header class="tb-asis-cabeza">
+      <span class="tb-asis-avatar"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></svg></span>
+      <div class="tb-asis-titulo"><b>Asistente</b><small id="tb-asis-sub">Pregúntame por tu tienda</small></div>
+      <button class="tb-asis-ico" title="Nueva conversación" onclick="tbAsisReiniciar()"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /></svg></button>
+      <button class="tb-asis-ico" title="Configurar el asistente" onclick="tbAsisVista('config')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /> <circle cx="12" cy="12" r="3" /></svg></button>
+      <button class="tb-asis-ico" title="Cerrar" onclick="tbAsisAlternar(false)"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></svg></button>
+    </header>
+
+    <div id="tb-asis-chat" class="tb-asis-vista">
+      <div id="tb-asis-mensajes" class="tb-asis-mensajes" aria-live="polite"></div>
+      <form class="tb-asis-pie" onsubmit="tbAsisEnviarFormulario(event)">
+        <textarea id="tb-asis-texto" rows="1" placeholder="Ej: ¿qué le falta de Postobón?" onkeydown="tbAsisTecla(event)" oninput="tbAsisCrecer(this)"></textarea>
+        <button type="submit" id="tb-asis-enviar" class="tb-asis-enviar" title="Enviar"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /> <path d="m21.854 2.147-10.94 10.939" /></svg></button>
+      </form>
+    </div>
+
+    <div id="tb-asis-config" class="tb-asis-vista tb-asis-config hidden">
+      <h3>Conectar el asistente</h3>
+      <p>El asistente usa <b>Google Gemini</b> en su capa gratuita. Necesita una clave propia (gratis, con una cuenta de Google):</p>
+      <ol>
+        <li>Entre a <b>aistudio.google.com/apikey</b> <button type="button" class="tb-asis-copiar" onclick="tbAsisCopiar('https://aistudio.google.com/apikey')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /> <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg> Copiar</button></li>
+        <li>Pulse <b>Create API key</b> y copie la clave.</li>
+        <li>Péguela aquí y guarde.</li>
+      </ol>
+      <label for="tb-asis-clave">Clave de API</label>
+      <input id="tb-asis-clave" type="password" autocomplete="off" placeholder="AIza..." />
+      <label for="tb-asis-modelo">Modelo</label>
+      <select id="tb-asis-modelo">
+        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (liviano, recomendado)</option>
+        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
+      </select>
+      <p class="tb-asis-nota">La clave se guarda solo en este computador (~/.inventariopro/asistente.json), no en los respaldos ni en GitHub. En la capa gratuita Google puede usar los mensajes para mejorar sus productos. El asistente necesita internet; el resto de TBalance no.</p>
+      <p id="tb-asis-prueba" class="tb-asis-prueba hidden" role="status"></p>
+      <div class="tb-asis-config-botones">
+        <button type="button" class="tb-asis-secundario" onclick="tbAsisVista('chat')">Volver</button>
+        <button type="button" class="tb-asis-secundario" onclick="tbAsisProbar()">Probar conexión</button>
+        <button type="button" class="tb-asis-primario" onclick="tbAsisGuardarConfig()">Guardar y probar</button>
+      </div>
+    </div>
+  </section>
+  <button id="tb-asis-boton" class="tb-asis-boton" onclick="tbAsisAlternar()" title="Asistente (Ctrl+K)" aria-expanded="false" aria-controls="tb-asis-panel">
+    <span class="tb-asis-boton-ico abrir"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></svg></span>
+    <span class="tb-asis-boton-ico cerrar"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></svg></span>
+  </button>
+</div>
+
 <div id="toast" class="fixed bottom-6 right-6 z-[100] hidden">
   <div class="flex items-center gap-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium px-4 py-3 rounded-xl shadow-xl">
     <svg id="toast-icon" class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
@@ -1268,7 +1432,7 @@ function renderSelectorPerfilActivo() {
   if (p) {
     const initials = (p.nombre || '?').trim().substring(0,1).toUpperCase();
     avatar.textContent = initials;
-    avatar.style.background = p.color || '#d4821b';
+    avatar.style.background = p.color || '#315D53';
     name.textContent = p.nombre;
   } else {
     avatar.textContent = '?';
@@ -1289,7 +1453,7 @@ function renderMenuPerfiles() {
     const tipo = tiposNegocioCache.find(t => t.clave === p.tipoNegocio);
     return `
       <button onclick="seleccionarPerfil('${p.id}')" class="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition text-left ${active ? 'bg-brand-50 dark:bg-brand-900/20' : ''}">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:${p.color || '#d4821b'}">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:${p.color || '#315D53'}">
           ${(p.nombre || '?').substring(0,1).toUpperCase()}
         </div>
         <div class="flex-1 min-w-0">
@@ -1323,7 +1487,7 @@ function seleccionarPerfil(id) {
   }
 }
 
-let colorSeleccionado = '#d4821b';
+let colorSeleccionado = '#315D53';
 let tiposNegocioCache  = [];
 let sugerenciasCache   = { producto: '', categoria: '', proveedor: '' };
 
@@ -1401,7 +1565,7 @@ function openModalPerfil(perfil) {
   document.getElementById('perfil-nombre').value      = perfil ? perfil.nombre : '';
   document.getElementById('perfil-descripcion').value = perfil ? (perfil.descripcion || '') : '';
   document.getElementById('perfil-tipo').value        = perfil ? (perfil.tipoNegocio || 'NINGUNO') : 'NINGUNO';
-  colorSeleccionado = perfil ? (perfil.color || '#d4821b') : '#d4821b';
+  colorSeleccionado = perfil ? (perfil.color || '#315d53') : '#315d53';
   actualizarColoresUI();
   onTipoNegocioChange();
   openModal('modal-perfil');
@@ -1487,10 +1651,10 @@ function renderTarjetasPerfiles() {
       : '';
     return `
       <div class="bg-white dark:bg-gray-800 rounded-2xl border ${active ? 'border-brand-500 ring-2 ring-brand-200 dark:ring-brand-900/40' : 'border-gray-100 dark:border-gray-700'} shadow-sm hover:shadow-md transition overflow-hidden">
-        <div class="h-2" style="background:${p.color || '#d4821b'}"></div>
+        <div class="h-2" style="background:${p.color || '#315D53'}"></div>
         <div class="p-5">
           <div class="flex items-start gap-3 mb-3">
-            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style="background:${p.color || '#d4821b'}">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold flex-shrink-0" style="background:${p.color || '#315D53'}">
               ${(p.nombre || '?').substring(0,1).toUpperCase()}
             </div>
             <div class="flex-1 min-w-0">
@@ -1533,6 +1697,7 @@ function escapeAttr(s) {
 document.addEventListener('DOMContentLoaded', () => {
   inicializarTema();
   setupNavegacion();
+  tbIniciarMovimiento();
   setupHeaderSearch();
   calRender();
   if (typeof window.javaBridge !== 'undefined') {
@@ -1552,14 +1717,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── TEMA ───────────────────────────────────────────────────
 function inicializarTema() {
-  const t = localStorage.getItem('tema') || 'light';
+  const t = localStorage.getItem('tema') || 'dark';
   aplicarTema(t);
 }
 function toggleDarkMode() {
   const html  = document.documentElement;
   const nuevo = html.classList.contains('dark') ? 'light' : 'dark';
   localStorage.setItem('tema', nuevo);
-  aplicarTema(nuevo);
+  if (TB_SIN_MOVIMIENTO) { aplicarTema(nuevo); return; }
+  if (tbTransicionNativa(null, 450)) { aplicarTema(nuevo); return; }
+  // Un velo del color del tema nuevo cubre la ventana, el tema cambia debajo y el velo se retira:
+  // así el redibujo completo de la página no se ve como un salto.
+  const velo = document.createElement('div');
+  velo.className = 'tb-velo-tema';
+  velo.style.background = nuevo === 'dark' ? '#0a0d0c' : '#e7ecea';
+  document.body.appendChild(velo);
+  requestAnimationFrame(function() {
+    velo.classList.add('cubre');
+    setTimeout(function() {
+      aplicarTema(nuevo);
+      requestAnimationFrame(function() { requestAnimationFrame(function() {
+        velo.classList.remove('cubre');
+        setTimeout(function() { velo.remove(); }, 420);
+      }); });
+    }, 200);
+  });
 }
 function aplicarTema(tema) {
   const html  = document.documentElement;
@@ -1590,17 +1772,768 @@ function setupNavegacion() {
 }
 
 function showSection(sec) {
-  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('sec-'+sec).classList.add('active');
+  const actual = document.querySelector('.section-panel.active');
+  const nuevo = document.getElementById('sec-' + sec);
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.remove('nav-active','bg-brand-50','dark:bg-brand-900/30','text-brand-700','dark:text-brand-400','font-semibold');
     n.classList.add('text-gray-500','dark:text-gray-400','font-medium');
   });
   const active = document.querySelector('.nav-item[data-section="' + sec + '"]');
   if (active) {
-    active.classList.add('nav-active','bg-brand-50','dark:bg-brand-900/30','text-brand-700','dark:text-brand-400','font-semibold');
+    active.classList.add('nav-active','font-semibold');
     active.classList.remove('text-gray-500','dark:text-gray-400','font-medium');
+    tbMoverIndicador(active, true);
   }
+  // La búsqueda de la barra superior solo aparece en Productos, que es lo que busca
+  const buscador = document.getElementById('tb-buscador');
+  if (buscador) buscador.classList.toggle('tb-oculto', sec !== 'productos');
+  document.querySelectorAll('.tb-solo-ventas').forEach(function(b) { b.classList.toggle('tb-oculto', sec !== 'ventas'); });
+  if (!nuevo || actual === nuevo) return;
+  if (sec === 'informes') { cargarInforme(); requestAnimationFrame(function() { tbSegmento('inf-periodos', 'p', informe.periodo); tbSegmento('inf-orden', 'o', informe.orden); }); }
+  tbCambiarPanel(actual, nuevo);
+}
+
+// ── MOVIMIENTO DE LA INTERFAZ ──────────────────────────────
+// Solo se animan transform, opacity y un desenfoque corto, que el navegador mueve sin redibujar la página.
+// Respeta "reducir movimiento" del sistema: en ese caso todo cambia sin animación.
+const TB_SIN_MOVIMIENTO = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+// En el programa de escritorio (visor de JavaFX) la página se dibuja con el procesador: ahí los cambios
+// grandes los hace la ventana con la tarjeta gráfica (javaBridge.transicionPantalla) y en la página
+// solo quedan animaciones pequeñas.
+const TB_ESCRITORIO = /JavaFX/.test(navigator.userAgent);
+
+// Pide a la ventana que funda la zona del elemento (o toda la ventana) con lo que viene después.
+function tbTransicionNativa(el, ms) {
+  if (!TB_ESCRITORIO || TB_SIN_MOVIMIENTO || !window.javaBridge) return false;
+  try {
+    const r = el ? el.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    return String(window.javaBridge.transicionPantalla(r.left, r.top, r.width, r.height, ms)) === 'OK';
+  } catch (e) { return false; }
+}
+const tbSalidaSuave = k => 1 - Math.pow(1 - k, 4);                                  // desacelera
+const tbEntradaSalida = k => k < .5 ? 8 * k * k * k * k : 1 - Math.pow(-2 * k + 2, 4) / 2; // arranca y frena suave
+
+function tbIniciarMovimiento() {
+  if (TB_SIN_MOVIMIENTO) document.documentElement.classList.add('tb-quieto');
+  if (TB_ESCRITORIO) document.documentElement.classList.add('tb-escritorio');
+  const activo = document.querySelector('.nav-item.nav-active');
+  if (activo) tbMoverIndicador(activo, false);
+  window.addEventListener('resize', function() {
+    const a = document.querySelector('.nav-item.nav-active');
+    if (a) tbMoverIndicador(a, false);
+  });
+  requestAnimationFrame(function() { tbEntrar(document.querySelector('.section-panel.active')); });
+}
+
+// Píldora del menú: el borde que va adelante sale primero y el de atrás lo alcanza (efecto líquido)
+function tbMoverIndicador(item, animar) {
+  const ind = document.getElementById('tb-nav-ind');
+  if (!ind) return;
+  const fin = { top: item.offsetTop, bot: item.offsetTop + item.offsetHeight };
+  const poner = function(top, bot) {
+    ind.style.transform = 'translate3d(0,' + top.toFixed(2) + 'px,0)';
+    ind.style.height = (bot - top).toFixed(2) + 'px';
+    tbMoverIndicador._pos = { top: top, bot: bot };
+  };
+  cancelAnimationFrame(tbMoverIndicador._raf);
+  const ini = tbMoverIndicador._pos;
+  if (!animar || TB_SIN_MOVIMIENTO || !ini) { poner(fin.top, fin.bot); ind.classList.add('listo'); return; }
+  if (ini.top === fin.top && ini.bot === fin.bot) return;
+  const abajo = fin.top > ini.top;
+  const dist = Math.abs(fin.top - ini.top);
+  const dur = Math.min(620, 380 + dist * 0.6);
+  const t0 = performance.now();
+  const paso = function(t) {
+    const k = Math.min(1, (t - t0) / dur);
+    const lider = tbSalidaSuave(Math.min(1, k / 0.72));
+    const cola = tbEntradaSalida(Math.max(0, (k - 0.1) / 0.9));
+    const top = ini.top + (fin.top - ini.top) * (abajo ? cola : lider);
+    const bot = ini.bot + (fin.bot - ini.bot) * (abajo ? lider : cola);
+    poner(top, bot);
+    if (k < 1) tbMoverIndicador._raf = requestAnimationFrame(paso);
+  };
+  tbMoverIndicador._raf = requestAnimationFrame(paso);
+}
+
+// Cambio de sección: la anterior se oculta en el mismo cuadro y la nueva entra por partes.
+// (Desvanecer la sección anterior obligaba a redibujarla entera y causaba saltos.)
+function tbCambiarPanel(actual, nuevo) {
+  if (actual) tbTransicionNativa(nuevo.parentElement, 320);
+  if (actual) actual.classList.remove('active');
+  nuevo.parentElement.scrollTop = 0;
+  nuevo.classList.add('active');
+  tbEntrar(nuevo);
+}
+
+// Entrada de una sección: título letra por letra, bloques y filas uno tras otro
+function tbEntrar(panel) {
+  if (!panel || TB_SIN_MOVIMIENTO) return;
+  clearTimeout(panel._fin);
+  panel.classList.remove('tb-entrando');
+  const bloques = [];
+  Array.prototype.forEach.call(panel.children, function(c) {
+    if (c.classList.contains('tb-kpis') || c.classList.contains('tb-fila')) Array.prototype.forEach.call(c.children, function(k) { bloques.push(k); });
+    else bloques.push(c);
+  });
+  bloques.forEach(function(b, i) {
+    b.style.setProperty('--i', Math.min(i, 8));
+    b.classList.add('tb-bloque');
+    b.classList.toggle('tb-difuso', b.offsetHeight < 240);
+  });
+  const filas = panel.querySelectorAll('tbody > tr');
+  Array.prototype.forEach.call(filas, function(f, i) { if (i < 14) { f.style.setProperty('--f', i); f.classList.add('tb-fila-anim'); } });
+  const titulo = panel.querySelector('h1');
+  if (titulo) {
+    const texto = titulo.textContent;
+    titulo.setAttribute('aria-label', texto);
+    titulo.innerHTML = Array.prototype.map.call(texto, function(c, i) {
+      return '<span class="tb-letra" aria-hidden="true" style="--l:' + i + '">' + (c === ' ' ? '&nbsp;' : esc(c)) + '</span>';
+    }).join('');
+    clearTimeout(titulo._t);
+    titulo._t = setTimeout(function() { if (titulo.querySelector('.tb-letra')) titulo.textContent = texto; }, 1200);
+  }
+  void panel.offsetWidth;
+  panel.classList.add('tb-entrando');
+  panel.querySelectorAll('.tb-linea').forEach(tbDibujarLinea);
+  panel.querySelectorAll('[data-meta]').forEach(function(el) { el.dataset.mostrado = 0; tbContar(el, Number(el.dataset.meta)); });
+  // al terminar se quitan las clases para que el navegador libere las capas de la animación
+  panel._fin = setTimeout(function() {
+    panel.classList.remove('tb-entrando');
+    panel.querySelectorAll('.tb-bloque, .tb-fila-anim').forEach(function(b) { b.classList.remove('tb-bloque', 'tb-difuso', 'tb-fila-anim'); });
+  }, 1400);
+}
+
+// Cifras que suben hasta su valor
+function tbContar(el, meta) {
+  if (!el) return;
+  el.dataset.meta = meta;
+  const desde = Number(el.dataset.mostrado || 0);
+  el.dataset.mostrado = meta;
+  cancelAnimationFrame(el._raf);
+  if (TB_SIN_MOVIMIENTO || desde === meta) { el.textContent = meta; return; }
+  const inicio = performance.now(), dur = 900;
+  const paso = function(t) {
+    const k = Math.min(1, (t - inicio) / dur), e = k === 1 ? 1 : 1 - Math.pow(2, -10 * k);
+    el.textContent = Math.round(desde + (meta - desde) * e);
+    if (k < 1) el._raf = requestAnimationFrame(paso);
+  };
+  el._raf = requestAnimationFrame(paso);
+}
+
+// La línea de ventas se dibuja de izquierda a derecha y los puntos aparecen cuando la línea pasa
+function tbDibujarLinea(caja) {
+  const trazo = caja && caja.querySelector('.tb-l-trazo');
+  if (!trazo || TB_SIN_MOVIMIENTO || !trazo.getTotalLength) return;
+  const largo = trazo.getTotalLength();
+  trazo.style.transition = 'none';
+  trazo.style.strokeDasharray = largo; trazo.style.strokeDashoffset = largo;
+  caja.classList.remove('dibujando'); void caja.offsetWidth; caja.classList.add('dibujando');
+  requestAnimationFrame(function() { requestAnimationFrame(function() {
+    trazo.style.transition = 'stroke-dashoffset 1100ms cubic-bezier(.45,.05,.25,1) 150ms';
+    trazo.style.strokeDashoffset = 0;
+  }); });
+}
+
+// Ventanas: abren y cierran con el mismo movimiento
+function tbCerrarModalSuave(m, listo) {
+  if (TB_SIN_MOVIMIENTO || m.classList.contains('hidden')) { listo(); return; }
+  if (TB_ESCRITORIO) { tbTransicionNativa(null, 200); listo(); return; }
+  m.classList.add('tb-cerrando');
+  clearTimeout(m._t);
+  m._t = setTimeout(function() { m.classList.remove('tb-cerrando'); listo(); }, 190);
+}
+
+
+// ── INFORMES ───────────────────────────────────────────────
+// Los cálculos los hace Java (ReportService); aquí se elige el período y se dibuja el resultado.
+const informe = { periodo: 'semana', orden: 'unidades', datos: null };
+
+function _iso(d) { return _toIsoLocal(d); }
+function _sumarDias(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+
+// Período elegido y el período con el que se compara (el mismo tramo de la semana, mes o año anterior)
+function rangoInforme() {
+  const hoy = _todayLocal();
+  let desde, hasta = hoy, antDesde, antHasta;
+  switch (informe.periodo) {
+    case 'hoy':
+      desde = hoy; antDesde = antHasta = _sumarDias(hoy, -1); break;
+    case 'semana': {
+      const dow = (hoy.getDay() + 6) % 7; // lunes = 0
+      desde = _sumarDias(hoy, -dow); antDesde = _sumarDias(desde, -7); antHasta = _sumarDias(hoy, -7); break;
+    }
+    case 'mes':
+      desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      antDesde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+      antHasta = new Date(hoy.getFullYear(), hoy.getMonth() - 1, Math.min(hoy.getDate(), new Date(hoy.getFullYear(), hoy.getMonth(), 0).getDate()));
+      break;
+    case 'anio':
+      desde = new Date(hoy.getFullYear(), 0, 1);
+      antDesde = new Date(hoy.getFullYear() - 1, 0, 1); antHasta = new Date(hoy.getFullYear() - 1, hoy.getMonth(), hoy.getDate()); break;
+    default: {
+      const d = document.getElementById('inf-desde').value, h = document.getElementById('inf-hasta').value;
+      return { desde: d || _iso(_sumarDias(hoy, -29)), hasta: h || _iso(hoy), antDesde: '', antHasta: '' };
+    }
+  }
+  return { desde: _iso(desde), hasta: _iso(hasta), antDesde: _iso(antDesde), antHasta: _iso(antHasta) };
+}
+
+function elegirPeriodo(p) {
+  informe.periodo = p;
+  tbSegmento('inf-periodos', 'p', p);
+  const rango = document.getElementById('inf-rango');
+  rango.classList.toggle('hidden', p !== 'rango');
+  if (p === 'rango' && !document.getElementById('inf-desde').value) {
+    const hoy = _todayLocal();
+    document.getElementById('inf-desde').value = _iso(_sumarDias(hoy, -29));
+    document.getElementById('inf-hasta').value = _iso(hoy);
+  }
+  cargarInforme();
+}
+
+function ordenarTop(o) {
+  informe.orden = o;
+  tbSegmento('inf-orden', 'o', o);
+  dibujarTop(true);
+}
+
+// Control segmentado: la píldora se desliza hasta el botón activo
+function tbSegmento(id, clave, valor) {
+  const caja = document.getElementById(id);
+  if (!caja) return;
+  let activo = null;
+  caja.querySelectorAll('button').forEach(function(b) {
+    const es = b.dataset[clave] === valor;
+    b.classList.toggle('activo', es);
+    b.setAttribute('aria-selected', es ? 'true' : 'false');
+    if (es) activo = b;
+  });
+  const ind = caja.querySelector('.tb-segmento-ind');
+  if (ind && activo) {
+    ind.style.width = activo.offsetWidth + 'px';
+    ind.style.transform = 'translate3d(' + activo.offsetLeft + 'px,0,0)';
+  }
+}
+
+function cargarInforme() {
+  if (!state.perfilActivo || typeof window.javaBridge === 'undefined') return;
+  const r = rangoInforme();
+  let res;
+  try { res = window.javaBridge.obtenerInforme(r.desde, r.hasta, r.antDesde, r.antHasta); }
+  catch (e) { showToast('No se pudo calcular el informe', 'error'); return; }
+  if (!res || String(res).indexOf('ERROR') === 0) { showToast(String(res || 'Error').replace('ERROR: ', ''), 'error'); return; }
+  informe.datos = JSON.parse(res);
+  informe.rango = r;
+  dibujarInforme();
+}
+
+function _fmtFechaCorta(iso) {
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const p = iso.split('-');
+  return Number(p[2]) + ' ' + meses[Number(p[1]) - 1] + (p[0] !== String(_todayLocal().getFullYear()) ? ' ' + p[0] : '');
+}
+
+function _delta(el, actual, anterior, esDinero) {
+  if (!anterior) { el.innerHTML = '<span class="tb-delta neutro">Sin ventas antes para comparar</span>'; return; }
+  const pct = (actual - anterior) / Math.abs(anterior) * 100;
+  const sube = pct >= 0;
+  el.innerHTML = '<span class="tb-delta ' + (sube ? 'sube' : 'baja') + '">' + (sube ? '↑ ' : '↓ ') + Math.abs(pct).toFixed(1) + '%</span> vs. '
+    + (esDinero ? '$' + fmt(anterior, 0) : anterior);
+}
+
+function dibujarInforme() {
+  const d = informe.datos, a = d.actual, b = d.anterior;
+  const r = informe.rango;
+  document.getElementById('inf-etiqueta').textContent = (state.perfilActivo ? state.perfilActivo.nombre + ' · ' : '')
+    + (d.desde === d.hasta ? _fmtFechaCorta(d.desde) : 'Del ' + _fmtFechaCorta(d.desde) + ' al ' + _fmtFechaCorta(d.hasta));
+  document.getElementById('inf-comparado').textContent = r.antDesde
+    ? 'Comparado con ' + (r.antDesde === r.antHasta ? _fmtFechaCorta(r.antDesde) : _fmtFechaCorta(r.antDesde) + ' – ' + _fmtFechaCorta(r.antHasta))
+    : 'Comparado con el período anterior de igual duración';
+  tbContarDinero(document.getElementById('inf-ventas'), a.ventas);
+  tbContar(document.getElementById('inf-num'), a.numeroVentas);
+  tbContarDinero(document.getElementById('inf-ticket'), a.ticketPromedio);
+  tbContarDinero(document.getElementById('inf-util'), a.utilidad);
+  _delta(document.getElementById('inf-ventas-d'), a.ventas, b.ventas, true);
+  _delta(document.getElementById('inf-num-d'), a.numeroVentas, b.numeroVentas, false);
+  _delta(document.getElementById('inf-ticket-d'), a.ticketPromedio, b.ticketPromedio, true);
+  _delta(document.getElementById('inf-util-d'), a.utilidad, b.utilidad, true);
+  document.getElementById('inf-margen').textContent = a.ventas > 0 ? (a.utilidad / a.ventas * 100).toFixed(1) + '% margen' : '';
+  const nota = document.getElementById('inf-sin-costo');
+  nota.classList.toggle('hidden', !a.unidadesSinCosto);
+  nota.textContent = a.unidadesSinCosto ? a.unidadesSinCosto + (a.unidadesSinCosto === 1 ? ' unidad vendida no tiene' : ' unidades vendidas no tienen')
+    + ' precio de compra; no se cuenta' + (a.unidadesSinCosto === 1 ? '' : 'n') + ' en la utilidad.' : '';
+  dibujarGraficaInforme();
+  dibujarTop(false);
+  dibujarPagos();
+}
+
+// Barras de ventas con la utilidad como barra interior
+function dibujarGraficaInforme() {
+  const caja = document.getElementById('inf-grafica');
+  const serie = informe.datos.serie;
+  const max = Math.max.apply(null, serie.map(function(p) { return p.ventas; }).concat([0]));
+  const cada = Math.ceil(serie.length / 12);
+  if (max === 0) { caja.innerHTML = '<p class="tb-vacio tb-inf-vacio">No hay ventas en este período.</p>'; return; }
+  caja.innerHTML = '<div class="tb-inf-columnas">' + serie.map(function(p, i) {
+    const hv = p.ventas / max * 100, hu = Math.max(0, p.utilidad) / max * 100;
+    return '<div class="tb-inf-col" style="--i:' + Math.min(i, 30) + '" title="' + p.etiqueta + ': ventas $' + fmt(p.ventas, 0) + ' · utilidad $' + fmt(p.utilidad, 0) + ' · ' + p.numeroVentas + ' venta(s)">'
+      + '<div class="tb-inf-pila"><i class="v" style="height:' + hv + '%"></i><i class="u" style="height:' + hu + '%"></i></div>'
+      + '<span>' + (i % cada === 0 || i === serie.length - 1 ? p.etiqueta : '') + '</span></div>';
+  }).join('') + '</div>';
+  caja.classList.remove('creciendo'); void caja.offsetWidth; caja.classList.add('creciendo');
+}
+
+function dibujarTop(animar) {
+  const caja = document.getElementById('inf-top');
+  const lista = informe.datos.productos.slice().sort(function(x, y) { return y[informe.orden] - x[informe.orden]; }).slice(0, 10);
+  if (!lista.length) { caja.innerHTML = '<p class="tb-vacio">Todavía no hay productos vendidos en este período.</p>'; return; }
+  const max = Math.max.apply(null, lista.map(function(p) { return Math.max(0, p[informe.orden]); }).concat([1]));
+  caja.innerHTML = lista.map(function(p, i) {
+    const valor = informe.orden === 'unidades' ? p.unidades + ' uds.'
+      : (informe.orden === 'utilidad' && !p.conCosto ? 'sin costo' : '$' + fmt(p[informe.orden], 0));
+    return '<div class="tb-top-fila" style="--i:' + i + '"><span class="tb-top-n">' + (i + 1) + '</span>'
+      + '<div class="tb-top-cuerpo"><div class="tb-top-linea"><b>' + esc(p.nombre) + '</b><span>' + valor + '</span></div>'
+      + '<span class="tb-top-barra"><i style="width:' + Math.max(3, Math.max(0, p[informe.orden]) / max * 100) + '%"></i></span>'
+      + '<small>' + p.unidades + ' uds. · $' + fmt(p.ventas, 0) + (p.conCosto ? ' · utilidad $' + fmt(p.utilidad, 0) : '') + '</small></div></div>';
+  }).join('');
+  if (animar) { caja.classList.remove('reordenando'); void caja.offsetWidth; caja.classList.add('reordenando'); }
+}
+
+function dibujarPagos() {
+  const caja = document.getElementById('inf-pagos');
+  const lista = informe.datos.metodosPago;
+  const total = lista.reduce(function(s, m) { return s + m.ventas; }, 0);
+  if (!lista.length) { caja.innerHTML = '<p class="tb-vacio">Sin ventas en este período.</p>'; return; }
+  caja.innerHTML = lista.map(function(m, i) {
+    const pct = total > 0 ? m.ventas / total * 100 : 0;
+    return '<div class="tb-pago" style="--i:' + i + '"><div class="tb-top-linea"><b>' + esc(m.metodo) + '</b><span>' + pct.toFixed(0) + '%</span></div>'
+      + '<span class="tb-top-barra"><i style="width:' + Math.max(3, pct) + '%"></i></span>'
+      + '<small>$' + fmt(m.ventas, 0) + ' · ' + m.numeroVentas + (m.numeroVentas === 1 ? ' venta' : ' ventas') + '</small></div>';
+  }).join('');
+}
+
+// Cifras de dinero que suben hasta su valor
+function tbContarDinero(el, meta) {
+  if (!el) return;
+  const desde = Number(el.dataset.valor || 0);
+  el.dataset.valor = meta;
+  cancelAnimationFrame(el._raf);
+  if (TB_SIN_MOVIMIENTO || desde === meta) { el.textContent = '$' + fmt(meta, 0); return; }
+  const inicio = performance.now(), dur = 900;
+  const paso = function(t) {
+    const k = Math.min(1, (t - inicio) / dur), e = k === 1 ? 1 : 1 - Math.pow(2, -10 * k);
+    el.textContent = '$' + fmt(desde + (meta - desde) * e, 0);
+    if (k < 1) el._raf = requestAnimationFrame(paso);
+  };
+  el._raf = requestAnimationFrame(paso);
+}
+
+function exportarInformeExcel() {
+  const r = informe.rango || rangoInforme();
+  let res;
+  try { res = window.javaBridge.exportarInformeExcel(r.desde, r.hasta, r.antDesde, r.antHasta); }
+  catch (e) { showToast('No se pudo exportar el informe', 'error'); return; }
+  if (String(res).indexOf('ERROR') === 0) { showToast(String(res).replace('ERROR: ', ''), 'error'); return; }
+  showToast('Informe guardado en ' + res);
+}
+
+
+// ── ASISTENTE ──────────────────────────────────────────────
+// La vista solo muestra la conversación; Java habla con Gemini y usa las funciones del inventario.
+// Las respuestas llegan por onAsistenteRespuesta() cuando Java termina (sin congelar la interfaz).
+const asis = { abierto: false, esperando: false, configurado: null, iniciado: false };
+const TB_ASIS_SUGERENCIAS = ['¿Qué tengo que reponer?', '¿Qué le falta de Postobón?', '¿Cuánto vendí esta semana?', 'Vendí 2 arroz y 1 aceite'];
+
+function tbAsisAlternar(forzar) {
+  asis.abierto = typeof forzar === 'boolean' ? forzar : !asis.abierto;
+  const raiz = document.getElementById('tb-asistente');
+  raiz.classList.toggle('abierto', asis.abierto);
+  document.getElementById('tb-asis-panel').setAttribute('aria-hidden', asis.abierto ? 'false' : 'true');
+  document.getElementById('tb-asis-boton').setAttribute('aria-expanded', asis.abierto ? 'true' : 'false');
+  if (!asis.abierto) return;
+  if (asis.configurado === null) tbAsisLeerEstado();
+  if (!asis.configurado) { tbAsisVista('config'); return; }
+  if (!asis.iniciado) tbAsisBienvenida();
+  setTimeout(function() { document.getElementById('tb-asis-texto').focus(); }, 260);
+}
+
+function tbAsisLeerEstado() {
+  try {
+    const e = JSON.parse(window.javaBridge.asistenteEstado());
+    asis.configurado = !!e.configurado;
+    tbAsisMostrarModelo(e.modelo || 'gemini-3.5-flash-lite');
+  } catch (err) { asis.configurado = false; }
+}
+
+// Pone el modelo en la lista (si Google dio uno que no está, se agrega) y en el título
+function tbAsisMostrarModelo(modelo) {
+  const lista = document.getElementById('tb-asis-modelo');
+  if (![].some.call(lista.options, function(o) { return o.value === modelo; })) {
+    const o = document.createElement('option');
+    o.value = modelo; o.textContent = modelo + ' (elegido automáticamente)';
+    lista.insertBefore(o, lista.firstChild);
+  }
+  lista.value = modelo;
+  document.getElementById('tb-asis-sub').textContent = asis.configurado ? 'Gemini · ' + modelo : 'Sin configurar';
+}
+
+// Java avisa que Google retiró el modelo guardado y se pasó a otro
+function onAsistenteModelo(json) {
+  tbAsisMostrarModelo(JSON.parse(json).modelo);
+}
+
+function tbAsisVista(cual) {
+  document.getElementById('tb-asis-chat').classList.toggle('hidden', cual !== 'chat');
+  document.getElementById('tb-asis-config').classList.toggle('hidden', cual !== 'config');
+  if (cual === 'chat' && !asis.iniciado && asis.configurado) tbAsisBienvenida();
+}
+
+function tbAsisGuardarConfig() {
+  const clave = document.getElementById('tb-asis-clave').value.trim();
+  const modelo = document.getElementById('tb-asis-modelo').value;
+  if (!clave) { showToast('Pegue la clave de API', 'error'); return; }
+  const r = window.javaBridge.asistenteConfigurar(clave, modelo);
+  if (String(r).indexOf('ERROR') === 0) { showToast(String(r).replace('ERROR: ', ''), 'error'); return; }
+  document.getElementById('tb-asis-clave').value = '';
+  asis.configurado = null; tbAsisLeerEstado();
+  asis.irAlChatSiFunciona = true;
+  tbAsisProbar();
+}
+
+// Prueba la clave con un mensaje corto; Java responde con onAsistentePrueba()
+function tbAsisProbar() {
+  const caja = document.getElementById('tb-asis-prueba');
+  caja.className = 'tb-asis-prueba';
+  caja.textContent = 'Probando la conexión con Google…';
+  let r;
+  try { r = window.javaBridge.asistenteProbar(); } catch (e) { r = 'ERROR: ' + e.message; }
+  if (String(r).indexOf('ERROR') === 0) { onAsistentePrueba(JSON.stringify({ ok: false, mensaje: String(r).replace('ERROR: ', '') })); return; }
+  clearTimeout(asis.relojPrueba);
+  asis.relojPrueba = setTimeout(function() {
+    onAsistentePrueba(JSON.stringify({ ok: false, mensaje: 'Google no respondió en 60 segundos. Revise el internet o si un firewall bloquea a Java.' }));
+  }, 60000);
+}
+
+function onAsistentePrueba(json) {
+  clearTimeout(asis.relojPrueba);
+  const d = JSON.parse(json);
+  if (d.modelo) tbAsisMostrarModelo(d.modelo);
+  const caja = document.getElementById('tb-asis-prueba');
+  caja.className = 'tb-asis-prueba ' + (d.ok ? 'ok' : 'mal');
+  caja.textContent = (d.ok ? '✓ ' : '✕ ') + d.mensaje
+    + (d.ok ? '' : ' (Detalles en C:\\Users\\<usuario>\\.inventariopro\\asistente.log)');
+  if (d.ok && asis.irAlChatSiFunciona) {
+    asis.irAlChatSiFunciona = false;
+    showToast('Asistente conectado');
+    setTimeout(function() { tbAsisVista('chat'); }, 900);
+  }
+  asis.irAlChatSiFunciona = false;
+}
+
+function tbAsisCopiar(texto) {
+  try { navigator.clipboard.writeText(texto); showToast('Dirección copiada'); }
+  catch (e) { showToast(texto); }
+}
+
+function tbAsisBienvenida() {
+  asis.iniciado = true;
+  const nombre = state.perfilActivo ? state.perfilActivo.nombre : 'su tienda';
+  tbAsisMensaje('bot', '¡Hola! Soy el asistente de **' + nombre + '**. Puedo decirle qué reponer, preparar el pedido para un proveedor, registrar ventas y entradas, cambiar precios y contarle cómo van las ventas. Todo cambio lo confirma usted antes.');
+  const chips = document.createElement('div');
+  chips.className = 'tb-asis-chips';
+  chips.innerHTML = TB_ASIS_SUGERENCIAS.map(function(t) { return '<button type="button">' + esc(t) + '</button>'; }).join('');
+  chips.querySelectorAll('button').forEach(function(b) { b.onclick = function() { tbAsisEnviar(b.textContent); }; });
+  document.getElementById('tb-asis-mensajes').appendChild(chips);
+}
+
+function tbAsisReiniciar() {
+  try { window.javaBridge.asistenteReiniciar(); } catch (e) {}
+  document.getElementById('tb-asis-mensajes').innerHTML = '';
+  asis.iniciado = false; asis.esperando = false;
+  tbAsisBienvenida();
+}
+
+// Texto con formato mínimo: **negrita**, listas con guion o número y saltos de línea
+function tbAsisFormato(texto) {
+  const lineas = esc(texto).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split('\n');
+  let html = '', enLista = false;
+  lineas.forEach(function(l) {
+    const m = l.match(/^\s*(?:[-•*]|\d+[.)])\s+(.*)$/);
+    if (m) { if (!enLista) { html += '<ul>'; enLista = true; } html += '<li>' + m[1] + '</li>'; return; }
+    if (enLista) { html += '</ul>'; enLista = false; }
+    html += l.trim() ? '<p>' + l + '</p>' : '';
+  });
+  return html + (enLista ? '</ul>' : '');
+}
+
+function tbAsisMensaje(quien, texto) {
+  const caja = document.getElementById('tb-asis-mensajes');
+  const m = document.createElement('div');
+  m.className = 'tb-asis-msg ' + quien;
+  m.innerHTML = quien === 'yo' ? '<p>' + esc(texto) + '</p>' : tbAsisFormato(texto);
+  caja.appendChild(m);
+  caja.scrollTop = caja.scrollHeight;
+  return m;
+}
+
+function tbAsisEscribiendo(mostrar) {
+  const caja = document.getElementById('tb-asis-mensajes');
+  let e = document.getElementById('tb-asis-escribiendo');
+  if (mostrar && !e) {
+    e = document.createElement('div');
+    e.id = 'tb-asis-escribiendo';
+    e.className = 'tb-asis-msg bot tb-asis-puntos';
+    e.innerHTML = '<i></i><i></i><i></i>';
+    caja.appendChild(e);
+    caja.scrollTop = caja.scrollHeight;
+  } else if (!mostrar && e) { e.remove(); }
+}
+
+function tbAsisEnviar(texto) {
+  texto = String(texto || '').trim();
+  if (!texto || asis.esperando) return;
+  const chips = document.querySelector('.tb-asis-chips');
+  if (chips) chips.remove();
+  tbAsisMensaje('yo', texto);
+  asis.esperando = true;
+  document.getElementById('tb-asis-enviar').disabled = true;
+  tbAsisEscribiendo(true);
+  let r;
+  try { r = window.javaBridge.asistenteEnviar(texto); } catch (e) { r = 'ERROR: ' + e.message; }
+  if (String(r).indexOf('ERROR') === 0) { onAsistenteRespuesta(JSON.stringify({ error: String(r).replace('ERROR: ', '') })); return; }
+  // si Java no avisa en 75 s, se muestra el error en vez de quedar "escribiendo" para siempre
+  clearTimeout(asis.reloj);
+  asis.reloj = setTimeout(function() {
+    if (asis.esperando) onAsistenteRespuesta(JSON.stringify({ error: 'El asistente no respondió a tiempo. Pruebe la conexión en ⚙ Configurar.' }));
+  }, 75000);
+}
+
+function tbAsisEnviarFormulario(ev) {
+  ev.preventDefault();
+  const t = document.getElementById('tb-asis-texto');
+  tbAsisEnviar(t.value);
+  t.value = ''; tbAsisCrecer(t);
+}
+
+function tbAsisTecla(ev) {
+  if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); tbAsisEnviarFormulario(ev); }
+}
+
+function tbAsisCrecer(t) {
+  t.style.height = 'auto';
+  t.style.height = Math.min(t.scrollHeight, 110) + 'px';
+}
+
+// Java llama esta función cuando el asistente termina de responder
+function onAsistenteRespuesta(json) {
+  clearTimeout(asis.reloj);
+  asis.esperando = false;
+  document.getElementById('tb-asis-enviar').disabled = false;
+  tbAsisEscribiendo(false);
+  let d;
+  try { d = JSON.parse(json); } catch (e) { d = { error: 'Respuesta no válida del asistente' }; }
+  if (d.error) {
+    const m = tbAsisMensaje('bot error', d.error);
+    if (/clave|conect|conexi|certificado|internet|proxy/i.test(d.error)) {
+      const b = document.createElement('button'); b.className = 'tb-asis-link'; b.textContent = 'Revisar la configuración';
+      b.onclick = function() { tbAsisVista('config'); }; m.appendChild(b);
+    }
+    const c = document.getElementById('tb-asis-mensajes'); c.scrollTop = c.scrollHeight;
+    return;
+  }
+  const m = tbAsisMensaje('bot', d.texto || '');
+  (d.propuestas || []).forEach(function(p) { m.appendChild(tbAsisTarjeta(p)); });
+  const caja = document.getElementById('tb-asis-mensajes');
+  caja.scrollTop = caja.scrollHeight;
+}
+
+function tbAsisTarjeta(p) {
+  const t = document.createElement('div');
+  t.className = 'tb-asis-tarjeta ' + p.tipo;
+  t.innerHTML = '<b class="tb-asis-tarjeta-titulo">' + esc(p.titulo) + '</b>'
+    + '<ul>' + p.lineas.map(function(l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>'
+    + (p.total != null ? '<div class="tb-asis-total"><span>Total</span><b>$' + fmt(p.total, 0) + '</b></div>' : '')
+    + '<div class="tb-asis-acciones"><button type="button" class="tb-asis-secundario">Descartar</button>'
+    + '<button type="button" class="tb-asis-primario">' + '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>' + ' Confirmar</button></div>';
+  const [descartar, confirmar] = t.querySelectorAll('.tb-asis-acciones button');
+  confirmar.onclick = function() {
+    const r = window.javaBridge.asistenteConfirmar(p.id);
+    if (String(r).indexOf('ERROR') === 0) { showToast(String(r).replace('ERROR: ', ''), 'error'); return; }
+    t.classList.add('hecha');
+    t.querySelector('.tb-asis-acciones').innerHTML = '<span class="tb-asis-estado ok">' + '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>' + ' Registrado</span>';
+    showToast(r);
+    if (typeof cargarEstadoDesdeJava === 'function') cargarEstadoDesdeJava();
+  };
+  descartar.onclick = function() {
+    try { window.javaBridge.asistenteDescartar(p.id); } catch (e) {}
+    t.classList.add('descartada');
+    t.querySelector('.tb-asis-acciones').innerHTML = '<span class="tb-asis-estado">Descartado</span>';
+  };
+  return t;
+}
+
+// Ctrl+K abre o cierra el asistente
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); tbAsisAlternar(); }
+  if (e.key === 'Escape' && asis.abierto) tbAsisAlternar(false);
+});
+
+
+// ── MÉTODOS DE PAGO ────────────────────────────────────────
+// Solo se registra cómo pagó el cliente (en Java: PaymentMethod). Un fiado necesita el nombre del cliente.
+const TB_PAGOS_DIGITALES = ['Nequi', 'Daviplata', 'Bre-B', 'Transferencia Bancolombia', 'Tarjeta débito', 'Tarjeta crédito'];
+
+function tbPagoElegir(prefijo, metodo) {
+  document.querySelectorAll('#' + prefijo + '-metodos button').forEach(function(b) {
+    const es = b.dataset.m === metodo;
+    b.classList.toggle('activo', es);
+    b.setAttribute('aria-checked', es ? 'true' : 'false');
+  });
+  const ref = document.getElementById(prefijo + '-referencia');
+  ref.classList.toggle('hidden', TB_PAGOS_DIGITALES.indexOf(metodo) < 0);
+  const cliente = document.getElementById(prefijo + '-cliente');
+  cliente.placeholder = metodo === 'Fiado' ? 'Nombre de quien queda debiendo *' : 'Cliente (opcional)';
+  cliente.classList.toggle('requerido', metodo === 'Fiado');
+  cliente.parentElement.classList.toggle('dos', !ref.classList.contains('hidden'));
+  if (metodo === 'Fiado') cliente.focus();
+  const err = document.getElementById(prefijo === 'vqr' ? 'vqr-error' : 'ven-error');
+  if (err && /fiar/.test(err.textContent)) err.classList.add('hidden');
+}
+
+function tbPagoReiniciar(prefijo) {
+  document.getElementById(prefijo + '-cliente').value = '';
+  document.getElementById(prefijo + '-referencia').value = '';
+  tbPagoElegir(prefijo, 'Efectivo');
+}
+
+// Devuelve los datos de pago, o null (y muestra el error) si falta el cliente de un fiado
+function tbPagoLeer(prefijo, errEl) {
+  const activo = document.querySelector('#' + prefijo + '-metodos button.activo');
+  const metodo = activo ? activo.dataset.m : 'Efectivo';
+  const cliente = document.getElementById(prefijo + '-cliente').value.trim();
+  if (metodo === 'Fiado' && !cliente) {
+    errEl.textContent = 'Para fiar escriba el nombre del cliente.';
+    errEl.classList.remove('hidden');
+    document.getElementById(prefijo + '-cliente').focus();
+    return null;
+  }
+  return { metodoPago: metodo, cliente: cliente || 'Cliente', referenciaPago: document.getElementById(prefijo + '-referencia').value.trim() };
+}
+
+function tbPagoChip(v) {
+  const m = v.metodoPago || 'Efectivo';
+  const clase = m === 'Fiado' ? 'fiado' : (TB_PAGOS_DIGITALES.indexOf(m) >= 0 ? 'digital' : 'efectivo');
+  return '<span class="tb-pago-chip ' + clase + '">' + esc(m) + '</span>'
+    + (m === 'Fiado' && v.cliente ? '<small class="tb-pago-ref">' + esc(v.cliente) + '</small>' : '')
+    + (v.referenciaPago ? '<small class="tb-pago-ref">Ref. ' + esc(v.referenciaPago) + '</small>' : '');
+}
+
+
+// ── INFORME EN PDF ─────────────────────────────────────────
+// Documento A4 aparte, armado con los datos del informe (no es una foto de la pantalla).
+const TB_COP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+function _cop(v) { return TB_COP.format(Math.round(v || 0)); }
+function _fechaLarga(iso) {
+  const p = iso.split('-');
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return Number(p[2]) + ' de ' + meses[Number(p[1]) - 1] + ' de ' + p[0];
+}
+function _variacion(a, b, dinero) {
+  if (!b) return '<span class="rp-var neutro">Sin datos del período anterior</span>';
+  const pct = (a - b) / Math.abs(b) * 100;
+  return '<span class="rp-var ' + (pct >= 0 ? 'sube' : 'baja') + '">' + (pct >= 0 ? '▲ ' : '▼ ') + Math.abs(pct).toFixed(1).replace('.', ',') + '%</span>'
+    + ' <span class="rp-ant">vs. ' + (dinero ? _cop(b) : b) + '</span>';
+}
+
+function tbReporteGrafica(serie) {
+  const W = 680, H = 172, I = 54, A = 14, B = 26;
+  const max = Math.max.apply(null, serie.map(function(p) { return p.ventas; }).concat([1]));
+  const paso = Math.pow(10, Math.floor(Math.log10(max)));
+  const tope = Math.ceil(max / paso) * paso;
+  const ancho = (W - I - 8) / serie.length;
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="rp-grafica" xmlns="http://www.w3.org/2000/svg">';
+  for (let k = 0; k <= 4; k++) {
+    const y = A + (H - A - B) * (1 - k / 4), v = tope * k / 4;
+    svg += '<line x1="' + I + '" x2="' + (W - 4) + '" y1="' + y + '" y2="' + y + '" class="rp-rej"/>'
+      + '<text x="' + (I - 6) + '" y="' + (y + 3) + '" text-anchor="end" class="rp-eje">' + (v >= 1e6 ? (v / 1e6).toFixed(v % 1e6 ? 1 : 0) + ' M' : v >= 1e3 ? Math.round(v / 1e3) + ' mil' : v) + '</text>';
+  }
+  const cada = Math.ceil(serie.length / 12);
+  serie.forEach(function(p, i) {
+    const x = I + i * ancho, hv = (H - A - B) * p.ventas / tope, hu = (H - A - B) * Math.max(0, p.utilidad) / tope;
+    const bw = Math.min(28, ancho * 0.7);
+    svg += '<rect x="' + (x + (ancho - bw) / 2) + '" y="' + (H - B - hv) + '" width="' + bw + '" height="' + hv + '" rx="2" class="rp-bv"/>'
+      + '<rect x="' + (x + (ancho - bw * 0.45) / 2) + '" y="' + (H - B - hu) + '" width="' + (bw * 0.45) + '" height="' + hu + '" rx="1.5" class="rp-bu"/>';
+    if (i % cada === 0 || i === serie.length - 1) svg += '<text x="' + (x + ancho / 2) + '" y="' + (H - 9) + '" text-anchor="middle" class="rp-eje">' + esc(p.etiqueta) + '</text>';
+  });
+  return svg + '</svg>';
+}
+
+function tbReporteHtml() {
+  const d = informe.datos, a = d.actual, b = d.anterior;
+  const negocio = state.perfilActivo ? state.perfilActivo.nombre : 'TBalance';
+  const ahora = new Date();
+  const generado = ahora.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + ahora.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const margen = a.ventas > 0 ? (a.utilidad / a.ventas * 100).toFixed(1).replace('.', ',') + '%' : '—';
+  const top = d.productos.slice(0, 15);
+  const totalTop = d.productos.reduce(function(s, p) { return s + p.ventas; }, 0) || 1;
+  const totalPagos = d.metodosPago.reduce(function(s, m) { return s + m.ventas; }, 0) || 1;
+  const grupo = d.agrupacion === 'semana' ? 'semana' : d.agrupacion === 'mes' ? 'mes' : 'día';
+  const logo = '<svg viewBox="0 0 64 64" class="rp-logo"><rect width="64" height="64" rx="14" fill="#315D53"/><g transform="translate(9.5 8.5) scale(.72)" fill="#fff">'
+    + '<path d="M11 9h43.5c3.3 0 4.6 2.3 3.3 5.2l-2.6 6.2c-1 2.4-2.9 3.6-5.5 3.6H11c-3.9 0-6-2.1-6-6v-3c0-3.9 2.1-6 6-6z"/><path d="M19.5 27.5h12v22.5a6 6 0 0 1-12 0z"/>'
+    + '<path opacity=".55" d="M35 27.5h13.8c2.4 0 3.4 1.7 2.5 3.9l-2.7 6.6c-1.9 4.6-5.5 8.2-10.1 10.1l-3.5 1.5z"/></g></svg>';
+  const kpi = function(t, v, sub) { return '<div class="rp-kpi"><span class="rp-kpi-t">' + t + '</span><b>' + v + '</b><span class="rp-kpi-s">' + sub + '</span></div>'; };
+  return '<header class="rp-cabeza">'
+      + '<div class="rp-marca">' + logo + '<div><span class="rp-app">TBalance</span><h1>Informe de ventas</h1></div></div>'
+      + '<dl class="rp-datos"><dt>Negocio</dt><dd>' + esc(negocio) + '</dd>'
+      + '<dt>Período</dt><dd>' + _fechaLarga(d.desde) + (d.desde !== d.hasta ? ' – ' + _fechaLarga(d.hasta) : '') + '</dd>'
+      + '<dt>Comparado con</dt><dd>' + _fechaLarga(d.anteriorDesde) + (d.anteriorDesde !== d.anteriorHasta ? ' – ' + _fechaLarga(d.anteriorHasta) : '') + '</dd>'
+      + '<dt>Generado</dt><dd>' + generado + '</dd></dl>'
+    + '</header>'
+    + '<section class="rp-kpis">'
+      + kpi('Ventas', _cop(a.ventas), _variacion(a.ventas, b.ventas, true))
+      + kpi('Número de ventas', a.numeroVentas, _variacion(a.numeroVentas, b.numeroVentas, false))
+      + kpi('Ticket promedio', _cop(a.ticketPromedio), _variacion(a.ticketPromedio, b.ticketPromedio, true))
+      + kpi('Utilidad · margen ' + margen, _cop(a.utilidad), _variacion(a.utilidad, b.utilidad, true))
+    + '</section>'
+    + '<section class="rp-seccion"><div class="rp-titulo"><h2>Ventas y utilidad por ' + grupo + '</h2><span class="rp-leyenda"><i class="v"></i>Ventas <i class="u"></i>Utilidad</span></div>'
+      + tbReporteGrafica(d.serie) + '</section>'
+    + '<section class="rp-seccion"><div class="rp-titulo"><h2>Productos más vendidos</h2><span>' + (d.productos.length > 15 ? 'Los 15 primeros de ' + d.productos.length : d.productos.length + ' productos') + '</span></div>'
+      + '<table class="rp-tabla"><thead><tr><th class="n">#</th><th>Producto</th><th class="r">Unidades</th><th class="r">Ventas</th><th class="r">Utilidad</th><th class="r">Margen</th><th class="r">Participación</th></tr></thead><tbody>'
+      + (top.length ? top.map(function(p, i) {
+          return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(p.nombre) + '</td><td class="r">' + p.unidades + '</td><td class="r">' + _cop(p.ventas) + '</td>'
+            + '<td class="r">' + (p.conCosto ? _cop(p.utilidad) : '<span class="rp-gris">Sin costo</span>') + '</td>'
+            + '<td class="r">' + (p.conCosto && p.ventas ? (p.utilidad / p.ventas * 100).toFixed(1).replace('.', ',') + '%' : '—') + '</td>'
+            + '<td class="r"><span class="rp-barra"><i style="width:' + (p.ventas / totalTop * 100) + '%"></i></span>' + (p.ventas / totalTop * 100).toFixed(1).replace('.', ',') + '%</td></tr>';
+        }).join('') : '<tr><td colspan="7" class="rp-gris">Sin productos vendidos en el período.</td></tr>')
+      + '</tbody><tfoot><tr><td></td><td>Total del período</td><td class="r">' + a.unidades + '</td><td class="r">' + _cop(a.ventas) + '</td><td class="r">' + _cop(a.utilidad) + '</td><td class="r">' + margen + '</td><td class="r">100%</td></tr></tfoot></table></section>'
+    + '<section class="rp-seccion rp-junto"><div class="rp-titulo"><h2>Métodos de pago</h2></div>'
+      + '<table class="rp-tabla"><thead><tr><th>Método</th><th class="r">Ventas</th><th class="r">N.º de ventas</th><th class="r">Participación</th></tr></thead><tbody>'
+      + (d.metodosPago.length ? d.metodosPago.map(function(m) {
+          return '<tr><td>' + esc(m.metodo) + '</td><td class="r">' + _cop(m.ventas) + '</td><td class="r">' + m.numeroVentas + '</td>'
+            + '<td class="r"><span class="rp-barra"><i style="width:' + (m.ventas / totalPagos * 100) + '%"></i></span>' + (m.ventas / totalPagos * 100).toFixed(1).replace('.', ',') + '%</td></tr>';
+        }).join('') : '<tr><td colspan="4" class="rp-gris">Sin ventas en el período.</td></tr>')
+      + '</tbody></table></section>'
+    + '<footer class="rp-notas"><p>Cifras en pesos colombianos (COP). La utilidad es el precio de venta menos el costo guardado en cada venta (en ventas anteriores a la versión 3.4.0 se usa el costo actual del producto).</p>'
+      + (a.unidadesSinCosto ? '<p>' + a.unidadesSinCosto + (a.unidadesSinCosto === 1 ? ' unidad vendida no tiene' : ' unidades vendidas no tienen') + ' precio de compra y no suma' + (a.unidadesSinCosto === 1 ? '' : 'n') + ' a la utilidad.</p>' : '')
+      + '<p>El detalle de cada venta está en el informe de Excel.</p></footer>';
+}
+
+// PDF: la ventana de impresión de Edge permite "Guardar como PDF"
+function exportarInformePdf() {
+  if (TB_ESCRITORIO) { showToast('El PDF se crea desde la ventana de Edge; aquí use el botón Excel', 'error'); return; }
+  if (!informe.datos) cargarInforme();
+  if (!informe.datos) return;
+  let doc = document.getElementById('tb-reporte');
+  if (!doc) { doc = document.createElement('article'); doc.id = 'tb-reporte'; document.body.appendChild(doc); }
+  doc.innerHTML = tbReporteHtml();
+  const titulo = document.title, d = informe.datos;
+  document.title = 'Informe de ventas - ' + (state.perfilActivo ? state.perfilActivo.nombre : 'TBalance') + ' - ' + d.desde + ' a ' + d.hasta;
+  document.documentElement.classList.add('tb-imprimiendo');
+  setTimeout(function() {
+    window.print();
+    document.documentElement.classList.remove('tb-imprimiendo');
+    document.title = titulo;
+  }, 80);
 }
 
 // ── HEADER SEARCH ──────────────────────────────────────────
@@ -1665,14 +2598,18 @@ function showToast(msg, tipo='success') {
 
 function openModal(id) {
   const m = document.getElementById(id);
+  clearTimeout(m._t); m.classList.remove('tb-cerrando');
+  if (m.classList.contains('hidden')) tbTransicionNativa(null, 240);
   m.classList.remove('hidden');
   m.classList.add('flex');
 }
 function closeModal(id) {
   if (id === 'modal-venta-qr') apagarCamaraQR();
   const m = document.getElementById(id);
-  m.classList.add('hidden');
-  m.classList.remove('flex');
+  tbCerrarModalSuave(m, function() {
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+  });
 }
 function closeModalOnOverlay(e, id) {
   if (e.target === document.getElementById(id)) closeModal(id);
@@ -1686,6 +2623,7 @@ function actualizarSaludo() {
   const fecha = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
   const perfil = state.perfilActivo && state.perfilActivo.nombre ? state.perfilActivo.nombre + ' · ' : '';
   document.getElementById('dash-fecha').textContent = perfil + fecha.charAt(0).toUpperCase() + fecha.slice(1);
+  document.title = state.perfilActivo && state.perfilActivo.nombre ? 'TBalance — ' + state.perfilActivo.nombre : 'TBalance';
 }
 
 // Productos en el mínimo o agotados, los más urgentes primero
@@ -1698,13 +2636,12 @@ function actualizarPorReponer() {
   caja.innerHTML = lista.slice(0, 5).map(function(p) {
     const agotado = p.stock <= 0;
     const compra = Number(p.precioCompra || 0), venta = Number(p.precioVenta || p.precio || 0);
-    const util = compra > 0 && venta > 0 ? '$' + fmt(venta - compra) + '<small> / u.</small>' : '<small>sin precio de compra</small>';
+    const util = compra > 0 && venta > 0 ? 'utilidad $' + fmt(venta - compra) + ' / u.' : 'sin precio de compra';
     const prov = p.proveedorId ? getNombreProv(p.proveedorId) : (p.categoria || '');
-    return '<div class="tb-rr"><div class="tb-rn"><b>' + esc(p.nombre) + '</b><small>' + esc(prov || '—') + '</small></div>'
-      + '<span class="tb-pill ' + (agotado ? 'crit' : 'warn') + '">' + (agotado ? 'Agotado' : p.stock + ' de ' + (p.stockMin ?? 10)) + '</span>'
-      + '<span class="tb-ru">' + util + '</span>'
-      + '<button class="tb-btn-suave" onclick="registrarEntradaDe(\'' + p.id + '\')">'
-      + '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v5.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V13M12 3.5v10M8 9.5l4 4 4-4"/></svg>Entrada</button></div>';
+    return '<div class="tb-rr"><span class="tb-r-thumb"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /> <path d="M12 22V12" /> <polyline points="3.29 7 12 12 20.71 7" /> <path d="m7.5 4.27 9 5.15" /></svg></span>'
+      + '<div class="tb-rn"><b>' + esc(p.nombre) + '</b><small>' + esc(prov || '—') + ' · ' + util + '</small></div>'
+      + '<span class="tb-r-stock' + (agotado ? ' crit' : '') + '">' + (agotado ? 'Agotado' : p.stock + ' de ' + (p.stockMin ?? 10) + ' uds.') + '</span>'
+      + '<button class="tb-btn-suave" onclick="registrarEntradaDe(\'' + p.id + '\')"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /></svg> Entrada</button></div>';
   }).join('');
 }
 
@@ -1713,12 +2650,13 @@ function registrarEntradaDe(id) {
   document.getElementById('ent-producto').value = id;
 }
 
-// Total vendido por día en las últimas dos semanas
+// Total vendido por día en las últimas dos semanas (línea con área)
 function actualizarVentas14() {
   const caja = document.getElementById('dash-ventas14');
   const dias = [];
   const hoy = _todayLocal();
-  for (let i = 13; i >= 0; i--) { const d = new Date(hoy); d.setDate(d.getDate() - i); dias.push({ iso: _toIsoLocal(d), dia: d.getDate(), total: 0 }); }
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  for (let i = 13; i >= 0; i--) { const d = new Date(hoy); d.setDate(d.getDate() - i); dias.push({ iso: _toIsoLocal(d), dia: d.getDate(), mes: meses[d.getMonth()], total: 0 }); }
   state.ventas.forEach(function(v) {
     const f = String(v.fecha || '').slice(0, 10);
     const d = dias.find(function(x) { return x.iso === f; });
@@ -1727,11 +2665,32 @@ function actualizarVentas14() {
   const max = Math.max.apply(null, dias.map(function(d) { return d.total; }));
   const suma = dias.reduce(function(a, d) { return a + d.total; }, 0);
   document.getElementById('dash-ventas14-total').textContent = '$' + fmt(suma);
-  caja.innerHTML = dias.map(function(d, i) {
-    const h = max > 0 ? Math.max(6, d.total / max * 100) : 6;
-    const hoyCls = i === 13 ? ' hoy' : '';
-    return '<div class="tb-barra' + hoyCls + '" title="' + d.iso + ': $' + fmt(d.total) + '"><i style="height:' + h + '%"></i><span>' + (i === 13 ? 'Hoy' : d.dia) + '</span></div>';
-  }).join('') + (suma === 0 ? '<p class="tb-vacio tb-barras-vacio">Aún no hay ventas en estos 14 días.</p>' : '');
+  const W = 560, H = 132, P = 10;
+  const pts = dias.map(function(d, i) {
+    return { x: P + i * (W - 2 * P) / 13, y: H - 12 - (max > 0 ? d.total / max : 0) * (H - 34), d: d };
+  });
+  let linea = 'M' + pts[0].x.toFixed(1) + ' ' + pts[0].y.toFixed(1);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    linea += ' C' + c1x.toFixed(1) + ' ' + Math.min(H - 12, c1y).toFixed(1) + ' ' + c2x.toFixed(1) + ' ' + Math.min(H - 12, c2y).toFixed(1) + ' ' + p2.x.toFixed(1) + ' ' + p2.y.toFixed(1);
+  }
+  const area = linea + ' L' + pts[13].x.toFixed(1) + ' ' + H + ' L' + pts[0].x.toFixed(1) + ' ' + H + ' Z';
+  const iMax = max > 0 ? dias.findIndex(function(d) { return d.total === max; }) : -1;
+  const puntos = pts.map(function(p, i) {
+    return '<circle class="tb-l-punto' + (i === iMax ? ' pico' : '') + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + (i === iMax ? 4.5 : 3) + '" style="--i:' + i + '"><title>' + p.d.iso + ': $' + fmt(p.d.total) + '</title></circle>';
+  }).join('');
+  const etiquetas = dias.map(function(d, i) {
+    return '<span>' + (i === 13 ? 'Hoy' : (i % 2 === 0 ? d.dia + ' ' + d.mes : '')) + '</span>';
+  }).join('');
+  caja.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="tb-l-svg" aria-label="Ventas de los últimos 14 días">'
+    + '<defs><linearGradient id="tb-l-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".32"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>'
+    + '<path class="tb-l-area" d="' + area + '" fill="url(#tb-l-grad)"/>'
+    + '<path class="tb-l-trazo" d="' + linea + '"/>' + puntos + '</svg>'
+    + '<div class="tb-l-ejes">' + etiquetas + '</div>'
+    + (suma === 0 ? '<p class="tb-vacio tb-barras-vacio">Aún no hay ventas en estos 14 días.</p>' : '');
+  tbDibujarLinea(caja);
 }
 
 function actualizarUtilidadDashboard() {
@@ -1752,10 +2711,10 @@ function actualizarUtilidadDashboard() {
 
 function actualizarDashboard() {
   const bajoStock = state.productos.filter(p => p.stock > 0 && p.stock <= (p.stockMin ?? 10)).length;
-  document.getElementById('dash-total').textContent = state.productos.length;
-  document.getElementById('dash-bajo-stock').textContent = bajoStock;
-  document.getElementById('dash-ventas').textContent = state.ventas.length;
-  document.getElementById('dash-proveedores').textContent = state.proveedores.length;
+  tbContar(document.getElementById('dash-total'), state.productos.length);
+  tbContar(document.getElementById('dash-bajo-stock'), bajoStock);
+  tbContar(document.getElementById('dash-ventas'), state.ventas.length);
+  tbContar(document.getElementById('dash-proveedores'), state.proveedores.length);
   actualizarUtilidadDashboard();
   actualizarSaludo();
   actualizarPorReponer();
@@ -1789,13 +2748,18 @@ function actualizarDashboard() {
   document.getElementById('dash-venc7').textContent    = porVencer7.length;
   document.getElementById('dash-venc30').textContent   = porVencer30.length;
   vencGrid.classList.remove('hidden');
+  const activos = vencidos.length + porVencer7.length + porVencer30.length;
+  document.getElementById('dash-venc-activos').textContent = activos + (activos === 1 ? ' activo' : ' activos');
 
   // Lista de vencimientos: primero los vencidos, luego los más próximos
   const lista = vencidos.concat(porVencer7, porVencer30).slice(0, 6);
   alertsBox.innerHTML = lista.length ? lista.map(function(x) {
     const cls = x.dias < 0 ? 'crit' : (x.dias < 7 ? 'warn' : 'soft');
     const txt = x.dias < 0 ? 'Venció hace ' + Math.abs(x.dias) + ' d' : (x.dias === 0 ? 'Vence hoy' : 'Vence en ' + x.dias + ' d');
-    return '<li><span class="tb-dot ' + cls + '"></span><span class="tb-vn">' + escapeHtml(x.p.nombre) + '</span><span class="tb-vt ' + cls + '">' + txt + '</span></li>';
+    const pct = x.dias < 0 ? 100 : Math.max(6, Math.round((30 - x.dias) / 30 * 100));
+    return '<li class="' + cls + '"><span class="tb-v-ico"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="M8 13h.01" /> <path d="M12 13h.01" /> <path d="M16 13h.01" /> <path d="M8 17h.01" /> <path d="M12 17h.01" /> <path d="M16 17h.01" /></svg></span>'
+      + '<div class="tb-v-cuerpo"><div class="tb-v-fila"><span class="tb-vn">' + escapeHtml(x.p.nombre) + '</span><span class="tb-vt ' + cls + '">' + txt + '</span></div>'
+      + '<span class="tb-v-barra"><i style="width:' + pct + '%"></i></span></div></li>';
   }).join('') : '<li class="tb-vacio">Ningún producto vence en los próximos 30 días.</li>';
   alertsBox.classList.remove('hidden');
 }
@@ -2391,7 +3355,7 @@ function submitSalida() {
 function renderTablaVentas() {
   const tbody = document.getElementById('tabla-ventas');
   if (state.ventas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16 text-sm text-gray-400">No hay ventas registradas.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-16 text-sm text-gray-400">No hay ventas registradas.</td></tr>';
     return;
   }
   tbody.innerHTML = state.ventas.map(function(v) {
@@ -2407,6 +3371,7 @@ function renderTablaVentas() {
       <td class="px-4 py-3.5 text-sm text-gray-600 dark:text-gray-300">' + cant + '</td>\
       <td class="px-4 py-3.5 text-sm text-gray-600 dark:text-gray-300">' + (items.length > 1 ? 'Varios' : '$' + fmt(pu)) + '</td>\
       <td class="px-4 py-3.5 text-sm font-bold text-brand-600 dark:text-brand-400">$' + fmt(v.total || 0) + '</td>\
+      <td class="px-4 py-3.5">' + tbPagoChip(v) + '</td>\
       <td class="px-4 py-3.5 text-xs text-gray-400">' + esc(fmtFecha(v.fecha)) + '</td>\
       <td class="px-4 py-3.5 text-center">\
         <button onclick="confirmarEliminar(\'' + v.id + '\', \'ventas\')" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition">\
@@ -2424,6 +3389,7 @@ function openModalVenta() {
   document.getElementById('ven-cantidad').value = '';
   document.getElementById('ven-precio').value   = '';
   document.getElementById('ven-total-display').textContent = '$0.00';
+  tbPagoReiniciar('ven');
   document.getElementById('ven-error').classList.add('hidden');
   openModal('modal-venta');
 }
@@ -2451,9 +3417,12 @@ function submitVenta() {
   if (!prod || prod.stock < cant) { errEl.textContent='Stock insuficiente. Disponible: ' + (prod?.stock||0); errEl.classList.remove('hidden'); return; }
   errEl.classList.add('hidden');
 
+  const pago = tbPagoLeer('ven', errEl);
+  if (!pago) return;
   var venta = {
-    cliente: 'Cliente',
-    metodoPago: 'Efectivo',
+    cliente: pago.cliente,
+    metodoPago: pago.metodoPago,
+    referenciaPago: pago.referenciaPago,
     observacion: '',
     items: [{
       productoId: prodId,
@@ -2486,6 +3455,7 @@ function openModalVentaQR() {
   document.getElementById('vqr-manual').innerHTML = '<option value="">Agregar sin escanear...</option>' +
     state.productos.map(function(p) { return '<option value="' + p.id + '">' + esc(p.nombre) + ' (stock: ' + p.stock + ')</option>'; }).join('');
   document.getElementById('vqr-error').classList.add('hidden');
+  tbPagoReiniciar('vqr');
   renderVentaQR();
   openModal('modal-venta-qr');
   encenderCamaraQR();
@@ -2621,9 +3591,12 @@ function submitVentaQR() {
   const sinStock = ventaQR.items.find(function(i) { return i.cantidad > i.stock; });
   if (sinStock) { errEl.textContent = 'Stock insuficiente de ' + sinStock.nombre + '. Disponible: ' + sinStock.stock; errEl.classList.remove('hidden'); return; }
   errEl.classList.add('hidden');
+  const pago = tbPagoLeer('vqr', errEl);
+  if (!pago) return;
   const venta = {
-    cliente: 'Cliente',
-    metodoPago: 'Efectivo',
+    cliente: pago.cliente,
+    metodoPago: pago.metodoPago,
+    referenciaPago: pago.referenciaPago,
     observacion: 'Venta por QR',
     items: ventaQR.items.map(function(i) {
       return { productoId: i.id, nombreProducto: i.nombre, cantidad: i.cantidad, precioUnitario: i.precio };
@@ -2765,5 +3738,6 @@ document.addEventListener('keydown', function(e) {
   }
 });
 </script>
+<script src="js/tbalance-vistas.js"></script>
 </body>
 </html>

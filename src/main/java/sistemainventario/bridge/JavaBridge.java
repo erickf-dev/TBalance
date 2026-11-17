@@ -40,19 +40,23 @@ public class JavaBridge {
     private final AssistantController asistente;
     private final ScanController escaneo;
     private final ViewNotifier notificador;
+    /** Transiciones grandes de la ventana; es {@code null} si la vista no las ofrece. */
+    private final ScreenTransition transicion;
 
     public JavaBridge(AppContext contexto, ViewNotifier notificador) {
-        this(contexto, notificador, Runnable::run);
+        this(contexto, notificador, null, Runnable::run);
     }
 
     /**
      * @param contexto    servicios de la aplicación
      * @param notificador avisos de Java hacia la vista
+     * @param transicion  transiciones visuales de la ventana (puede ser {@code null})
      * @param hiloDeDatos ejecuta el acceso a los datos desde otros hilos (el del asistente)
      *                    en el mismo hilo o con el mismo candado que la vista
      */
-    public JavaBridge(AppContext contexto, ViewNotifier notificador, Executor hiloDeDatos) {
+    public JavaBridge(AppContext contexto, ViewNotifier notificador, ScreenTransition transicion, Executor hiloDeDatos) {
         this.notificador = notificador;
+        this.transicion = transicion;
         this.perfiles = new ProfileController(contexto, notificador);
         this.inventario = new InventoryController(contexto);
         this.catalogo = new CatalogController(contexto);
@@ -62,6 +66,28 @@ public class JavaBridge {
         this.informes = new ReportController(contexto, new DesktopFileOpener());
         this.asistente = new AssistantController(contexto, notificador, hiloDeDatos);
         this.escaneo = new ScanController(contexto, WebcamCamera::new, notificador);
+    }
+
+    // ── Transiciones de la ventana ──────────────────────────────────────
+
+    /**
+     * Pide a la ventana que desvanezca una imagen de la zona indicada por encima
+     * de la página (ver {@link ScreenTransition}).
+     *
+     * @return {@code "OK"} si la transición se hizo; {@code "NO"} si la vista no
+     *         la ofrece o falló, y entonces la página cambia sin animación
+     */
+    public String transicionPantalla(double x, double y, double ancho, double alto, int milisegundos) {
+        if (transicion == null) {
+            return "NO";
+        }
+        try {
+            transicion.desvanecerZona(x, y, ancho, alto, milisegundos);
+            return "OK";
+        } catch (RuntimeException e) {
+            System.err.println("[JavaBridge] No se pudo hacer la transición: " + e.getMessage());
+            return "NO";
+        }
     }
 
     // ── Informes ────────────────────────────────────────────────────────
