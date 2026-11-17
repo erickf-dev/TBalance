@@ -13,17 +13,17 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 
 | Capa | Paquetes | Responsabilidad |
 |---|---|---|
-| Presentación | `resources/html`, `view`, `bridge` | Interfaz web (HTML, CSS y JavaScript), ventana JavaFX con el `WebView` y controladores que reciben los eventos de la vista. |
-| Lógica de negocio | `service`, `model` | Casos de uso y reglas de negocio; entidades del dominio con sus propias reglas. |
-| Acceso a datos | `repository`, `dispositivo` | Lectura y escritura de archivos JSON, copias `.zip` e imágenes `.png`; acceso a la webcam. |
+| Presentación | `resources/html`, `view`, `bridge` | Interfaz web (HTML, CSS y JavaScript), ventana de Edge con su servidor local o ventana JavaFX con el `WebView`, y controladores que reciben los eventos de la vista. |
+| Lógica de negocio | `service`, `model` | Casos de uso y reglas de negocio (incluye informes y asistente); entidades del dominio con sus propias reglas. |
+| Acceso a datos | `repository`, `ia`, `dispositivo` | Lectura y escritura de archivos JSON, copias `.zip`, imágenes `.png` y libros `.xlsx`; cliente del modelo de lenguaje (Gemini); acceso a la webcam. |
 | Transversal | `util`, `exception` | Utilidades sin estado (fechas, IDs, texto, JSON, QR) y excepciones del proyecto. |
 | Raíz | `sistemainventario` | `Launcher` y `Main` arrancan la aplicación; `AppContext` crea y conecta los objetos. |
 
-Las flechas del diagrama son las dependencias reales del código (los `import` de cada paquete). La vista nunca accede a los repositorios: el `bridge` llega a los datos solo a través de los servicios.
+Las flechas del diagrama son las dependencias reales del código (los `import` de cada paquete). La vista nunca accede a los repositorios ni al servicio externo: el `bridge` llega a los datos y al asistente solo a través de los servicios.
 
 ## 2. Diagrama de clases
 
-El sistema tiene **69 clases**: 61 concretas (incluye 1 enumeración y 1 record), 4 abstractas y 4 interfaces. Por su tamaño, el diagrama se divide en cuatro vistas. En los diagramas se omiten los getters y setters.
+El sistema tiene **95 clases**: 85 concretas (incluye 2 enumeraciones y 3 records), 4 abstractas y 6 interfaces. Por su tamaño, el diagrama se divide en seis vistas. En los diagramas se omiten los getters y setters.
 
 ### 2.1 Modelo de dominio (`model`, `exception`)
 
@@ -37,9 +37,17 @@ El sistema tiene **69 clases**: 61 concretas (incluye 1 enumeración y 1 record)
 
 ![Diagrama de clases de servicios](diagramas/clases-servicios.png)
 
-### 2.4 Presentación y dispositivo (`bridge`, `view`, `dispositivo`, `Main`, `Launcher`)
+### 2.4 Presentación y dispositivo (`bridge`, `dispositivo`)
 
 ![Diagrama de clases de presentación](diagramas/clases-presentacion.png)
+
+### 2.5 Ventanas: Edge y JavaFX (`view`, `Main`, `Launcher`)
+
+![Diagrama de clases de las ventanas](diagramas/clases-ventanas.png)
+
+### 2.6 Informes y asistente (`service`, `ia`, `model`, `repository`)
+
+![Diagrama de clases de informes y asistente](diagramas/clases-informes-asistente.png)
 
 Las fuentes de los diagramas están en [`docs/diagramas`](diagramas) (archivos `.puml` de PlantUML).
 
@@ -49,73 +57,99 @@ Las fuentes de los diagramas están en [`docs/diagramas`](diagramas) (archivos `
 |---|---|---|---|
 | 1 | [`AppContext`](../src/main/java/sistemainventario/AppContext.java) | Concreta | `sistemainventario` — Singleton y raíz de composición: crea los repositorios y servicios, los conecta por constructor y cambia los servicios cuando se activa otro perfil. |
 | 2 | [`Launcher`](../src/main/java/sistemainventario/Launcher.java) | Concreta | `sistemainventario` — Punto de entrada que no extiende Application; permite ejecutar la aplicación desde IntelliJ sin configurar módulos de JavaFX. |
-| 3 | [`Main`](../src/main/java/sistemainventario/Main.java) | Concreta | `sistemainventario` — Aplicación JavaFX: obtiene el AppContext y abre la ventana principal. |
-| 4 | [`Backup`](../src/main/java/sistemainventario/model/Backup.java) | Concreta | `model` — Datos de solo lectura de una copia de seguridad: nombre, fecha y tamaño. |
-| 5 | [`BusinessType`](../src/main/java/sistemainventario/model/BusinessType.java) | Enumeración (concreta) | `model` — Enumeración de tipos de negocio con sus categorías predefinidas y sugerencias para los formularios. |
-| 6 | [`Category`](../src/main/java/sistemainventario/model/Category.java) | Concreta | `model` — Agrupa los productos de un perfil (por ejemplo “Bebidas”) y valida sus propios datos. |
-| 7 | [`GlobalConfig`](../src/main/java/sistemainventario/model/GlobalConfig.java) | Concreta | `model` — Guarda la lista de perfiles y cuál es el perfil activo. |
-| 8 | [`IdentifiedEntity`](../src/main/java/sistemainventario/model/IdentifiedEntity.java) | Abstracta | `model` — Superclase abstracta de las entidades persistidas: encapsula el ID y define la igualdad por ID. |
-| 9 | [`InventoryMovement`](../src/main/java/sistemainventario/model/InventoryMovement.java) | Abstracta | `model` — Superclase abstracta de los movimientos que cambian el stock; define aplicarA(Product) para que cada subclase lo implemente. |
-| 10 | [`Product`](../src/main/java/sistemainventario/model/Product.java) | Concreta | `model` — Artículo del inventario; controla su stock, estado, vencimiento y el texto de su etiqueta QR. |
-| 11 | [`Profile`](../src/main/java/sistemainventario/model/Profile.java) | Concreta | `model` — Negocio independiente con sus propios datos, tipo de negocio y configuración. |
-| 12 | [`Sale`](../src/main/java/sistemainventario/model/Sale.java) | Concreta | `model` — Sale con uno o varios ítems; crea sus ítems, calcula el total y agrupa cantidades por producto. |
-| 13 | [`SaleItem`](../src/main/java/sistemainventario/model/SaleItem.java) | Concreta | `model` — Línea de una venta: producto, cantidad, precio unitario y subtotal. |
-| 14 | [`StockEntry`](../src/main/java/sistemainventario/model/StockEntry.java) | Concreta | `model` — Ingreso de mercancía: al aplicarse aumenta el stock del producto. |
-| 15 | [`StockExit`](../src/main/java/sistemainventario/model/StockExit.java) | Concreta | `model` — Retiro de mercancía que no es venta (daño, merma, uso interno): al aplicarse disminuye el stock. |
-| 16 | [`Supplier`](../src/main/java/sistemainventario/model/Supplier.java) | Concreta | `model` — Distribuidor que abastece productos; valida sus datos y responde búsquedas. |
-| 17 | [`PersistenceException`](../src/main/java/sistemainventario/exception/PersistenceException.java) | Concreta | `exception` — Excepción no comprobada para errores al leer o escribir archivos de datos. |
-| 18 | [`ValidationException`](../src/main/java/sistemainventario/exception/ValidationException.java) | Concreta | `exception` — Excepción no comprobada para reglas de negocio o datos de entrada inválidos. |
-| 19 | [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java) | Concreta | `repository` — Lista, ubica y elimina los archivos .zip de la carpeta de respaldos, validando sus nombres. |
-| 20 | [`CategoryRepository`](../src/main/java/sistemainventario/repository/CategoryRepository.java) | Concreta | `repository` — Repositorio de categorías de un perfil en categorias.json. |
-| 21 | [`GlobalConfigRepository`](../src/main/java/sistemainventario/repository/GlobalConfigRepository.java) | Concreta | `repository` — Lee y escribe configuracion-global.json mediante JsonFileStore. |
-| 22 | [`JsonFileStore`](../src/main/java/sistemainventario/repository/JsonFileStore.java) | Concreta | `repository` — Lee y escribe un archivo de texto; escribe primero un archivo temporal y luego reemplaza el original. |
-| 23 | [`JsonRepository`](../src/main/java/sistemainventario/repository/JsonRepository.java) | Abstracta | `repository` — Implementación genérica de Repository: mantiene la lista en memoria y la guarda en un archivo JSON. |
-| 24 | [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java) | Concreta | `repository` — Guarda las etiquetas como imágenes PNG y las convierte a data URI para la vista. |
-| 25 | [`ProductRepository`](../src/main/java/sistemainventario/repository/ProductRepository.java) | Concreta | `repository` — Repositorio de productos de un perfil en productos.json. |
-| 26 | [`ProfileDirectory`](../src/main/java/sistemainventario/repository/ProfileDirectory.java) | Concreta | `repository` — Crea, ubica y elimina las carpetas de datos de cada perfil. |
-| 27 | [`ProfileRepository`](../src/main/java/sistemainventario/repository/ProfileRepository.java) | Concreta | `repository` — Repositorio de la lista de perfiles en perfiles.json. |
-| 28 | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java) | Interfaz | `repository` — Contrato genérico de acceso a datos (listar, buscar, agregar, actualizar, eliminar) que usan los servicios. |
-| 29 | [`SaleRepository`](../src/main/java/sistemainventario/repository/SaleRepository.java) | Concreta | `repository` — Repositorio de ventas de un perfil en ventas.json. |
-| 30 | [`StockEntryRepository`](../src/main/java/sistemainventario/repository/StockEntryRepository.java) | Concreta | `repository` — Repositorio de entradas de inventario de un perfil en entradas.json. |
-| 31 | [`StockExitRepository`](../src/main/java/sistemainventario/repository/StockExitRepository.java) | Concreta | `repository` — Repositorio de salidas de inventario de un perfil en salidas.json. |
-| 32 | [`SupplierRepository`](../src/main/java/sistemainventario/repository/SupplierRepository.java) | Concreta | `repository` — Repositorio de proveedores de un perfil en proveedores.json. |
-| 33 | [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java) | Concreta | `repository` — Comprime una carpeta en un .zip y lo extrae, rechazando rutas que salgan de la carpeta destino. |
-| 34 | [`BackupService`](../src/main/java/sistemainventario/service/BackupService.java) | Concreta | `service` — Crea, lista, restaura (con copia automática previa) y elimina copias de seguridad. |
-| 35 | [`CategoryService`](../src/main/java/sistemainventario/service/CategoryService.java) | Concreta | `service` — Reglas de las categorías; crea las categorías predefinidas del tipo de negocio y asigna ID a las que no tienen. |
-| 36 | [`EntityService`](../src/main/java/sistemainventario/service/EntityService.java) | Abstracta | `service` — Servicio base abstracto con el CRUD común; guardar() es un método plantilla (Template Method). |
-| 37 | [`GlobalConfigService`](../src/main/java/sistemainventario/service/GlobalConfigService.java) | Concreta | `service` — Lee y actualiza la configuración global (perfil activo y lista de perfiles). |
-| 38 | [`InventoryService`](../src/main/java/sistemainventario/service/InventoryService.java) | Concreta | `service` — Reglas del catálogo de productos: validación, búsqueda, filtros y alertas de stock y vencimiento. |
-| 39 | [`LabelService`](../src/main/java/sistemainventario/service/LabelService.java) | Concreta | `service` — Dibuja la etiqueta QR de un producto y arma hojas tamaño carta de 18 etiquetas. |
-| 40 | [`MovementService`](../src/main/java/sistemainventario/service/MovementService.java) | Concreta | `service` — Registra entradas y salidas aplicando cada movimiento sobre el producto. |
-| 41 | [`ProfileService`](../src/main/java/sistemainventario/service/ProfileService.java) | Concreta | `service` — Ciclo de vida de los perfiles: crear, editar, eliminar y seleccionar. |
-| 42 | [`ProfileServices`](../src/main/java/sistemainventario/service/ProfileServices.java) | Record (concreta) | `service` — Record que agrupa los cinco gestores que trabajan sobre los datos de un perfil. |
-| 43 | [`ProfileServicesFactory`](../src/main/java/sistemainventario/service/ProfileServicesFactory.java) | Concreta | `service` — Crea los repositorios y servicios de un perfil a partir de su carpeta. |
-| 44 | [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) | Concreta | `service` — Convierte un cuadro de la cámara en el producto de la etiqueta y evita contar dos veces la misma etiqueta quieta. |
-| 45 | [`SaleService`](../src/main/java/sistemainventario/service/SaleService.java) | Concreta | `service` — Registra ventas verificando el stock de todos los productos antes de descontarlo. |
-| 46 | [`SupplierService`](../src/main/java/sistemainventario/service/SupplierService.java) | Concreta | `service` — Reglas y búsqueda de proveedores. |
-| 47 | [`BackupController`](../src/main/java/sistemainventario/bridge/BackupController.java) | Concreta | `bridge` — Controlador de los casos de uso de copias de seguridad. |
-| 48 | [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java) | Concreta | `bridge` — Da formato a las respuestas para JavaScript (OK, JSON o “ERROR: …”) y centraliza el manejo de excepciones del bridge. |
-| 49 | [`CatalogController`](../src/main/java/sistemainventario/bridge/CatalogController.java) | Concreta | `bridge` — Controlador de los casos de uso de categorías y proveedores: convierte el JSON de la vista y delega en los gestores. |
-| 50 | [`DesktopFileOpener`](../src/main/java/sistemainventario/bridge/DesktopFileOpener.java) | Concreta | `bridge` — Implementación de FileOpener con java.awt.Desktop. |
-| 51 | [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java) | Interfaz | `bridge` — Contrato para abrir un archivo o carpeta con el programa predeterminado del sistema operativo. |
-| 52 | [`InventoryController`](../src/main/java/sistemainventario/bridge/InventoryController.java) | Concreta | `bridge` — Controlador de los casos de uso de productos y de las estadísticas del dashboard. |
-| 53 | [`JavaBridge`](../src/main/java/sistemainventario/bridge/JavaBridge.java) | Concreta | `bridge` — Fachada que la vista web usa como window.javaBridge; no tiene lógica, delega cada método en su controlador. |
-| 54 | [`LabelController`](../src/main/java/sistemainventario/bridge/LabelController.java) | Concreta | `bridge` — Controlador de los casos de uso de etiquetas QR: vista previa, guardar una etiqueta y generar la hoja de todos los productos. |
-| 55 | [`ProfileController`](../src/main/java/sistemainventario/bridge/ProfileController.java) | Concreta | `bridge` — Controlador de los casos de uso de perfiles: crear, editar, eliminar, seleccionar y describir los tipos de negocio. |
-| 56 | [`ScanController`](../src/main/java/sistemainventario/bridge/ScanController.java) | Concreta | `bridge` — Controlador del caso de uso “venta por QR”: enciende la cámara en un hilo propio, envía la vista previa y avisa a la vista cada producto leído. |
-| 57 | [`TransactionController`](../src/main/java/sistemainventario/bridge/TransactionController.java) | Concreta | `bridge` — Controlador de los casos de uso que mueven stock: entradas, salidas y ventas. |
-| 58 | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java) | Interfaz | `bridge` — Contrato para que Java avise a la vista web ejecutando una función de JavaScript. |
-| 59 | [`WebViewNotifier`](../src/main/java/sistemainventario/bridge/WebViewNotifier.java) | Concreta | `bridge` — Implementación de ViewNotifier que ejecuta el script en el WebEngine de JavaFX, en el hilo de la interfaz. |
-| 60 | [`WebViewMain`](../src/main/java/sistemainventario/view/WebViewMain.java) | Concreta | `view` — Construye la ventana con el WebView, carga la interfaz HTML, registra el JavaBridge y apaga la cámara al cerrar. |
-| 61 | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) | Interfaz | `dispositivo` — Contrato de una cámara de la que se toman cuadros para leer códigos QR. |
-| 62 | [`WebcamCamera`](../src/main/java/sistemainventario/dispositivo/WebcamCamera.java) | Concreta | `dispositivo` — Implementación de Camera con la webcam del computador (librería webcam-capture). |
-| 63 | [`DateUtil`](../src/main/java/sistemainventario/util/DateUtil.java) | Concreta | `util` — Utilidades de fecha: fecha actual, conversión y formato. |
-| 64 | [`IdGenerator`](../src/main/java/sistemainventario/util/IdGenerator.java) | Concreta | `util` — Genera identificadores con prefijo o numéricos consecutivos. |
-| 65 | [`ImageEncoder`](../src/main/java/sistemainventario/util/ImageEncoder.java) | Concreta | `util` — Convierte una imagen en JPEG codificado en Base64 para mostrarla en la vista. |
-| 66 | [`JsonUtil`](../src/main/java/sistemainventario/util/JsonUtil.java) | Concreta | `util` — Configuración única de Gson para convertir objetos a JSON y viceversa. |
-| 67 | [`QrGenerator`](../src/main/java/sistemainventario/util/QrGenerator.java) | Concreta | `util` — Genera la imagen de un código QR a partir de un texto (ZXing). |
-| 68 | [`QrReader`](../src/main/java/sistemainventario/util/QrReader.java) | Concreta | `util` — Lee el texto de un código QR que aparece en una imagen (ZXing). |
-| 69 | [`TextUtil`](../src/main/java/sistemainventario/util/TextUtil.java) | Concreta | `util` — Utilidades de texto: vacío, búsqueda sin mayúsculas, normalizar y recortar. |
+| 3 | [`Main`](../src/main/java/sistemainventario/Main.java) | Concreta | `sistemainventario` — Aplicación de TBalance: abre la interfaz en una ventana de Edge (DesktopBrowserApp) y, si no hay Edge ni Chrome, en el visor de JavaFX. |
+| 4 | [`AssistantSettings`](../src/main/java/sistemainventario/model/AssistantSettings.java) | Record (concreta) | `model` — Record con la configuración del asistente: clave de API y modelo de Gemini. |
+| 5 | [`Backup`](../src/main/java/sistemainventario/model/Backup.java) | Concreta | `model` — Datos de solo lectura de una copia de seguridad: nombre, fecha y tamaño. |
+| 6 | [`BusinessType`](../src/main/java/sistemainventario/model/BusinessType.java) | Enumeración (concreta) | `model` — Enumeración de tipos de negocio con sus categorías predefinidas y sugerencias para los formularios. |
+| 7 | [`Category`](../src/main/java/sistemainventario/model/Category.java) | Concreta | `model` — Agrupa los productos de un perfil (por ejemplo “Bebidas”) y valida sus propios datos. |
+| 8 | [`GlobalConfig`](../src/main/java/sistemainventario/model/GlobalConfig.java) | Concreta | `model` — Guarda la lista de perfiles y cuál es el perfil activo. |
+| 9 | [`IdentifiedEntity`](../src/main/java/sistemainventario/model/IdentifiedEntity.java) | Abstracta | `model` — Superclase abstracta de las entidades persistidas: encapsula el ID y define la igualdad por ID. |
+| 10 | [`InventoryMovement`](../src/main/java/sistemainventario/model/InventoryMovement.java) | Abstracta | `model` — Superclase abstracta de los movimientos que cambian el stock; define aplicarA(Product) para que cada subclase lo implemente. |
+| 11 | [`PaymentMethod`](../src/main/java/sistemainventario/model/PaymentMethod.java) | Enumeración (concreta) | `model` — Enumeración de los métodos de pago de las tiendas colombianas (efectivo, Nequi, Daviplata, Bre-B, transferencia, tarjetas y fiado) e indica cuáles son digitales. |
+| 12 | [`Product`](../src/main/java/sistemainventario/model/Product.java) | Concreta | `model` — Artículo del inventario; controla su stock, estado, vencimiento y el texto de su etiqueta QR. |
+| 13 | [`Profile`](../src/main/java/sistemainventario/model/Profile.java) | Concreta | `model` — Negocio independiente con sus propios datos, tipo de negocio y configuración. |
+| 14 | [`Sale`](../src/main/java/sistemainventario/model/Sale.java) | Concreta | `model` — Venta con uno o varios ítems; crea sus ítems, calcula el total, agrupa cantidades por producto y valida el método de pago. |
+| 15 | [`SaleItem`](../src/main/java/sistemainventario/model/SaleItem.java) | Concreta | `model` — Línea de una venta: producto, cantidad, precio unitario, subtotal y costo del producto en el momento de la venta. |
+| 16 | [`SalesReport`](../src/main/java/sistemainventario/model/SalesReport.java) | Record (concreta) | `model` — Record con el informe de ventas de un período: totales, comparación con el período anterior, serie en el tiempo, productos más vendidos, métodos de pago y detalle. |
+| 17 | [`StockEntry`](../src/main/java/sistemainventario/model/StockEntry.java) | Concreta | `model` — Ingreso de mercancía: al aplicarse aumenta el stock del producto. |
+| 18 | [`StockExit`](../src/main/java/sistemainventario/model/StockExit.java) | Concreta | `model` — Retiro de mercancía que no es venta (daño, merma, uso interno): al aplicarse disminuye el stock. |
+| 19 | [`Supplier`](../src/main/java/sistemainventario/model/Supplier.java) | Concreta | `model` — Distribuidor que abastece productos; valida sus datos y responde búsquedas. |
+| 20 | [`AssistantException`](../src/main/java/sistemainventario/exception/AssistantException.java) | Concreta | `exception` — Excepción no comprobada con un mensaje claro cuando falla la conexión con el modelo (sin internet, clave inválida, límite gratuito). |
+| 21 | [`PersistenceException`](../src/main/java/sistemainventario/exception/PersistenceException.java) | Concreta | `exception` — Excepción no comprobada para errores al leer o escribir archivos de datos. |
+| 22 | [`ValidationException`](../src/main/java/sistemainventario/exception/ValidationException.java) | Concreta | `exception` — Excepción no comprobada para reglas de negocio o datos de entrada inválidos. |
+| 23 | [`AssistantConfigRepository`](../src/main/java/sistemainventario/repository/AssistantConfigRepository.java) | Concreta | `repository` — Lee y escribe la configuración del asistente (AssistantSettings) en ~/.inventariopro/asistente.json, fuera de los datos de los perfiles y de las copias. |
+| 24 | [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java) | Concreta | `repository` — Lista, ubica y elimina los archivos .zip de la carpeta de respaldos, validando sus nombres. |
+| 25 | [`CategoryRepository`](../src/main/java/sistemainventario/repository/CategoryRepository.java) | Concreta | `repository` — Repositorio de categorías de un perfil en categorias.json. |
+| 26 | [`GlobalConfigRepository`](../src/main/java/sistemainventario/repository/GlobalConfigRepository.java) | Concreta | `repository` — Lee y escribe configuracion-global.json mediante JsonFileStore. |
+| 27 | [`JsonFileStore`](../src/main/java/sistemainventario/repository/JsonFileStore.java) | Concreta | `repository` — Lee y escribe un archivo de texto; escribe primero un archivo temporal y luego reemplaza el original. |
+| 28 | [`JsonRepository`](../src/main/java/sistemainventario/repository/JsonRepository.java) | Abstracta | `repository` — Implementación genérica de Repository: mantiene la lista en memoria y la guarda en un archivo JSON. |
+| 29 | [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java) | Concreta | `repository` — Guarda las etiquetas como imágenes PNG y las convierte a data URI para la vista. |
+| 30 | [`ProductRepository`](../src/main/java/sistemainventario/repository/ProductRepository.java) | Concreta | `repository` — Repositorio de productos de un perfil en productos.json. |
+| 31 | [`ProfileDirectory`](../src/main/java/sistemainventario/repository/ProfileDirectory.java) | Concreta | `repository` — Crea, ubica y elimina las carpetas de datos de cada perfil. |
+| 32 | [`ProfileRepository`](../src/main/java/sistemainventario/repository/ProfileRepository.java) | Concreta | `repository` — Repositorio de la lista de perfiles en perfiles.json. |
+| 33 | [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) | Concreta | `repository` — Escribe un SalesReport como libro de Excel (.xlsx) de cuatro hojas con formato de informe, sin librerías externas. |
+| 34 | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java) | Interfaz | `repository` — Contrato genérico de acceso a datos (listar, buscar, agregar, actualizar, eliminar) que usan los servicios. |
+| 35 | [`SaleRepository`](../src/main/java/sistemainventario/repository/SaleRepository.java) | Concreta | `repository` — Repositorio de ventas de un perfil en ventas.json. |
+| 36 | [`StockEntryRepository`](../src/main/java/sistemainventario/repository/StockEntryRepository.java) | Concreta | `repository` — Repositorio de entradas de inventario de un perfil en entradas.json. |
+| 37 | [`StockExitRepository`](../src/main/java/sistemainventario/repository/StockExitRepository.java) | Concreta | `repository` — Repositorio de salidas de inventario de un perfil en salidas.json. |
+| 38 | [`SupplierRepository`](../src/main/java/sistemainventario/repository/SupplierRepository.java) | Concreta | `repository` — Repositorio de proveedores de un perfil en proveedores.json. |
+| 39 | [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java) | Concreta | `repository` — Comprime una carpeta en un .zip y lo extrae, rechazando rutas que salgan de la carpeta destino. |
+| 40 | [`GeminiClient`](../src/main/java/sistemainventario/ia/GeminiClient.java) | Concreta | `ia` — Implementación de LanguageModel con la API de Google Gemini (capa gratuita); si Google retira el modelo, elige otro disponible. |
+| 41 | [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) | Interfaz | `ia` — Contrato de un modelo de lenguaje en la nube: recibe instrucciones, historial y funciones y devuelve texto o llamadas a funciones. |
+| 42 | [`SecureConnection`](../src/main/java/sistemainventario/ia/SecureConnection.java) | Concreta | `ia` — Crea el cliente HTTP del asistente con el proxy y los certificados de Windows además de los de Java. |
+| 43 | [`AssistantProposal`](../src/main/java/sistemainventario/service/AssistantProposal.java) | Concreta | `service` — Cambio propuesto por el asistente (venta, entrada, salida, precio o producto nuevo) que solo se ejecuta si el usuario lo confirma. |
+| 44 | [`AssistantService`](../src/main/java/sistemainventario/service/AssistantService.java) | Concreta | `service` — Conversación con el asistente: envía el historial al modelo, ejecuta las funciones que pide y guarda los cambios propuestos hasta que el usuario los confirme. |
+| 45 | [`AssistantSettingsService`](../src/main/java/sistemainventario/service/AssistantSettingsService.java) | Concreta | `service` — Configuración del asistente: guarda la clave y el modelo, crea el cliente del modelo de lenguaje y prueba la conexión. |
+| 46 | [`AssistantTools`](../src/main/java/sistemainventario/service/AssistantTools.java) | Concreta | `service` — Funciones del inventario que el asistente puede usar: consultas (productos, por reponer, proveedores, ventas, vencimientos) y propuestas de cambios. |
+| 47 | [`BackupService`](../src/main/java/sistemainventario/service/BackupService.java) | Concreta | `service` — Crea, lista, restaura (con copia automática previa) y elimina copias de seguridad. |
+| 48 | [`CategoryService`](../src/main/java/sistemainventario/service/CategoryService.java) | Concreta | `service` — Reglas de las categorías; crea las categorías predefinidas del tipo de negocio y asigna ID a las que no tienen. |
+| 49 | [`EntityService`](../src/main/java/sistemainventario/service/EntityService.java) | Abstracta | `service` — Servicio base abstracto con el CRUD común; guardar() es un método plantilla (Template Method). |
+| 50 | [`GlobalConfigService`](../src/main/java/sistemainventario/service/GlobalConfigService.java) | Concreta | `service` — Lee y actualiza la configuración global (perfil activo y lista de perfiles). |
+| 51 | [`InventoryService`](../src/main/java/sistemainventario/service/InventoryService.java) | Concreta | `service` — Reglas del catálogo de productos: validación, búsqueda, filtros y alertas de stock y vencimiento. |
+| 52 | [`LabelService`](../src/main/java/sistemainventario/service/LabelService.java) | Concreta | `service` — Dibuja la etiqueta QR de un producto y arma hojas tamaño carta de 18 etiquetas. |
+| 53 | [`MovementService`](../src/main/java/sistemainventario/service/MovementService.java) | Concreta | `service` — Registra entradas y salidas aplicando cada movimiento sobre el producto. |
+| 54 | [`ProfileService`](../src/main/java/sistemainventario/service/ProfileService.java) | Concreta | `service` — Ciclo de vida de los perfiles: crear, editar, eliminar y seleccionar. |
+| 55 | [`ProfileServices`](../src/main/java/sistemainventario/service/ProfileServices.java) | Record (concreta) | `service` — Record que agrupa los cinco gestores que trabajan sobre los datos de un perfil. |
+| 56 | [`ProfileServicesFactory`](../src/main/java/sistemainventario/service/ProfileServicesFactory.java) | Concreta | `service` — Crea los repositorios y servicios de un perfil a partir de su carpeta. |
+| 57 | [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) | Concreta | `service` — Convierte un cuadro de la cámara en el producto de la etiqueta y evita contar dos veces la misma etiqueta quieta. |
+| 58 | [`ReportExportService`](../src/main/java/sistemainventario/service/ReportExportService.java) | Concreta | `service` — Exporta un informe a Excel: decide la carpeta (Documentos/TBalance) y el nombre del archivo y usa ReportExcelWriter. |
+| 59 | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java) | Concreta | `service` — Calcula el informe de ventas de un período: totales, comparación, agrupación por día, semana o mes, ranking de productos, métodos de pago y utilidad real. |
+| 60 | [`SaleService`](../src/main/java/sistemainventario/service/SaleService.java) | Concreta | `service` — Registra ventas verificando el stock de todos los productos antes de descontarlo. |
+| 61 | [`SupplierService`](../src/main/java/sistemainventario/service/SupplierService.java) | Concreta | `service` — Reglas y búsqueda de proveedores. |
+| 62 | [`AssistantController`](../src/main/java/sistemainventario/bridge/AssistantController.java) | Concreta | `bridge` — Controlador del asistente: configuración, prueba de conexión y conversación en segundo plano; confirma o descarta lo que propone. |
+| 63 | [`BackupController`](../src/main/java/sistemainventario/bridge/BackupController.java) | Concreta | `bridge` — Controlador de los casos de uso de copias de seguridad. |
+| 64 | [`BridgeInvoker`](../src/main/java/sistemainventario/bridge/BridgeInvoker.java) | Concreta | `bridge` — Llama por nombre a un método público del JavaBridge con argumentos en JSON; lo usa el servidor local de la ventana de Edge. |
+| 65 | [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java) | Concreta | `bridge` — Da formato a las respuestas para JavaScript (OK, JSON o “ERROR: …”) y centraliza el manejo de excepciones del bridge. |
+| 66 | [`CatalogController`](../src/main/java/sistemainventario/bridge/CatalogController.java) | Concreta | `bridge` — Controlador de los casos de uso de categorías y proveedores: convierte el JSON de la vista y delega en los gestores. |
+| 67 | [`DesktopFileOpener`](../src/main/java/sistemainventario/bridge/DesktopFileOpener.java) | Concreta | `bridge` — Implementación de FileOpener con java.awt.Desktop. |
+| 68 | [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java) | Interfaz | `bridge` — Contrato para abrir un archivo o carpeta con el programa predeterminado del sistema operativo. |
+| 69 | [`InventoryController`](../src/main/java/sistemainventario/bridge/InventoryController.java) | Concreta | `bridge` — Controlador de los casos de uso de productos y de las estadísticas del inventario. |
+| 70 | [`JavaBridge`](../src/main/java/sistemainventario/bridge/JavaBridge.java) | Concreta | `bridge` — Fachada que la vista web usa como window.javaBridge; no tiene lógica, delega cada método en su controlador. |
+| 71 | [`LabelController`](../src/main/java/sistemainventario/bridge/LabelController.java) | Concreta | `bridge` — Controlador de los casos de uso de etiquetas QR: vista previa, guardar una etiqueta y generar la hoja de todos los productos. |
+| 72 | [`ProfileController`](../src/main/java/sistemainventario/bridge/ProfileController.java) | Concreta | `bridge` — Controlador de los casos de uso de perfiles: crear, editar, eliminar, seleccionar y describir los tipos de negocio. |
+| 73 | [`ReportController`](../src/main/java/sistemainventario/bridge/ReportController.java) | Concreta | `bridge` — Controlador de la sección Informes: devuelve el informe de un período en JSON y lo exporta a Excel. |
+| 74 | [`ScanController`](../src/main/java/sistemainventario/bridge/ScanController.java) | Concreta | `bridge` — Controlador del caso de uso “venta por QR”: enciende la cámara en un hilo propio, envía la vista previa y avisa a la vista cada producto leído. |
+| 75 | [`ScreenTransition`](../src/main/java/sistemainventario/bridge/ScreenTransition.java) | Interfaz | `bridge` — Contrato de una transición visual que la ventana hace por encima de la página (desvanecer una zona). |
+| 76 | [`SseNotifier`](../src/main/java/sistemainventario/bridge/SseNotifier.java) | Concreta | `bridge` — Implementación de ViewNotifier para la ventana de Edge: envía cada aviso a la página por una conexión de eventos (Server-Sent Events). |
+| 77 | [`TransactionController`](../src/main/java/sistemainventario/bridge/TransactionController.java) | Concreta | `bridge` — Controlador de los casos de uso que mueven stock: entradas, salidas y ventas. |
+| 78 | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java) | Interfaz | `bridge` — Contrato para que Java avise a la vista web ejecutando una función de JavaScript. |
+| 79 | [`WebViewNotifier`](../src/main/java/sistemainventario/bridge/WebViewNotifier.java) | Concreta | `bridge` — Implementación de ViewNotifier que ejecuta el script en el WebEngine de JavaFX, en el hilo de la interfaz. |
+| 80 | [`BrowserWindow`](../src/main/java/sistemainventario/view/BrowserWindow.java) | Concreta | `view` — Busca Edge o Chrome y abre la interfaz en modo aplicación (ventana sin barra de direcciones) con una carpeta de perfil propia. |
+| 81 | [`DesktopBrowserApp`](../src/main/java/sistemainventario/view/DesktopBrowserApp.java) | Concreta | `view` — Arranca la aplicación en una ventana de Edge: crea el servidor local, abre la ventana y cierra el programa cuando la ventana se cierra. |
+| 82 | [`LocalWebServer`](../src/main/java/sistemainventario/view/LocalWebServer.java) | Concreta | `view` — Servidor HTTP solo en 127.0.0.1 con clave aleatoria: entrega la interfaz, atiende las llamadas al bridge y envía los avisos a la página. |
+| 83 | [`SnapshotTransition`](../src/main/java/sistemainventario/view/SnapshotTransition.java) | Concreta | `view` — Implementación de ScreenTransition con JavaFX: toma una imagen de la zona y la desvanece con la tarjeta gráfica. |
+| 84 | [`WebViewMain`](../src/main/java/sistemainventario/view/WebViewMain.java) | Concreta | `view` — Ventana de respaldo con el visor de JavaFX: carga la interfaz HTML, registra el JavaBridge, hace las transiciones grandes y apaga la cámara al cerrar. |
+| 85 | [`WindowsTaskbarIcon`](../src/main/java/sistemainventario/view/WindowsTaskbarIcon.java) | Concreta | `view` — Asigna el ícono de alta resolución a la ventana de Edge en la barra de tareas de Windows (con PowerShell y la API de Windows). |
+| 86 | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) | Interfaz | `dispositivo` — Contrato de una cámara de la que se toman cuadros para leer códigos QR. |
+| 87 | [`WebcamCamera`](../src/main/java/sistemainventario/dispositivo/WebcamCamera.java) | Concreta | `dispositivo` — Implementación de Camera con la webcam del computador (librería webcam-capture). |
+| 88 | [`AssistantLog`](../src/main/java/sistemainventario/util/AssistantLog.java) | Concreta | `util` — Escribe los errores del asistente en ~/.inventariopro/asistente.log para poder revisar por qué no respondió. |
+| 89 | [`DateUtil`](../src/main/java/sistemainventario/util/DateUtil.java) | Concreta | `util` — Utilidades de fecha: fecha actual, conversión y formato. |
+| 90 | [`IdGenerator`](../src/main/java/sistemainventario/util/IdGenerator.java) | Concreta | `util` — Genera identificadores con prefijo o numéricos consecutivos. |
+| 91 | [`ImageEncoder`](../src/main/java/sistemainventario/util/ImageEncoder.java) | Concreta | `util` — Convierte una imagen en JPEG codificado en Base64 para mostrarla en la vista. |
+| 92 | [`JsonUtil`](../src/main/java/sistemainventario/util/JsonUtil.java) | Concreta | `util` — Configuración única de Gson para convertir objetos a JSON y viceversa. |
+| 93 | [`QrGenerator`](../src/main/java/sistemainventario/util/QrGenerator.java) | Concreta | `util` — Genera la imagen de un código QR a partir de un texto (ZXing). |
+| 94 | [`QrReader`](../src/main/java/sistemainventario/util/QrReader.java) | Concreta | `util` — Lee el texto de un código QR que aparece en una imagen (ZXing). |
+| 95 | [`TextUtil`](../src/main/java/sistemainventario/util/TextUtil.java) | Concreta | `util` — Utilidades de texto: vacío, búsqueda sin mayúsculas, normalizar y recortar. |
 
 ### Descripción de cada clase
 
@@ -139,10 +173,12 @@ Las fuentes de los diagramas están en [`docs/diagramas`](diagramas) (archivos `
 | `directorioDatos` | `Path` | Carpeta raíz de los datos (~/.inventariopro/data) |
 | `gestorRespaldo` | `BackupService` | Servicio de copias de seguridad |
 | `gestorEtiquetas` | `LabelService` | Servicio de etiquetas QR |
+| `ajustesAsistente` | `AssistantSettingsService` | Configuración del asistente |
+| `exportadorInformes` | `ReportExportService` | Exportación de informes a Excel |
 | `gestorPerfiles` | `ProfileService` | Servicio de perfiles (se reconstruye al recargar) |
 | `serviciosActivos` | `ProfileServices` | Servicios del perfil activo |
 | `instancia` (static) | `AppContext` | Única instancia (Singleton) |
-| Constantes (`static final`) | — | `DIRECTORIO_DATOS`, `CARPETA_RESPALDOS`, `CARPETA_ETIQUETAS` |
+| Constantes (`static final`) | — | `DIRECTORIO_DATOS`, `CARPETA_RESPALDOS`, `CARPETA_ETIQUETAS`, `ARCHIVO_ASISTENTE` |
 
 **Métodos**
 
@@ -150,6 +186,8 @@ Las fuentes de los diagramas están en [`docs/diagramas`](diagramas) (archivos `
 |---|---|---|
 | `recargar()` | `void` | Vuelve a leer los JSON y reconstruye los servicios |
 | `restaurarRespaldo(String nombre)` | `Backup` | Restaura una copia y recarga los datos |
+| `getAjustesAsistente()` | `AssistantSettingsService` | Servicio de configuración del asistente |
+| `getExportadorInformes()` | `ReportExportService` | Servicio de exportación de informes |
 | `get()` *(static)* | `AppContext` | Devuelve la única instancia (Singleton) |
 | `requerirServiciosActivos()` | `ProfileServices` | Servicios del perfil activo; error si no hay perfil |
 | `activarPerfil(String perfilId)` | `void` | Activa un perfil y reconstruye sus servicios |
@@ -186,7 +224,7 @@ No tiene atributos.
 | Paquete | `sistemainventario` |
 | Tipo | Concreta |
 | Hereda de / implementa | `Application` |
-| Responsabilidad principal | Aplicación JavaFX: obtiene el AppContext y abre la ventana principal. |
+| Responsabilidad principal | Aplicación de TBalance: abre la interfaz en una ventana de Edge (DesktopBrowserApp) y, si no hay Edge ni Chrome, en el visor de JavaFX. |
 | Archivo | [Main.java](../src/main/java/sistemainventario/Main.java) |
 
 **Atributos**
@@ -201,6 +239,28 @@ No tiene atributos.
 | `main(String[] args)` *(static)* | `void` | Lanza la aplicación JavaFX |
 
 #### Paquete `model`
+
+##### AssistantSettings
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantSettings` |
+| Paquete | `sistemainventario.model` |
+| Tipo | Record (concreta) |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Record con la configuración del asistente: clave de API y modelo de Gemini. |
+| Archivo | [AssistantSettings.java](../src/main/java/sistemainventario/model/AssistantSettings.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `clave` | `String` | Clave de API de Google AI Studio |
+| `modelo` | `String` | Modelo de Gemini |
+
+**Métodos**
+
+No declara métodos propios.
 
 ##### Backup
 
@@ -382,6 +442,34 @@ No tiene atributos.
 | Getters | — | `getProductoId()`, `getCantidad()`, `getFecha()` |
 | Setters | `void` | `setProductoId()`, `setCantidad()`, `setFecha()` |
 
+##### PaymentMethod
+
+| Campo | Valor |
+|---|---|
+| Clase | `PaymentMethod` |
+| Paquete | `sistemainventario.model` |
+| Tipo | Enumeración (concreta) |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Enumeración de los métodos de pago de las tiendas colombianas (efectivo, Nequi, Daviplata, Bre-B, transferencia, tarjetas y fiado) e indica cuáles son digitales. |
+| Archivo | [PaymentMethod.java](../src/main/java/sistemainventario/model/PaymentMethod.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| Constantes del enum | — | `EFECTIVO`, `NEQUI`, `DAVIPLATA`, `BRE_B`, `BANCOLOMBIA`, `TARJETA_DEBITO`, `TARJETA_CREDITO`, `FIADO` |
+| `etiqueta` | `String` | Nombre que se muestra y se guarda |
+| `digital` | `boolean` | Si admite número de comprobante |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `PaymentMethod(String etiqueta, boolean digital)` | — (constructor) | Constructor |
+| `esDigital()` | `boolean` | Si el método admite número de comprobante |
+| `desdeTexto(String texto)` *(static)* | `Optional<PaymentMethod>` | Reconoce el método aunque venga escrito de otra forma ("nequi", "tarjeta", "crédito") |
+| Getters | — | `getEtiqueta()` |
+
 ##### Product
 
 | Campo | Valor |
@@ -489,7 +577,7 @@ No tiene atributos.
 | Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
 | Hereda de / implementa | `IdentifiedEntity` |
-| Responsabilidad principal | Sale con uno o varios ítems; crea sus ítems, calcula el total y agrupa cantidades por producto. |
+| Responsabilidad principal | Venta con uno o varios ítems; crea sus ítems, calcula el total, agrupa cantidades por producto y valida el método de pago. |
 | Archivo | [Sale.java](../src/main/java/sistemainventario/model/Sale.java) |
 
 **Atributos**
@@ -497,8 +585,9 @@ No tiene atributos.
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `cliente` | `String` | Cliente |
-| `metodoPago` | `String` | Método de pago |
+| `metodoPago` | `String` | Método de pago (nombre de un PaymentMethod) |
 | `observacion` | `String` | Nota opcional |
+| `referenciaPago` | `String` | Comprobante de un pago digital (opcional) |
 | `fecha` | `String` | Fecha y hora de la venta |
 | `estado` | `String` | Estado (COMPLETADA) |
 | `items` | `List<SaleItem>` | Ítems de la venta |
@@ -519,8 +608,9 @@ No tiene atributos.
 | `getTotalUnidades()` | `int` | Suma de unidades |
 | `cantidadesPorProducto()` | `Map<String, Integer>` | Unidades agrupadas por producto |
 | `estaCompletada()` | `boolean` | Si está COMPLETADA |
-| Getters | — | `getTotal()`, `getCliente()`, `getMetodoPago()`, `getObservacion()`, `getFecha()`, `getEstado()`, `getItems()` |
-| Setters | `void` | `setCliente()`, `setMetodoPago()`, `setObservacion()`, `setFecha()`, `setEstado()`, `setItems()` |
+| `normalizarPago()` | `void` | Valida el método de pago y su nombre oficial; un fiado exige cliente y el comprobante solo se guarda en pagos digitales |
+| Getters | — | `getTotal()`, `getCliente()`, `getMetodoPago()`, `getReferenciaPago()`, `getObservacion()`, `getFecha()`, `getEstado()`, `getItems()` |
+| Setters | `void` | `setCliente()`, `setMetodoPago()`, `setReferenciaPago()`, `setObservacion()`, `setFecha()`, `setEstado()`, `setItems()` |
 
 ##### SaleItem
 
@@ -530,7 +620,7 @@ No tiene atributos.
 | Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
 | Hereda de / implementa | — |
-| Responsabilidad principal | Línea de una venta: producto, cantidad, precio unitario y subtotal. |
+| Responsabilidad principal | Línea de una venta: producto, cantidad, precio unitario, subtotal y costo del producto en el momento de la venta. |
 | Archivo | [SaleItem.java](../src/main/java/sistemainventario/model/SaleItem.java) |
 
 **Atributos**
@@ -542,6 +632,7 @@ No tiene atributos.
 | `cantidad` | `int` | Unidades vendidas |
 | `precioUnitario` | `double` | Precio por unidad |
 | `subtotal` | `double` | Cantidad × precio (se guarda en el JSON) |
+| `costoUnitario` | `double` | Precio de compra del producto al momento de la venta |
 
 **Métodos**
 
@@ -550,10 +641,43 @@ No tiene atributos.
 | `SaleItem()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
 | `SaleItem(String productoId, String nombreProducto, int cantidad, double precioUnitario)` | — (constructor) | Constructor |
 | `validar()` | `void` | Exige producto, cantidad mayor que 0 y precio no negativo |
+| `tieneCosto()` | `boolean` | Si la venta guardó el costo del producto |
+| `utilidadCon(double costo)` | `double` | Utilidad del ítem: (precio − costo) × cantidad |
 | `getSubtotal()` | `double` | Cantidad × precio |
 | `sincronizarSubtotal()` | `void` | Actualiza el subtotal guardado |
-| Getters | — | `getProductoId()`, `getNombreProducto()`, `getCantidad()`, `getPrecioUnitario()` |
-| Setters | `void` | `setProductoId()`, `setNombreProducto()`, `setCantidad()`, `setPrecioUnitario()` |
+| Getters | — | `getCostoUnitario()`, `getProductoId()`, `getNombreProducto()`, `getCantidad()`, `getPrecioUnitario()` |
+| Setters | `void` | `setCostoUnitario()`, `setProductoId()`, `setNombreProducto()`, `setCantidad()`, `setPrecioUnitario()` |
+
+##### SalesReport
+
+| Campo | Valor |
+|---|---|
+| Clase | `SalesReport` |
+| Paquete | `sistemainventario.model` |
+| Tipo | Record (concreta) |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Record con el informe de ventas de un período: totales, comparación con el período anterior, serie en el tiempo, productos más vendidos, métodos de pago y detalle. |
+| Archivo | [SalesReport.java](../src/main/java/sistemainventario/model/SalesReport.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `desde` | `String` | Primer día del período |
+| `hasta` | `String` | Último día del período |
+| `anteriorDesde` | `String` | Primer día del período de comparación |
+| `anteriorHasta` | `String` | Último día del período de comparación |
+| `agrupacion` | `String` | dia, semana o mes |
+| `actual` | `Totals` | Totales del período |
+| `anterior` | `Totals` | Totales del período anterior |
+| `serie` | `List<Point>` | Ventas y utilidad por grupo de tiempo |
+| `productos` | `List<ProductRanking>` | Productos vendidos (ranking) |
+| `metodosPago` | `List<PaymentShare>` | Ventas por método de pago |
+| `ventas` | `List<SaleLine>` | Detalle de cada venta |
+
+**Métodos**
+
+No declara métodos propios.
 
 ##### StockEntry
 
@@ -654,6 +778,28 @@ No tiene atributos.
 
 #### Paquete `exception`
 
+##### AssistantException
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantException` |
+| Paquete | `sistemainventario.exception` |
+| Tipo | Concreta |
+| Hereda de / implementa | `RuntimeException` |
+| Responsabilidad principal | Excepción no comprobada con un mensaje claro cuando falla la conexión con el modelo (sin internet, clave inválida, límite gratuito). |
+| Archivo | [AssistantException.java](../src/main/java/sistemainventario/exception/AssistantException.java) |
+
+**Atributos**
+
+No tiene atributos.
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `AssistantException(String mensaje)` | — (constructor) | Constructor |
+| `AssistantException(String mensaje, Throwable causa)` | — (constructor) | Constructor |
+
 ##### PersistenceException
 
 | Campo | Valor |
@@ -697,6 +843,32 @@ No tiene atributos.
 | `ValidationException(String mensaje)` | — (constructor) | Constructor |
 
 #### Paquete `repository`
+
+##### AssistantConfigRepository
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantConfigRepository` |
+| Paquete | `sistemainventario.repository` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Lee y escribe la configuración del asistente (AssistantSettings) en ~/.inventariopro/asistente.json, fuera de los datos de los perfiles y de las copias. |
+| Archivo | [AssistantConfigRepository.java](../src/main/java/sistemainventario/repository/AssistantConfigRepository.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `archivo` | `Path` | Ruta de asistente.json |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `AssistantConfigRepository(Path archivo)` | — (constructor) | Constructor |
+| `leer()` | `Optional<AssistantSettings>` | Lee la clave y el modelo, si existen |
+| `guardar(AssistantSettings config)` | `void` | Guarda la clave y el modelo |
+| `borrar()` | `void` | Borra la clave guardada |
 
 ##### BackupRepository
 
@@ -941,6 +1113,29 @@ No tiene atributos.
 |---|---|---|
 | `ProfileRepository(Path directorio)` | — (constructor) | Constructor |
 
+##### ReportExcelWriter
+
+| Campo | Valor |
+|---|---|
+| Clase | `ReportExcelWriter` |
+| Paquete | `sistemainventario.repository` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Escribe un SalesReport como libro de Excel (.xlsx) de cuatro hojas con formato de informe, sin librerías externas. |
+| Archivo | [ReportExcelWriter.java](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| Constantes (`static final`) | — | `TITULO`, `SUBTITULO`, `ENCABEZADO`, `TEXTO`, `DINERO`, `ENTERO`, `PORCENTAJE`, `VARIACION`, `FECHA`, `ALTERNA`, `TOTAL_TEXTO`, `TOTAL_DINERO`, `TOTAL_ENTERO`, `TOTAL_PORCENTAJE`, `NOTA`, `INDICADOR`, `DIA`, `COLUMNAS`, `CABECERA`, `RELACIONES_RAIZ`, `ESTILOS` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `escribir(SalesReport informe, String negocio, Path destino)` | `void` | Escribe el informe con el nombre del negocio en un archivo .xlsx |
+
 ##### Repository
 
 | Campo | Valor |
@@ -1083,7 +1278,207 @@ No tiene atributos.
 | `comprimir(Path carpeta, Path destino)` | `void` | Comprime una carpeta en un .zip |
 | `extraer(Path archivoZip, Path carpeta)` | `int` | Extrae un .zip validando las rutas |
 
+#### Paquete `ia`
+
+##### GeminiClient
+
+| Campo | Valor |
+|---|---|
+| Clase | `GeminiClient` |
+| Paquete | `sistemainventario.ia` |
+| Tipo | Concreta |
+| Hereda de / implementa | `LanguageModel` |
+| Responsabilidad principal | Implementación de LanguageModel con la API de Google Gemini (capa gratuita); si Google retira el modelo, elige otro disponible. |
+| Archivo | [GeminiClient.java](../src/main/java/sistemainventario/ia/GeminiClient.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `clave` | `String` | Clave de API de Google AI Studio |
+| `modelo` | `String` | Modelo en uso |
+| `http` | `HttpClient` | Cliente HTTP (SecureConnection) |
+| `alCambiarModelo` | `Consumer<String>` | Se avisa cuando se pasa a otro modelo |
+| Constantes (`static final`) | — | `MODELO_POR_DEFECTO`, `URL_BASE`, `ESPERA_MAXIMA` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `GeminiClient(String clave, String modelo)` | — (constructor) | Constructor |
+| `modelo()` | `String` | Modelo en uso |
+| `alCambiarModelo(Consumer<String> accion)` | `void` | Registra qué hacer cuando se cambia de modelo (guardarlo) |
+| `generar(String instrucciones, List<JsonObject> contenidos, JsonArray funciones)` | `ModelReply` |  `@Override` |
+| `buscarModeloDisponible()` | `Optional<String>` | Pregunta a Google qué modelos tiene la clave y elige el Flash-Lite estable más nuevo |
+| `elegirModelo(List<String> nombres)` *(static)* | `Optional<String>` | Elige el Flash-Lite (o Flash) estable de versión más alta |
+| `textoComoContenido(String rol, String texto)` *(static)* | `JsonObject` | Arma un mensaje de Gemini con un solo texto |
+
+##### LanguageModel
+
+| Campo | Valor |
+|---|---|
+| Clase | `LanguageModel` |
+| Paquete | `sistemainventario.ia` |
+| Tipo | Interfaz |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Contrato de un modelo de lenguaje en la nube: recibe instrucciones, historial y funciones y devuelve texto o llamadas a funciones. |
+| Archivo | [LanguageModel.java](../src/main/java/sistemainventario/ia/LanguageModel.java) |
+
+**Atributos**
+
+No tiene atributos.
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `generar(String instrucciones, List<JsonObject> contenidos, JsonArray funciones)` | `ModelReply` | Pide la siguiente respuesta del modelo |
+
+##### SecureConnection
+
+| Campo | Valor |
+|---|---|
+| Clase | `SecureConnection` |
+| Paquete | `sistemainventario.ia` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Crea el cliente HTTP del asistente con el proxy y los certificados de Windows además de los de Java. |
+| Archivo | [SecureConnection.java](../src/main/java/sistemainventario/ia/SecureConnection.java) |
+
+**Atributos**
+
+No tiene atributos.
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `crearCliente()` *(static)* | `HttpClient` | Crea el cliente HTTP con el proxy y los certificados del sistema |
+
 #### Paquete `service`
+
+##### AssistantProposal
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantProposal` |
+| Paquete | `sistemainventario.service` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Cambio propuesto por el asistente (venta, entrada, salida, precio o producto nuevo) que solo se ejecuta si el usuario lo confirma. |
+| Archivo | [AssistantProposal.java](../src/main/java/sistemainventario/service/AssistantProposal.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `id` | `String` | Identificador |
+| `tipo` | `String` | venta, entrada, salida, precio o producto |
+| `titulo` | `String` | Título de la tarjeta |
+| `lineas` | `List<String>` | Detalle que ve el usuario |
+| `total` | `Double` | Total, si aplica |
+| `accion` | `Runnable` | Cambio que se hace al confirmar |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `AssistantProposal(String id, String tipo, String titulo, List<String> lineas, Double total, Runnable accion)` | — (constructor) | Constructor |
+| `ejecutar()` | `void` | Hace el cambio propuesto |
+| Getters | — | `getId()`, `getTipo()`, `getTitulo()`, `getLineas()`, `getTotal()` |
+
+##### AssistantService
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantService` |
+| Paquete | `sistemainventario.service` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Conversación con el asistente: envía el historial al modelo, ejecuta las funciones que pide y guarda los cambios propuestos hasta que el usuario los confirme. |
+| Archivo | [AssistantService.java](../src/main/java/sistemainventario/service/AssistantService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `modelo` | `LanguageModel` | Modelo de lenguaje (GeminiClient) |
+| `servicios` | `Supplier<ProfileServices>` | Servicios del perfil activo |
+| `perfil` | `Supplier<Profile>` | Perfil activo (nombre y tipo de negocio) |
+| `hiloDeDatos` | `Executor` | Ejecuta el acceso a los datos sin cruzarse con la interfaz |
+| `historial` | `List<JsonObject>` | Mensajes de la conversación |
+| `pendientes` | `Map<String, AssistantProposal>` | Propuestas por confirmar, por ID |
+| `notas` | `List<String>` | Avisos para el modelo en el siguiente mensaje (por ejemplo, lo confirmado) |
+| Constantes (`static final`) | — | `MAXIMO_PASOS`, `MAXIMO_MENSAJES` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `AssistantService(LanguageModel modelo, Supplier<ProfileServices> servicios, Supplier<Profile> perfil, Executor hiloDeDatos)` | — (constructor) | Constructor |
+| `conversar(String mensaje)` | `Reply` | Envía el mensaje al modelo, ejecuta las funciones que pide y devuelve la respuesta con las propuestas |
+| `confirmar(String id)` | `String` | Ejecuta la propuesta y avisa al modelo en el siguiente mensaje |
+| `descartar(String id)` | `void` | Descarta la propuesta |
+| `reiniciar()` | `void` | Empieza una conversación nueva |
+
+##### AssistantSettingsService
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantSettingsService` |
+| Paquete | `sistemainventario.service` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Configuración del asistente: guarda la clave y el modelo, crea el cliente del modelo de lenguaje y prueba la conexión. |
+| Archivo | [AssistantSettingsService.java](../src/main/java/sistemainventario/service/AssistantSettingsService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `repositorio` | `AssistantConfigRepository` | Archivo de configuración |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `AssistantSettingsService(AssistantConfigRepository repositorio)` | — (constructor) | Constructor |
+| `leer()` | `Optional<AssistantSettings>` | Configuración guardada, si hay clave |
+| `modeloActual()` | `String` | Modelo guardado o el de por defecto |
+| `configurar(String clave, String modelo)` | `void` | Guarda la clave y el modelo; con la clave vacía la borra |
+| `requerir()` | `AssistantSettings` | Configuración guardada; error si no hay clave |
+| `crearModelo(Consumer<String> alCambiarModelo)` | `LanguageModel` | Crea el cliente del modelo; si Google retira el modelo guarda el nuevo |
+| `probarConexion(Consumer<String> alCambiarModelo)` | `ConnectionTest` | Envía un mensaje corto y devuelve qué modelo respondió |
+
+##### AssistantTools
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantTools` |
+| Paquete | `sistemainventario.service` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Funciones del inventario que el asistente puede usar: consultas (productos, por reponer, proveedores, ventas, vencimientos) y propuestas de cambios. |
+| Archivo | [AssistantTools.java](../src/main/java/sistemainventario/service/AssistantTools.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `servicios` | `ProfileServices` | Servicios del perfil activo |
+| `alProponer` | `Consumer<AssistantProposal>` | Recibe cada propuesta creada |
+| `contador` | `int` | Consecutivo de las propuestas |
+| Constantes (`static final`) | — | `OBSERVACION` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `AssistantTools(ProfileServices servicios, Consumer<AssistantProposal> alProponer)` | — (constructor) | Constructor |
+| `declaraciones()` *(static)* | `JsonArray` | Declaraciones de las funciones para el modelo (nombre, descripción y parámetros) |
+| `ejecutar(String nombre, JsonObject argumentos)` | `JsonObject` | Ejecuta la función pedida por el modelo y devuelve el resultado en JSON |
+| `normalizar(String texto)` *(static)* | `String` | Texto en minúsculas y sin tildes para comparar nombres |
+| `dinero(double valor)` *(static)* | `String` | Formatea un valor en pesos |
 
 ##### BackupService
 
@@ -1408,6 +1803,59 @@ No declara métodos propios.
 | `QrSaleScanner(QrReader lector, LongSupplier reloj)` | — (constructor) | Constructor |
 | `procesar(BufferedImage cuadro, InventoryService inventario)` | `Optional<Product>` | Devuelve el producto si hay una etiqueta nueva en el cuadro |
 
+##### ReportExportService
+
+| Campo | Valor |
+|---|---|
+| Clase | `ReportExportService` |
+| Paquete | `sistemainventario.service` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Exporta un informe a Excel: decide la carpeta (Documentos/TBalance) y el nombre del archivo y usa ReportExcelWriter. |
+| Archivo | [ReportExportService.java](../src/main/java/sistemainventario/service/ReportExportService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `excel` | `ReportExcelWriter` | Escritor del archivo .xlsx |
+| `carpeta` | `Path` | Carpeta donde se guardan los informes |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `ReportExportService(ReportExcelWriter excel, Path carpeta)` | — (constructor) | Constructor |
+| `exportarExcel(SalesReport informe, String negocio)` | `Path` | Guarda el informe como .xlsx y devuelve la ruta |
+| `carpetaPorDefecto(Path usuario)` *(static)* | `Path` | Documentos/TBalance, o la carpeta del usuario si no hay Documentos |
+
+##### ReportService
+
+| Campo | Valor |
+|---|---|
+| Clase | `ReportService` |
+| Paquete | `sistemainventario.service` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Calcula el informe de ventas de un período: totales, comparación, agrupación por día, semana o mes, ranking de productos, métodos de pago y utilidad real. |
+| Archivo | [ReportService.java](../src/main/java/sistemainventario/service/ReportService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `ventas` | `SaleService` | Servicio de ventas del perfil |
+| `inventario` | `InventoryService` | Servicio de inventario (costo actual) |
+| Constantes (`static final`) | — | `MESES`, `DIAS_MAX_POR_DIA`, `DIAS_MAX_POR_SEMANA`, `TOPE_PRODUCTOS` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `ReportService(SaleService ventas, InventoryService inventario)` | — (constructor) | Constructor |
+| `generar(String desdeIso, String hastaIso)` | `SalesReport` | Calcula el informe del período (y del período de comparación) |
+| `generar(String desdeIso, String hastaIso, String anteriorDesdeIso, String anteriorHastaIso)` | `SalesReport` | Calcula el informe del período (y del período de comparación) |
+
 ##### SaleService
 
 | Campo | Valor |
@@ -1463,6 +1911,42 @@ No tiene atributos.
 
 #### Paquete `bridge`
 
+##### AssistantController
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantController` |
+| Paquete | `sistemainventario.bridge` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Controlador del asistente: configuración, prueba de conexión y conversación en segundo plano; confirma o descarta lo que propone. |
+| Archivo | [AssistantController.java](../src/main/java/sistemainventario/bridge/AssistantController.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `notificador` | `ViewNotifier` | Avisa las respuestas a la vista |
+| `hiloDeDatos` | `Executor` | Acceso a los datos desde el hilo del asistente |
+| `ajustes` | `AssistantSettingsService` | Configuración del asistente (AssistantSettingsService) |
+| `segundoPlano` | `ExecutorService` | Hilo donde se consulta al modelo |
+| `asistente` | `AssistantService` | Conversación actual |
+| `perfilDeLaConversacion` | `String` | Perfil con el que empezó la conversación |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `AssistantController(AppContext contexto, ViewNotifier notificador, Executor hiloDeDatos)` | — (constructor) | Constructor |
+| `asistenteEstado()` | `String` | Si el asistente está configurado y con qué modelo |
+| `asistenteConfigurar(String clave, String modelo)` | `String` | Guarda o borra la clave y el modelo |
+| `asistenteEnviar(String mensaje)` | `String` | Envía un mensaje en segundo plano; la respuesta llega con onAsistenteRespuesta |
+| `asistenteProbar()` | `String` | Prueba la clave con un mensaje corto; el resultado llega con onAsistentePrueba |
+| `asistenteConfirmar(String propuestaId)` | `String` | Confirma una propuesta y la ejecuta |
+| `asistenteDescartar(String propuestaId)` | `String` | Descarta una propuesta |
+| `asistenteReiniciar()` | `String` | Empieza una conversación nueva |
+
 ##### BackupController
 
 | Campo | Valor |
@@ -1491,6 +1975,32 @@ No tiene atributos.
 | `restaurarRespaldo(String nombre)` | `String` | Restaura una copia y pide a la vista recargar |
 | `eliminarRespaldo(String nombre)` | `String` | Elimina una copia |
 | `obtenerCarpetaRespaldos()` | `String` | Ruta de la carpeta de respaldos |
+
+##### BridgeInvoker
+
+| Campo | Valor |
+|---|---|
+| Clase | `BridgeInvoker` |
+| Paquete | `sistemainventario.bridge` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Llama por nombre a un método público del JavaBridge con argumentos en JSON; lo usa el servidor local de la ventana de Edge. |
+| Archivo | [BridgeInvoker.java](../src/main/java/sistemainventario/bridge/BridgeInvoker.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `puente` | `Object` | Objeto cuyos métodos se llaman (JavaBridge) |
+| `gson` | `Gson` | Convierte los argumentos JSON |
+| `metodos` | `Map<String, List<Method>>` | Métodos públicos agrupados por nombre |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `BridgeInvoker(Object puente)` | — (constructor) | Constructor |
+| `invocar(String nombre, String argumentosJson)` | `String` | Llama al método por nombre con los argumentos JSON y devuelve su resultado |
 
 ##### BridgeResponse
 
@@ -1599,7 +2109,7 @@ No tiene atributos.
 | Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
 | Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de los casos de uso de productos y de las estadísticas del dashboard. |
+| Responsabilidad principal | Controlador de los casos de uso de productos y de las estadísticas del inventario. |
 | Archivo | [InventoryController.java](../src/main/java/sistemainventario/bridge/InventoryController.java) |
 
 **Atributos**
@@ -1639,19 +2149,34 @@ No tiene atributos.
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `perfiles` | `ProfileController` | Controlador de perfiles |
-| `inventario` | `InventoryController` | Controlador de productos y dashboard |
+| `inventario` | `InventoryController` | Controlador de productos y estadísticas |
 | `catalogo` | `CatalogController` | Controlador de categorías y proveedores |
 | `transacciones` | `TransactionController` | Controlador de entradas, salidas y ventas |
 | `respaldos` | `BackupController` | Controlador de copias de seguridad |
 | `etiquetas` | `LabelController` | Controlador de etiquetas QR |
+| `informes` | `ReportController` | Controlador de Informes |
+| `asistente` | `AssistantController` | Controlador del asistente |
 | `escaneo` | `ScanController` | Controlador de la venta por QR |
 | `notificador` | `ViewNotifier` | Canal para avisar a la vista |
+| `transicion` | `ScreenTransition` | Transiciones de la ventana (null si la vista no las ofrece) |
+| Constantes (`static final`) | — | `CANDADO_DATOS` |
 
 **Métodos**
 
 | Método | Tipo de retorno | Descripción |
 |---|---|---|
 | `JavaBridge(AppContext contexto, ViewNotifier notificador)` | — (constructor) | Constructor |
+| `JavaBridge(AppContext contexto, ViewNotifier notificador, ScreenTransition transicion, Executor hiloDeDatos)` | — (constructor) | Constructor |
+| `transicionPantalla(double x, double y, double ancho, double alto, int milisegundos)` | `String` | Pide a la ventana desvanecer una zona; responde NO si la vista no lo ofrece |
+| `obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Delega en `ReportController` |
+| `exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Delega en `ReportController` |
+| `asistenteEstado()` | `String` | Delega en `AssistantController` |
+| `asistenteConfigurar(String clave, String modelo)` | `String` | Delega en `AssistantController` |
+| `asistenteEnviar(String mensaje)` | `String` | Delega en `AssistantController` |
+| `asistenteProbar()` | `String` | Delega en `AssistantController` |
+| `asistenteConfirmar(String propuestaId)` | `String` | Delega en `AssistantController` |
+| `asistenteDescartar(String propuestaId)` | `String` | Delega en `AssistantController` |
+| `asistenteReiniciar()` | `String` | Delega en `AssistantController` |
 | `listarPerfiles()` | `String` | Delega en `ProfileController` |
 | `obtenerPerfilActivo()` | `String` | Delega en `ProfileController` |
 | `obtenerSugerencias()` | `String` | Delega en `ProfileController` |
@@ -1754,6 +2279,32 @@ No tiene atributos.
 | `eliminarPerfil(String id)` | `String` | Elimina por ID: perfil |
 | `seleccionarPerfil(String id)` | `String` | Activa el perfil y avisa a la vista: perfil |
 
+##### ReportController
+
+| Campo | Valor |
+|---|---|
+| Clase | `ReportController` |
+| Paquete | `sistemainventario.bridge` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Controlador de la sección Informes: devuelve el informe de un período en JSON y lo exporta a Excel. |
+| Archivo | [ReportController.java](../src/main/java/sistemainventario/bridge/ReportController.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `abridor` | `FileOpener` | Abre el Excel generado |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `ReportController(AppContext contexto, FileOpener abridor)` | — (constructor) | Constructor |
+| `obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Devuelve en JSON el informe del período |
+| `exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Guarda el informe en Documentos/TBalance como .xlsx y lo abre |
+
 ##### ScanController
 
 | Campo | Valor |
@@ -1784,6 +2335,55 @@ No tiene atributos.
 | `iniciarEscaneoQR()` | `String` | Enciende la cámara y empieza a buscar etiquetas |
 | `detenerEscaneoQR()` | `String` | Apaga la cámara |
 | `estaEscaneando()` | `boolean` | Indica si la cámara está encendida |
+
+##### ScreenTransition
+
+| Campo | Valor |
+|---|---|
+| Clase | `ScreenTransition` |
+| Paquete | `sistemainventario.bridge` |
+| Tipo | Interfaz |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Contrato de una transición visual que la ventana hace por encima de la página (desvanecer una zona). |
+| Archivo | [ScreenTransition.java](../src/main/java/sistemainventario/bridge/ScreenTransition.java) |
+
+**Atributos**
+
+No tiene atributos.
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `desvanecerZona(double x, double y, double ancho, double alto, int milisegundos)` | `void` | Desvanece una imagen de la zona indicada encima de la página |
+
+##### SseNotifier
+
+| Campo | Valor |
+|---|---|
+| Clase | `SseNotifier` |
+| Paquete | `sistemainventario.bridge` |
+| Tipo | Concreta |
+| Hereda de / implementa | `ViewNotifier` |
+| Responsabilidad principal | Implementación de ViewNotifier para la ventana de Edge: envía cada aviso a la página por una conexión de eventos (Server-Sent Events). |
+| Archivo | [SseNotifier.java](../src/main/java/sistemainventario/bridge/SseNotifier.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `conexiones` | `List<OutputStream>` | Conexiones abiertas de la página |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `agregar(OutputStream salida)` | `void` | Registra una conexión de la página |
+| `quitar(OutputStream salida)` | `void` | Quita una conexión cerrada |
+| `conectadas()` | `int` | Número de páginas conectadas |
+| `ejecutarScript(String script)` | `void` |  `@Override` |
+| `latido()` | `void` | Mantiene viva la conexión y detecta si se cerró |
+| `formatear(String script)` *(static)* | `String` | Da formato de evento al script |
 
 ##### TransactionController
 
@@ -1862,6 +2462,114 @@ No tiene atributos.
 
 #### Paquete `view`
 
+##### BrowserWindow
+
+| Campo | Valor |
+|---|---|
+| Clase | `BrowserWindow` |
+| Paquete | `sistemainventario.view` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Busca Edge o Chrome y abre la interfaz en modo aplicación (ventana sin barra de direcciones) con una carpeta de perfil propia. |
+| Archivo | [BrowserWindow.java](../src/main/java/sistemainventario/view/BrowserWindow.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `carpetaPerfil` | `Path` | Carpeta del perfil de la ventana (~/.inventariopro/ventana) |
+| `proceso` | `Process` | Proceso del navegador |
+| Constantes (`static final`) | — | `ANCHO`, `ALTO`, `VERSION_ICONO` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `BrowserWindow(Path carpetaPerfil)` | — (constructor) | Constructor |
+| `buscarNavegador()` *(static)* | `Optional<String>` | Busca Edge o Chrome instalado |
+| `abrir(String navegador, String url)` | `void` | Abre la ventana en modo aplicación con la dirección indicada |
+| `cerrar()` | `void` | Cierra la ventana si sigue abierta |
+| Getters | — | `getProceso()` |
+
+##### DesktopBrowserApp
+
+| Campo | Valor |
+|---|---|
+| Clase | `DesktopBrowserApp` |
+| Paquete | `sistemainventario.view` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Arranca la aplicación en una ventana de Edge: crea el servidor local, abre la ventana y cierra el programa cuando la ventana se cierra. |
+| Archivo | [DesktopBrowserApp.java](../src/main/java/sistemainventario/view/DesktopBrowserApp.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| Constantes (`static final`) | — | `ESPERA_CIERRE` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `iniciar(AppContext contexto)` *(static)* | `boolean` | Abre la ventana de Edge; devuelve false para usar el visor de JavaFX |
+
+##### LocalWebServer
+
+| Campo | Valor |
+|---|---|
+| Clase | `LocalWebServer` |
+| Paquete | `sistemainventario.view` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Servidor HTTP solo en 127.0.0.1 con clave aleatoria: entrega la interfaz, atiende las llamadas al bridge y envía los avisos a la página. |
+| Archivo | [LocalWebServer.java](../src/main/java/sistemainventario/view/LocalWebServer.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `invocador` | `BridgeInvoker` | Llama a los métodos del bridge |
+| `notificador` | `SseNotifier` | Avisos hacia la página |
+| `clave` | `String` | Clave aleatoria de la sesión |
+| `servidor` | `HttpServer` | Servidor HTTP del JDK |
+| `hilos` | `ExecutorService` | Hilos que atienden las peticiones |
+| Constantes (`static final`) | — | `RAIZ_RECURSOS`, `TIPOS` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `LocalWebServer(BridgeInvoker invocador, SseNotifier notificador)` | — (constructor) | Constructor |
+| `iniciar()` | `String` | Arranca el servidor en un puerto libre y devuelve la dirección de la interfaz |
+| `detener()` | `void` | Detiene el servidor |
+
+##### SnapshotTransition
+
+| Campo | Valor |
+|---|---|
+| Clase | `SnapshotTransition` |
+| Paquete | `sistemainventario.view` |
+| Tipo | Concreta |
+| Hereda de / implementa | `ScreenTransition` |
+| Responsabilidad principal | Implementación de ScreenTransition con JavaFX: toma una imagen de la zona y la desvanece con la tarjeta gráfica. |
+| Archivo | [SnapshotTransition.java](../src/main/java/sistemainventario/view/SnapshotTransition.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `raiz` | `StackPane` | Contenedor donde se pone la imagen |
+| `vista` | `WebView` | Visor del que se toma la imagen |
+| Constantes (`static final`) | — | `DESENFOQUE_FINAL`, `DESPLAZAMIENTO_FINAL`, `DURACION_MAXIMA` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `SnapshotTransition(StackPane raiz, WebView vista)` | — (constructor) | Constructor |
+| `desvanecerZona(double x, double y, double ancho, double alto, int milisegundos)` | `void` |  `@Override` |
+
 ##### WebViewMain
 
 | Campo | Valor |
@@ -1870,7 +2578,7 @@ No tiene atributos.
 | Paquete | `sistemainventario.view` |
 | Tipo | Concreta |
 | Hereda de / implementa | — |
-| Responsabilidad principal | Construye la ventana con el WebView, carga la interfaz HTML, registra el JavaBridge y apaga la cámara al cerrar. |
+| Responsabilidad principal | Ventana de respaldo con el visor de JavaFX: carga la interfaz HTML, registra el JavaBridge, hace las transiciones grandes y apaga la cámara al cerrar. |
 | Archivo | [WebViewMain.java](../src/main/java/sistemainventario/view/WebViewMain.java) |
 
 **Atributos**
@@ -1879,6 +2587,8 @@ No tiene atributos.
 |---|---|---|
 | `contexto` | `AppContext` | Contexto de la aplicación |
 | `motor` | `WebEngine` | Motor web del WebView |
+| `webView` | `WebView` | Visor web de JavaFX |
+| `raiz` | `StackPane` | Contenedor del visor y de las imágenes de las transiciones |
 | `bridge` | `JavaBridge` | Puente expuesto a JavaScript |
 | Constantes (`static final`) | — | `RECURSO_HTML`, `ANCHO_INICIAL`, `ALTO_INICIAL`, `ANCHO_MINIMO`, `ALTO_MINIMO` |
 
@@ -1889,6 +2599,29 @@ No tiene atributos.
 | `WebViewMain(AppContext contexto)` | — (constructor) | Constructor |
 | `show(Stage ventana)` | `void` | Construye y muestra la ventana |
 | `actualizarTitulo(Stage ventana)` | `void` | Pone el perfil activo en el título |
+
+##### WindowsTaskbarIcon
+
+| Campo | Valor |
+|---|---|
+| Clase | `WindowsTaskbarIcon` |
+| Paquete | `sistemainventario.view` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Asigna el ícono de alta resolución a la ventana de Edge en la barra de tareas de Windows (con PowerShell y la API de Windows). |
+| Archivo | [WindowsTaskbarIcon.java](../src/main/java/sistemainventario/view/WindowsTaskbarIcon.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| Constantes (`static final`) | — | `RECURSO`, `SCRIPT` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `aplicar(Path carpeta)` *(static)* | `void` | Pone el ícono en la ventana (solo en Windows) |
 
 #### Paquete `dispositivo`
 
@@ -1942,6 +2675,30 @@ No tiene atributos.
 | `cerrar()` | `void` | Apaga la webcam si está abierta `@Override` |
 
 #### Paquete `util`
+
+##### AssistantLog
+
+| Campo | Valor |
+|---|---|
+| Clase | `AssistantLog` |
+| Paquete | `sistemainventario.util` |
+| Tipo | Concreta |
+| Hereda de / implementa | — |
+| Responsabilidad principal | Escribe los errores del asistente en ~/.inventariopro/asistente.log para poder revisar por qué no respondió. |
+| Archivo | [AssistantLog.java](../src/main/java/sistemainventario/util/AssistantLog.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| Constantes (`static final`) | — | `ARCHIVO`, `TAMANO_MAXIMO` |
+
+**Métodos**
+
+| Método | Tipo de retorno | Descripción |
+|---|---|---|
+| `registrar(String mensaje)` *(static)* | `void` | Agrega una línea con fecha al registro |
+| `archivo()` *(static)* | `Path` | Ruta del archivo de registro |
 
 ##### DateUtil
 
@@ -2121,17 +2878,25 @@ No tiene atributos.
 | Herencia | `JsonRepository<T>` | `ProductRepository`, `CategoryRepository`, `SupplierRepository`, `StockEntryRepository`, `StockExitRepository`, `SaleRepository`, `ProfileRepository` | Cada subclase solo indica el archivo y el tipo de entidad. |
 | Herencia | `EntityService<T>` | `InventoryService`, `CategoryService`, `SupplierService` | Implementan `validar`, `generarId` y `nombreEntidad` del Template Method. |
 | Herencia | `RuntimeException` | `ValidationException`, `PersistenceException` | Excepciones no comprobadas del proyecto. |
+| Herencia | `RuntimeException` | `AssistantException` | Error del asistente con un mensaje para el usuario. |
 | Herencia | `javafx.application.Application` | `Main` | Aplicación JavaFX. |
 | Realización (interfaz) | `Repository<T>` | `JsonRepository<T>` | Contrato de acceso a datos. |
 | Realización (interfaz) | `Camera` | `WebcamCamera` | Contrato de la cámara. |
-| Realización (interfaz) | `ViewNotifier` | `WebViewNotifier` | Contrato para avisar a la vista. |
+| Realización (interfaz) | `ViewNotifier` | `WebViewNotifier`, `SseNotifier` | Contrato para avisar a la vista: en el visor de JavaFX o por eventos a la ventana de Edge. |
+| Realización (interfaz) | `LanguageModel` | `GeminiClient` | Contrato del modelo de lenguaje del asistente. |
+| Realización (interfaz) | `ScreenTransition` | `SnapshotTransition` | Contrato de las transiciones de la ventana JavaFX. |
 | Realización (interfaz) | `FileOpener` | `DesktopFileOpener` | Contrato para abrir archivos con el sistema. |
 | Composición | `Sale` | `SaleItem (1..*)` | `Sale.agregarItem` crea los ítems; no existen sin la venta. |
-| Composición | `JavaBridge` | `ProfileController`, `InventoryController`, `CatalogController`, `TransactionController`, `BackupController`, `LabelController`, `ScanController` | El bridge crea sus siete controladores en su constructor. |
-| Composición | `AppContext` | `ProfileService`, `BackupService`, `LabelService` | El contexto crea estos servicios y los mantiene durante toda la ejecución. |
+| Composición | `JavaBridge` | `ProfileController`, `InventoryController`, `CatalogController`, `TransactionController`, `BackupController`, `LabelController`, `ReportController`, `AssistantController`, `ScanController` | El bridge crea sus nueve controladores en su constructor. |
+| Composición | `AppContext` | `ProfileService`, `BackupService`, `LabelService`, `AssistantSettingsService`, `ReportExportService` | El contexto crea estos servicios y los mantiene durante toda la ejecución. |
 | Composición | `JsonRepository<T>`, `GlobalConfigRepository` | `JsonFileStore` | Cada repositorio crea su propio almacén de archivo. |
 | Composición | `ProfileServices` | `InventoryService`, `CategoryService`, `SupplierService`, `MovementService`, `SaleService` | Los cinco gestores de un perfil se crean juntos en `ProfileServicesFactory.crear` y se reemplazan juntos al cambiar de perfil. |
-| Composición | `WebViewMain` | `JavaBridge` | La ventana crea el bridge y lo registra en JavaScript. |
+| Composición | `WebViewMain` | `JavaBridge`, `SnapshotTransition` | La ventana JavaFX crea el bridge, lo registra en JavaScript y le da sus transiciones. |
+| Composición | `DesktopBrowserApp` | `JavaBridge`, `SseNotifier`, `LocalWebServer`, `BrowserWindow` | Al arrancar en Edge crea el bridge, el canal de avisos, el servidor local y la ventana. |
+| Composición | `AssistantController` | `AssistantService` | Crea la conversación con el modelo y la reinicia al cambiar de perfil. |
+| Composición | `AssistantService` | `AssistantTools` | Crea las herramientas en cada llamada a funciones del modelo. |
+| Composición | `AssistantTools` | `AssistantProposal` | Crea cada cambio propuesto; el servicio lo guarda hasta que el usuario lo confirma. |
+| Composición | `ReportService` | `SalesReport` | Arma el informe del período con sus totales, serie, ranking y detalle. |
 | Agregación | `EntityService<T>` | `Repository<T>` | Recibe el repositorio por constructor. |
 | Agregación | `MovementService`, `SaleService` | `InventoryService y sus repositorios` | Reciben por constructor el gestor de inventario y los repositorios de entradas, salidas o ventas. |
 | Agregación | `ProfileService` | `ProfileServicesFactory`, `GlobalConfigService`, `ProfileDirectory`, `Repository<Profile>` | Recibe sus colaboradores por constructor. |
@@ -2142,10 +2907,19 @@ No tiene atributos.
 | Agregación | `ProfileController`, `BackupController`, `LabelController` | `ViewNotifier`, `FileOpener` | Reciben las interfaces por constructor. |
 | Agregación | `GlobalConfig` | `Profile (*)` | Guarda la lista de perfiles; los perfiles también se guardan en `perfiles.json`. |
 | Agregación | `AppContext` | `ProfileServices` | Servicios del perfil activo; se reemplazan al activar otro perfil. |
+| Agregación | `ReportService` | `SaleService`, `InventoryService` | Recibe por constructor las ventas y el inventario del perfil. |
+| Agregación | `ReportExportService` | `ReportExcelWriter` | Recibe el escritor del archivo por constructor. |
+| Agregación | `AssistantSettingsService` | `AssistantConfigRepository` | Recibe el repositorio de la configuración por constructor. |
+| Agregación | `AssistantService` | `LanguageModel`, `ProfileServices` | Recibe el modelo y los servicios del perfil activo por constructor. |
+| Agregación | `LocalWebServer` | `BridgeInvoker`, `SseNotifier` | Recibe quién atiende las llamadas y el canal de avisos por constructor. |
+| Agregación | `AssistantController` | `ViewNotifier`, `AssistantSettingsService` | Avisa las respuestas a la vista y usa la configuración que le da el contexto. |
 | Dependencia (uso) | `InventoryMovement` | `Product` | `aplicarA(Product)` modifica el stock del producto recibido. |
 | Dependencia (uso) | `Sale` | `Product` | `agregarItem(Product, int, double)` toma los datos del producto. |
 | Dependencia (uso) | `Profile` | `BusinessType` | `getPerfilNegocio()` convierte el tipo guardado en el enum. |
 | Dependencia (uso) | `QrSaleScanner` | `InventoryService`, `Product` | `procesar` busca el producto cuyo ID sale del QR. |
+| Dependencia (uso) | `Sale` | `PaymentMethod` | `normalizarPago()` valida el método y si admite comprobante. |
+| Dependencia (uso) | `AssistantSettingsService` | `GeminiClient` | Crea el cliente con la clave y el modelo guardados. |
+| Dependencia (uso) | `ReportExcelWriter` | `SalesReport` | `escribir` recorre el informe para armar las hojas. |
 
 ## 4. Herencia, interfaces y clases abstractas
 
@@ -2164,26 +2938,32 @@ No tiene atributos.
 |---|---|---|---|
 | `Repository<T>` | listarTodos, buscarPorId, existe, filtrar, agregar, actualizar, eliminar, siguienteIdNumerico | `JsonRepository<T>` | Los gestores del paquete `service`. |
 | `Camera` | abrir, capturar, cerrar | WebcamCamera | `ScanController`. |
-| `ViewNotifier` | ejecutarScript | WebViewNotifier | `JavaBridge`, `ProfileController`, `BackupController`, `ScanController`. |
-| `FileOpener` | abrir | DesktopFileOpener | `LabelController`. |
+| `ViewNotifier` | ejecutarScript | WebViewNotifier, SseNotifier | `JavaBridge`, `ProfileController`, `BackupController`, `ScanController`, `AssistantController`. |
+| `FileOpener` | abrir | DesktopFileOpener | `LabelController`, `ReportController`. |
+| `LanguageModel` | generar | GeminiClient | `AssistantService`. |
+| `ScreenTransition` | desvanecerZona | SnapshotTransition | `JavaBridge` (solo en la ventana JavaFX). |
 
 ## 5. Diseño de la interfaz (mockups)
 
-Las pantallas siguientes son capturas de la interfaz real del proyecto (v3.3.0) con datos de ejemplo.
+Las pantallas siguientes son capturas de la interfaz real del proyecto (v3.4.0) con datos de ejemplo.
 
 | Pantalla | Imagen |
 |---|---|
-| Dashboard | ![Dashboard](img/dashboard.png) |
-| Perfiles | ![Perfiles](img/perfiles.png) |
+| Hoy (resumen del día) | ![Hoy](img/dashboard.png) |
+| Mis negocios (perfiles, cada uno con su color) | ![Mis negocios](img/perfiles.png) |
 | Productos | ![Productos](img/productos.png) |
 | Formulario de producto (precio de compra, de venta y utilidad) | ![Formulario de producto](img/producto-form.png) |
 | Etiqueta QR de un producto | ![Etiqueta QR](img/etiqueta-qr.png) |
 | Entradas | ![Entradas](img/entradas.png) |
-| Ventas | ![Ventas](img/ventas.png) |
+| Ventas (cuaderno de caja por día) | ![Ventas](img/ventas.png) |
+| Nueva venta con método de pago | ![Nueva venta](img/nueva-venta.png) |
 | Venta por QR | ![Venta por QR](img/venta-por-qr.png) |
-| Respaldos | ![Respaldos](img/respaldos.png) |
+| Informes | ![Informes](img/informes.png) |
+| Informe en PDF | ![Informe en PDF](img/informe-pdf.png) |
+| Asistente | ![Asistente](img/asistente.png) |
+| Copias de seguridad | ![Copias de seguridad](img/respaldos.png) |
 
-Distribución común: menú lateral naranja con las secciones (Dashboard, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Perfiles y Respaldos) y el interruptor de modo claro u oscuro; la sección activa se ve como una pestaña blanca unida a la página. Arriba van la búsqueda, los botones Venta por QR y Nueva venta y el perfil activo. El contenido se organiza en tarjetas en forma de carpeta, tablas y formularios en ventanas modales. El dashboard muestra un saludo con la fecha, cuatro indicadores, la utilidad estimada del inventario, los productos por reponer con un botón para registrar su entrada, las ventas de los últimos 14 días, los vencimientos y el calendario.
+Distribución común: menú lateral con el logo de la T y las secciones (Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Informes, Mis negocios y Copias de seguridad) y el interruptor de modo oscuro; una barra del color del negocio marca la sección activa. Arriba van la búsqueda (solo en Productos), los botones Venta por QR y Nueva venta (en Ventas) y el perfil activo. El diseño es plano, sobre una base neutra, y el color de acento cambia según el tipo de negocio del perfil activo (en las capturas, naranja de ferretería; en la del asistente, amarillo de tienda de barrio). Cada sección empieza con una frase que dice lo importante ("Hoy van $ 477.500 en 6 ventas", "8 productos, 4 piden atención"). Hoy muestra lo que está por resolver, las ventas del día y los pedidos por proveedor; Ventas agrupa las ventas por día con los totales de efectivo, digital, fiado y total. Las tablas y los formularios en ventanas modales conservan los mismos campos; abajo a la derecha está el botón del asistente. Las capturas están en modo claro.
 
 ## 6. Patrones GRASP aplicados
 
@@ -2193,19 +2973,28 @@ Distribución común: menú lateral naranja con las secciones (Dashboard, Produc
 | **Creador** | `ProfileServicesFactory.crear(String)` | Tiene el dato para inicializarlos (la carpeta del perfil) y crea los repositorios y los cinco gestores del perfil. |
 | **Creador** | `CategoryService.crearPredefinidas(BusinessType)` | Administra las categorías del perfil y crea las predefinidas del tipo de negocio. |
 | **Creador** | `AppContext (constructor)` | Raíz de composición: crea los repositorios y servicios globales y los conecta por constructor. |
+| **Creador** | `ReportService.generar` | Tiene las ventas y los costos del período, por eso crea el `SalesReport` con todas sus partes. |
+| **Creador** | `AssistantTools.proponer` | Las herramientas tienen los datos validados del cambio (productos, cantidades, precios), por eso crean el `AssistantProposal`. |
 | **Controlador** | `JavaBridge` | Controlador fachada: es el único objeto que recibe los eventos de la interfaz (`window.javaBridge`) y delega cada uno. |
-| **Controlador** | `ProfileController`, `InventoryController`, `CatalogController`, `TransactionController`, `BackupController`, `LabelController`, `ScanController` | Controladores de caso de uso: cada uno atiende un grupo de operaciones y delega en los servicios. |
+| **Controlador** | `ProfileController`, `InventoryController`, `CatalogController`, `TransactionController`, `BackupController`, `LabelController`, `ReportController`, `AssistantController`, `ScanController` | Controladores de caso de uso: cada uno atiende un grupo de operaciones y delega en los servicios. |
 | **Experto en información** | `Product.getUtilidadUnitaria`, `getMargen`, `getUtilidadEstimadaStock` | El producto tiene el precio de compra, el de venta y el stock; por eso calcula su propia utilidad. `InventoryService.getUtilidadEstimadaInventario` solo suma lo que cada producto responde. |
 | **Experto en información** | `Product.disminuirStock`, `aumentarStock`, `verificarStockDisponible`, `getEstado`, `estaVencido`, `venceDentroDe` | El producto tiene el stock, el stock mínimo y la fecha de vencimiento; él decide su estado y si puede descontar unidades. |
 | **Experto en información** | `Sale.calcularTotal`, `cantidadesPorProducto / SaleItem.getSubtotal` | La venta conoce sus ítems y cada ítem su cantidad y precio. |
 | **Experto en información** | `Product.contenidoEtiquetaQR`, `idDesdeEtiquetaQR` | El producto define el texto de su QR y, como conoce el formato, también lo interpreta. |
 | **Experto en información** | `GlobalConfig.getPerfilActivo`, `BackupRepository.listar` | Cada clase responde con la información que ella misma tiene. |
+| **Experto en información** | `SaleItem.utilidadCon`, `tieneCosto / Sale.normalizarPago` | El ítem guarda el costo con el que se vendió y calcula su utilidad; la venta valida su propio método de pago (un fiado necesita cliente). |
+| **Experto en información** | `PaymentMethod.desdeTexto`, `esDigital` | El enum conoce los nombres de cada método y cuáles admiten comprobante. |
 | **Bajo acoplamiento** | `EntityService(Repository<T>)`, `MovementService`, `SaleService` | Los servicios dependen de la interfaz `Repository<T>` y reciben sus dependencias por constructor. |
 | **Bajo acoplamiento** | `ViewNotifier`, `Camera`, `FileOpener` | Los controladores no dependen de `WebEngine`, de la librería de la cámara ni de `java.awt.Desktop`. |
 | **Bajo acoplamiento** | `QrGenerator`, `QrReader`, `WebcamCamera` | Solo estas clases importan ZXing o webcam-capture. |
+| **Bajo acoplamiento** | `AssistantService(LanguageModel)` | El asistente depende de la interfaz `LanguageModel`, no de Gemini; solo `GeminiClient` conoce la API de Google. |
+| **Polimorfismo** | `ViewNotifier: WebViewNotifier`, `SseNotifier` | Los controladores llaman `ejecutarScript` sin saber si la vista es el visor de JavaFX o la ventana de Edge. |
+| **Variaciones protegidas** | `LanguageModel`, `GeminiClient.buscarModeloDisponible` | El cambio de proveedor o de modelo queda dentro de `GeminiClient`; si Google retira el modelo, el cliente elige otro y el resto del sistema no cambia. |
+| **Fabricación pura** | `BridgeInvoker`, `LocalWebServer`, `ReportExcelWriter` | Clases que no son del dominio, creadas para conectar la ventana de Edge con Java y para escribir el Excel, y así no cargar esas tareas al dominio ni a los controladores. |
 | **Alta cohesión** | `Controladores del paquete bridge` | Cada controlador atiende un único grupo de casos de uso (en P2 un solo `JavaBridge` hacía todo). |
 | **Alta cohesión** | `JsonFileStore`, `ProfileDirectory`, `BridgeResponse`, `ZipArchiver` | Clases pequeñas con un solo propósito. |
 | **Alta cohesión** | `QrSaleScanner` | Solo coordina leer el QR, interpretar el texto y buscar el producto. |
+| **Alta cohesión** | `ReportService / ReportExportService / ReportExcelWriter` | Calcular el informe, decidir dónde se guarda y escribir el archivo están en clases distintas. |
 
 ## 7. Principios SOLID aplicados
 
@@ -2216,12 +3005,16 @@ Distribución común: menú lateral naranja con las secciones (Dashboard, Produc
 | **SRP** | `ZipArchiver / BackupRepository / BackupService` | Comprimir, administrar la carpeta de copias y coordinar el caso de uso están separados. |
 | **SRP** | `QrGenerator / LabelService / LabelRepository` | Generar el código, dibujar la etiqueta y guardar la imagen están separados. |
 | **SRP** | `BridgeResponse.ejecutar(Supplier<String>)` | Un solo lugar traduce las excepciones a `ERROR: …`. |
+| **SRP** | `ReportService / ReportExportService / ReportExcelWriter` | Calcular, nombrar y guardar, y escribir el formato `.xlsx` son tres razones de cambio separadas. |
+| **SRP** | `AssistantSettingsService / AssistantService / AssistantTools` | Configurar la clave, conversar con el modelo y ejecutar las funciones del inventario están separados. |
 | **OCP** | `JsonRepository<T> y sus subclases` | Una entidad nueva se guarda creando una subclase corta, sin modificar la clase base. |
 | **OCP** | `EntityService<T>.guardar(T) (final)` | El algoritmo de guardar está cerrado; cada gestor lo extiende con `validar()` y `generarId()`. |
 | **OCP** | `InventoryMovement.aplicarA(Product)` | `MovementService` trabaja con el tipo abstracto; un movimiento nuevo sería otra subclase. |
 | **OCP** | `Repository<T>` | Una implementación con base de datos relacional se podrá agregar sin cambiar los servicios. |
+| **OCP** | `ViewNotifier` | La ventana de Edge se agregó con una implementación nueva (`SseNotifier`) sin modificar los controladores. |
 | **LSP** | `StockEntry / StockExit` | Se pueden usar donde se espera `InventoryMovement`; ambas cumplen el contrato de `aplicarA`. |
-| **ISP** | `Camera, ViewNotifier, FileOpener` | Interfaces pequeñas: cada una tiene solo los métodos que su cliente necesita. |
-| **DIP** | `service → Repository<T>; bridge → ViewNotifier, Camera, FileOpener` | Los módulos de alto nivel dependen de abstracciones; `AppContext` y `ProfileServicesFactory` eligen las implementaciones. |
+| **LSP** | `WebViewNotifier / SseNotifier` | Cualquiera de las dos funciona donde se espera un `ViewNotifier`. |
+| **ISP** | `Camera, ViewNotifier, FileOpener, LanguageModel, ScreenTransition` | Interfaces pequeñas: cada una tiene solo los métodos que su cliente necesita. |
+| **DIP** | `service → Repository<T>, LanguageModel; bridge → ViewNotifier, Camera, FileOpener, ScreenTransition` | Los módulos de alto nivel dependen de abstracciones; `AppContext`, `ProfileServicesFactory` y las ventanas eligen las implementaciones. |
 
 La trazabilidad completa con enlaces al código está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
