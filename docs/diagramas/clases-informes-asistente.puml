@@ -1,0 +1,170 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+skinparam package {
+  BorderColor #1e4a35
+  FontColor #14281d
+}
+skinparam note {
+  BackgroundColor #fdf8ea
+  BorderColor #d4a72c
+}
+hide empty members
+
+title Diagrama de clases — informes y asistente
+package service {
+class ReportService {
+  - ventas : SaleService
+  - inventario : InventoryService
+  + generar(desdeIso : String, hastaIso : String) : SalesReport
+  + generar(desdeIso : String, hastaIso : String, anteriorDesdeIso : String, anteriorHastaIso : String) : SalesReport
+}
+class ReportExportService {
+  - excel : ReportExcelWriter
+  - carpeta : Path
+  + exportarExcel(informe : SalesReport, negocio : String) : Path
+  + carpetaPorDefecto(usuario : Path) : Path {static}
+}
+class AssistantSettingsService {
+  - repositorio : AssistantConfigRepository
+  + leer() : Optional<AssistantSettings>
+  + modeloActual() : String
+  + configurar(clave : String, modelo : String)
+  + requerir() : AssistantSettings
+  + crearModelo(alCambiarModelo : Consumer<String>) : LanguageModel
+  + probarConexion(alCambiarModelo : Consumer<String>) : ConnectionTest
+}
+class AssistantService {
+  - modelo : LanguageModel
+  - servicios : Supplier<ProfileServices>
+  - perfil : Supplier<Profile>
+  - hiloDeDatos : Executor
+  - historial : List<JsonObject>
+  - pendientes : Map<String, AssistantProposal>
+  - notas : List<String>
+  + conversar(mensaje : String) : Reply
+  + confirmar(id : String) : String
+  + descartar(id : String)
+  + reiniciar()
+}
+class AssistantTools {
+  - servicios : ProfileServices
+  - alProponer : Consumer<AssistantProposal>
+  - contador : int
+  + declaraciones() : JsonArray {static}
+  + ejecutar(nombre : String, argumentos : JsonObject) : JsonObject
+  ~ normalizar(texto : String) : String {static}
+  ~ dinero(valor : double) : String {static}
+}
+class AssistantProposal {
+  - id : String
+  - tipo : String
+  - titulo : String
+  - lineas : List<String>
+  - total : Double
+  - accion : Runnable
+  + ejecutar()
+}
+}
+package model {
+class SalesReport <<record>> {
+  - desde : String
+  - hasta : String
+  - anteriorDesde : String
+  - anteriorHasta : String
+  - agrupacion : String
+  - actual : Totals
+  - anterior : Totals
+  - serie : List<Point>
+  - productos : List<ProductRanking>
+  - metodosPago : List<PaymentShare>
+  - ventas : List<SaleLine>
+}
+class AssistantSettings <<record>> {
+  - clave : String
+  - modelo : String
+}
+enum PaymentMethod {
+  EFECTIVO
+  NEQUI
+  DAVIPLATA
+  BRE_B
+  BANCOLOMBIA
+  TARJETA_DEBITO
+  TARJETA_CREDITO
+  FIADO
+  - etiqueta : String
+  - digital : boolean
+  + getEtiqueta() : String
+  + esDigital() : boolean
+  + desdeTexto(texto : String) : Optional<PaymentMethod> {static}
+}
+}
+package ia {
+interface LanguageModel {
+  + generar(instrucciones : String, contenidos : List<JsonObject>, funciones : JsonArray) : ModelReply
+}
+class GeminiClient {
+  - clave : String
+  - modelo : String
+  - http : HttpClient
+  - alCambiarModelo : Consumer<String>
+  + modelo() : String
+  + alCambiarModelo(accion : Consumer<String>)
+  + generar(instrucciones : String, contenidos : List<JsonObject>, funciones : JsonArray) : ModelReply
+  + buscarModeloDisponible() : Optional<String>
+  ~ elegirModelo(nombres : List<String>) : Optional<String> {static}
+  + textoComoContenido(rol : String, texto : String) : JsonObject {static}
+}
+class SecureConnection {
+  ~ crearCliente() : HttpClient {static}
+}
+}
+package repository {
+class ReportExcelWriter {
+  + escribir(informe : SalesReport, negocio : String, destino : Path)
+}
+class AssistantConfigRepository {
+  - archivo : Path
+  + leer() : Optional<AssistantSettings>
+  + guardar(config : AssistantSettings)
+  + borrar()
+}
+}
+
+class ReportController
+class AssistantController
+class SaleService
+class InventoryService
+class ProfileServices <<record>>
+ReportController ..> ReportService : generar()
+ReportController ..> ReportExportService : exportarExcel()
+ReportService o-- SaleService
+ReportService o-- InventoryService
+ReportService ..> SalesReport : crea
+ReportExportService o-- ReportExcelWriter
+ReportExcelWriter ..> SalesReport
+AssistantController ..> AssistantSettingsService
+AssistantController *-- AssistantService
+AssistantSettingsService o-- AssistantConfigRepository
+AssistantSettingsService ..> GeminiClient : crea
+AssistantConfigRepository ..> AssistantSettings
+LanguageModel <|.. GeminiClient
+GeminiClient ..> SecureConnection
+AssistantService o-- LanguageModel : modelo
+AssistantService ..> ProfileServices
+AssistantService *-- AssistantTools
+AssistantTools *-- AssistantProposal : crea
+AssistantTools ..> PaymentMethod
+AssistantTools ..> ReportService : resumen_ventas
+
+@enduml

@@ -1,6 +1,6 @@
 # TBalance — Sistema de Inventario
 
-Aplicación de escritorio en **Java 17 + JavaFX** para llevar el inventario de pequeños negocios con perfiles independientes, ventas, copias de seguridad y venta por QR con la webcam. Los datos se guardan en archivos **JSON** locales y funciona sin internet.
+Aplicación de escritorio en **Java 17** para llevar el inventario de pequeños negocios con perfiles independientes, ventas con métodos de pago colombianos, informes con utilidad real (Excel y PDF), copias de seguridad, venta por QR con la webcam y un asistente con inteligencia artificial. La interfaz se abre en una ventana de **Microsoft Edge** (o en JavaFX), los datos se guardan en archivos **JSON** locales y todo funciona sin internet excepto el asistente.
 
 Proyecto de aula de **Programación de Computadores III (SS462)** — Universidad Popular del Cesar. Docente: Ing. Esp. Alfredo Bautista. Evolución del sistema TBalance de Programación II.
 
@@ -9,8 +9,8 @@ Proyecto de aula de **Programación de Computadores III (SS462)** — Universida
 | Integrante | GitHub | Rol |
 |---|---|---|
 | Kevin Jhosep Mercado | [@kjhosepmercadom](https://github.com/kjhosepmercadom) | Líder e integrador: servicios, `AppContext`, controladores del bridge, versiones |
-| Reinaldo Padilla Pedroza | [@rjpadillap](https://github.com/rjpadillap) | Persistencia y dispositivos: repositorios JSON, respaldos, QR y cámara |
-| Dair José Quintero | [@djosequintero](https://github.com/djosequintero) | Modelo de dominio, interfaz web y documentación |
+| Reinaldo Padilla Pedroza | [@rjpadillap](https://github.com/rjpadillap) | Persistencia y dispositivos: repositorios JSON, respaldos, QR y cámara; documentación |
+| Dair José Quintero | [@djosequintero](https://github.com/djosequintero) | Modelo de dominio, interfaz web y ventana de Edge |
 
 ## Documentación
 
@@ -32,7 +32,16 @@ Proyecto de aula de **Programación de Computadores III (SS462)** — Universida
 mvn clean javafx:run
 ```
 
-Requisitos: JDK 17 o superior (se recomienda **JDK 21**). JavaFX, Gson, ZXing y webcam-capture se descargan con Maven.
+Requisitos: JDK 17 o superior (se recomienda **JDK 21**). JavaFX, Gson, ZXing y webcam-capture se descargan con Maven. La ventana usa Microsoft Edge (incluido en Windows 10 y 11); con `-Dtbalance.visor=javafx` se usa el visor de JavaFX.
+
+### Asistente
+
+El asistente usa la capa gratuita de Google Gemini y cada usuario necesita su propia clave:
+
+1. Entrar a https://aistudio.google.com/apikey con una cuenta de Google y pulsar **Create API key**.
+2. En TBalance, abrir el asistente (botón redondo abajo a la derecha o `Ctrl+K`), pegar la clave y pulsar **Guardar y probar**.
+
+La clave se guarda solo en `~/.inventariopro/asistente.json`; **no se pone en el código ni se sube a GitHub**. Si algo falla, el detalle queda en `~/.inventariopro/asistente.log`.
 
 ## Estructura
 
@@ -41,13 +50,14 @@ src/main/java/sistemainventario/
 ├── AppContext, Main, Launcher   arranque y composición
 ├── model/        entidades del dominio
 ├── exception/    excepciones del proyecto
-├── repository/   acceso a datos (JSON, respaldos, etiquetas)
-├── service/      casos de uso
+├── repository/   acceso a datos (JSON, respaldos, etiquetas, Excel)
+├── ia/           cliente del modelo de lenguaje (Gemini)
+├── service/      casos de uso (incluye informes y asistente)
 ├── bridge/       controladores que atienden la vista
-├── view/         ventana JavaFX con el WebView
+├── view/         ventana de Edge (servidor local) y ventana JavaFX
 ├── dispositivo/  cámara
 └── util/         utilidades (fechas, IDs, texto, JSON, QR)
-src/main/resources/html/   interfaz (HTML, Tailwind CSS, css/tbalance.css, JavaScript y fuentes)
+src/main/resources/html/   interfaz (HTML, Tailwind CSS, css/tbalance.css, css y js/tbalance-vistas, fuentes)
 docs/                      documentación por fases, diagramas e imágenes
 ```
 
@@ -59,6 +69,8 @@ docs/                      documentación por fases, diagramas e imágenes
 ~/.inventariopro/data/perfiles/<ID>/              productos, categorias, proveedores, entradas, salidas y ventas (.json)
 ~/.inventariopro/respaldos/                       copias de seguridad .zip
 ~/.inventariopro/etiquetas/                       etiquetas QR .png
+~/.inventariopro/asistente.json                   clave y modelo del asistente (solo en este computador)
+Documentos/TBalance/                              informes de Excel
 ```
 
 ## Ramas
