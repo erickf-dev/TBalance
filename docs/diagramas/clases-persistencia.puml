@@ -95,6 +95,15 @@ class LabelRepository {
   + guardar(nombre : String, imagen : BufferedImage) : Path
   + aDataUri(imagen : BufferedImage) : String
 }
+class AssistantConfigRepository {
+  - archivo : Path
+  + leer() : Optional<AssistantSettings>
+  + guardar(config : AssistantSettings)
+  + borrar()
+}
+class ReportExcelWriter {
+  + escribir(informe : SalesReport, negocio : String, destino : Path)
+}
 }
 
 Repository <|.. JsonRepository
@@ -107,5 +116,9 @@ JsonRepository <|-- StockEntryRepository
 JsonRepository <|-- StockExitRepository
 JsonRepository <|-- SaleRepository
 JsonRepository <|-- ProfileRepository
+class AssistantSettings <<record>>
+class SalesReport <<record>>
+AssistantConfigRepository ..> AssistantSettings : leer() / guardar()
+ReportExcelWriter ..> SalesReport : escribir()
 
 @enduml

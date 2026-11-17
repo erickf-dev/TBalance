@@ -14,8 +14,8 @@ TBalance usa una arquitectura en tres capas más una capa transversal:
 | Capa | Paquetes | Depende de |
 |---|---|---|
 | Presentación | `resources/html`, `view`, `bridge` | Lógica de negocio (`service`, `model`), `dispositivo`, `util`, `exception` y la raíz (`AppContext`) |
-| Lógica de negocio | `service`, `model` | Acceso a datos (`repository`), `util`, `exception` |
-| Acceso a datos | `repository`, `dispositivo` | `model`, `util`, `exception` |
+| Lógica de negocio | `service`, `model` | Acceso a datos (`repository`, `ia`), `util`, `exception` |
+| Acceso a datos | `repository`, `ia`, `dispositivo` | `model`, `util`, `exception` |
 | Transversal | `util`, `exception` | — |
 
 `AppContext` (Singleton) es la raíz de composición: crea los repositorios concretos, los pasa por constructor a los servicios y reemplaza los servicios del perfil activo cuando el usuario cambia de perfil o restaura una copia.
@@ -26,7 +26,7 @@ TBalance usa una arquitectura en tres capas más una capa transversal:
 
 ## 3. Diagrama de clases final y descripción de cada clase
 
-Las cuatro vistas del diagrama de clases final (69 clases):
+Las seis vistas del diagrama de clases final (95 clases):
 
 ![Modelo](diagramas/clases-modelo.png)
 
@@ -36,7 +36,11 @@ Las cuatro vistas del diagrama de clases final (69 clases):
 
 ![Presentación](diagramas/clases-presentacion.png)
 
-La descripción de cada clase (tipo, responsabilidad, atributos y métodos) está en la [Fase 2, sección Descripción de cada clase](FASE2_Arquitectura_y_Diseno.md#descripción-de-cada-clase); se generó a partir del código final de la versión v3.3.0.
+![Ventanas](diagramas/clases-ventanas.png)
+
+![Informes y asistente](diagramas/clases-informes-asistente.png)
+
+La descripción de cada clase (tipo, responsabilidad, atributos y métodos) está en la [Fase 2, sección Descripción de cada clase](FASE2_Arquitectura_y_Diseno.md#descripción-de-cada-clase); se generó a partir del código final de la versión v3.4.0.
 
 ## 4. Modelo de datos
 
@@ -49,7 +53,7 @@ El proyecto guarda los datos en archivos JSON (no hay base de datos relacional t
 - Un **perfil** tiene sus propios productos, categorías, proveedores, entradas, salidas y ventas (cada perfil tiene su carpeta `perfiles/<ID>/`).
 - Un **producto** pertenece a una categoría (`categoriaId`) y puede tener un proveedor (`proveedorId`).
 - Cada **entrada** y **salida** se refiere a un producto (`productoId`); la entrada puede indicar el proveedor.
-- Una **venta** tiene uno o más **ítems** y cada ítem se refiere a un producto.
+- Una **venta** tiene uno o más **ítems** y cada ítem se refiere a un producto. La venta guarda su método de pago (`metodoPago`, uno de `PaymentMethod`) y el comprobante si es digital; cada ítem guarda el costo del producto en ese momento (`costoUnitario`), con el que se calcula la utilidad real de los informes.
 
 Cuando se implemente la base de datos relacional (pendiente, ver [Fase 3](FASE3_Desarrollo.md#32-base-de-datos-relacional-y-dao)) estas entidades serán las tablas y los campos `...Id` las claves foráneas.
 
@@ -146,8 +150,9 @@ Los campos son los atributos de las clases del modelo que Gson guarda en cada ar
 |---|---|---|---|
 | `id` | `String` | Identificador único de la entidad | Clave |
 | `cliente` | `String` | Cliente | — |
-| `metodoPago` | `String` | Método de pago | — |
+| `metodoPago` | `String` | Método de pago (nombre de un PaymentMethod) | Uno de PaymentMethod; Fiado exige cliente |
 | `observacion` | `String` | Nota opcional | — |
+| `referenciaPago` | `String` | Comprobante de un pago digital (opcional) | Solo en pagos digitales; opcional |
 | `fecha` | `String` | Fecha y hora de la venta | — |
 | `estado` | `String` | Estado (COMPLETADA) | — |
 | `items` | `List<SaleItem>` | Ítems de la venta | Al menos 1 ítem |
@@ -162,9 +167,10 @@ Los campos son los atributos de las clases del modelo que Gson guarda en cada ar
 | `cantidad` | `int` | Unidades vendidas | > 0 |
 | `precioUnitario` | `double` | Precio por unidad | ≥ 0 |
 | `subtotal` | `double` | Cantidad × precio (se guarda en el JSON) | — |
+| `costoUnitario` | `double` | Precio de compra del producto al momento de la venta | ≥ 0; 0 = sin costo (ventas anteriores a v3.4.0) |
 
 
-Otros archivos que genera el programa (no son tablas de datos): copias de seguridad `~/.inventariopro/respaldos/TBalance_<fecha>_<hora>.zip` y etiquetas `~/.inventariopro/etiquetas/*.png`.
+Otros archivos que genera el programa (no son tablas de datos): copias de seguridad `~/.inventariopro/respaldos/TBalance_<fecha>_<hora>.zip`, etiquetas `~/.inventariopro/etiquetas/*.png`, informes `Documentos/TBalance/Informe de ventas - <negocio> - <desde> a <hasta>.xlsx`, la configuración del asistente `~/.inventariopro/asistente.json` (`clave`, `modelo`; solo en ese computador), su registro de errores `asistente.log` y el perfil de la ventana de Edge `~/.inventariopro/ventana/`.
 
 ## 5. Tabla consolidada de principios aplicados
 
@@ -174,51 +180,65 @@ Otros archivos que genera el programa (no son tablas de datos): copias de seguri
 | GRASP — Creador | `ProfileServicesFactory.crear(String)` | Tiene el dato para inicializarlos (la carpeta del perfil) y crea los repositorios y los cinco gestores del perfil. | [`ProfileServicesFactory`](../src/main/java/sistemainventario/service/ProfileServicesFactory.java) |
 | GRASP — Creador | `CategoryService.crearPredefinidas(BusinessType)` | Administra las categorías del perfil y crea las predefinidas del tipo de negocio. | [`CategoryService`](../src/main/java/sistemainventario/service/CategoryService.java), [`BusinessType`](../src/main/java/sistemainventario/model/BusinessType.java) |
 | GRASP — Creador | `AppContext (constructor)` | Raíz de composición: crea los repositorios y servicios globales y los conecta por constructor. | [`AppContext`](../src/main/java/sistemainventario/AppContext.java) |
+| GRASP — Creador | `ReportService.generar` | Tiene las ventas y los costos del período, por eso crea el `SalesReport` con todas sus partes. | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java) |
+| GRASP — Creador | `AssistantTools.proponer` | Las herramientas tienen los datos validados del cambio (productos, cantidades, precios), por eso crean el `AssistantProposal`. | [`AssistantTools`](../src/main/java/sistemainventario/service/AssistantTools.java) |
 | GRASP — Controlador | `JavaBridge` | Controlador fachada: es el único objeto que recibe los eventos de la interfaz (`window.javaBridge`) y delega cada uno. | [`JavaBridge`](../src/main/java/sistemainventario/bridge/JavaBridge.java) |
-| GRASP — Controlador | `ProfileController, InventoryController, CatalogController, TransactionController, BackupController, LabelController, ScanController` | Controladores de caso de uso: cada uno atiende un grupo de operaciones y delega en los servicios. | [`ProfileController`](../src/main/java/sistemainventario/bridge/ProfileController.java), [`InventoryController`](../src/main/java/sistemainventario/bridge/InventoryController.java), [`CatalogController`](../src/main/java/sistemainventario/bridge/CatalogController.java), [`TransactionController`](../src/main/java/sistemainventario/bridge/TransactionController.java) |
+| GRASP — Controlador | `ProfileController, InventoryController, CatalogController, TransactionController, BackupController, LabelController, ReportController, AssistantController, ScanController` | Controladores de caso de uso: cada uno atiende un grupo de operaciones y delega en los servicios. | [`ProfileController`](../src/main/java/sistemainventario/bridge/ProfileController.java), [`InventoryController`](../src/main/java/sistemainventario/bridge/InventoryController.java), [`CatalogController`](../src/main/java/sistemainventario/bridge/CatalogController.java), [`TransactionController`](../src/main/java/sistemainventario/bridge/TransactionController.java) |
 | GRASP — Experto en información | `Product.getUtilidadUnitaria, getMargen, getUtilidadEstimadaStock` | El producto tiene el precio de compra, el de venta y el stock; por eso calcula su propia utilidad. `InventoryService.getUtilidadEstimadaInventario` solo suma lo que cada producto responde. | [`Product`](../src/main/java/sistemainventario/model/Product.java) |
 | GRASP — Experto en información | `Product.disminuirStock, aumentarStock, verificarStockDisponible, getEstado, estaVencido, venceDentroDe` | El producto tiene el stock, el stock mínimo y la fecha de vencimiento; él decide su estado y si puede descontar unidades. | [`Product`](../src/main/java/sistemainventario/model/Product.java) |
 | GRASP — Experto en información | `Sale.calcularTotal, cantidadesPorProducto / SaleItem.getSubtotal` | La venta conoce sus ítems y cada ítem su cantidad y precio. | [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`SaleItem`](../src/main/java/sistemainventario/model/SaleItem.java) |
 | GRASP — Experto en información | `Product.contenidoEtiquetaQR, idDesdeEtiquetaQR` | El producto define el texto de su QR y, como conoce el formato, también lo interpreta. | [`Product`](../src/main/java/sistemainventario/model/Product.java) |
 | GRASP — Experto en información | `GlobalConfig.getPerfilActivo, BackupRepository.listar` | Cada clase responde con la información que ella misma tiene. | [`GlobalConfig`](../src/main/java/sistemainventario/model/GlobalConfig.java), [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java) |
+| GRASP — Experto en información | `SaleItem.utilidadCon, tieneCosto / Sale.normalizarPago` | El ítem guarda el costo con el que se vendió y calcula su utilidad; la venta valida su propio método de pago (un fiado necesita cliente). | [`SaleItem`](../src/main/java/sistemainventario/model/SaleItem.java), [`Sale`](../src/main/java/sistemainventario/model/Sale.java) |
+| GRASP — Experto en información | `PaymentMethod.desdeTexto, esDigital` | El enum conoce los nombres de cada método y cuáles admiten comprobante. | [`PaymentMethod`](../src/main/java/sistemainventario/model/PaymentMethod.java) |
 | GRASP — Bajo acoplamiento | `EntityService(Repository<T>), MovementService, SaleService` | Los servicios dependen de la interfaz `Repository<T>` y reciben sus dependencias por constructor. | [`EntityService`](../src/main/java/sistemainventario/service/EntityService.java), [`Repository`](../src/main/java/sistemainventario/repository/Repository.java), [`MovementService`](../src/main/java/sistemainventario/service/MovementService.java), [`SaleService`](../src/main/java/sistemainventario/service/SaleService.java) |
 | GRASP — Bajo acoplamiento | `ViewNotifier, Camera, FileOpener` | Los controladores no dependen de `WebEngine`, de la librería de la cámara ni de `java.awt.Desktop`. | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java) |
 | GRASP — Bajo acoplamiento | `QrGenerator, QrReader, WebcamCamera` | Solo estas clases importan ZXing o webcam-capture. | [`QrGenerator`](../src/main/java/sistemainventario/util/QrGenerator.java), [`QrReader`](../src/main/java/sistemainventario/util/QrReader.java), [`WebcamCamera`](../src/main/java/sistemainventario/dispositivo/WebcamCamera.java) |
+| GRASP — Bajo acoplamiento | `AssistantService(LanguageModel)` | El asistente depende de la interfaz `LanguageModel`, no de Gemini; solo `GeminiClient` conoce la API de Google. | [`AssistantService`](../src/main/java/sistemainventario/service/AssistantService.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) |
+| GRASP — Polimorfismo | `ViewNotifier: WebViewNotifier, SseNotifier` | Los controladores llaman `ejecutarScript` sin saber si la vista es el visor de JavaFX o la ventana de Edge. | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`WebViewNotifier`](../src/main/java/sistemainventario/bridge/WebViewNotifier.java), [`SseNotifier`](../src/main/java/sistemainventario/bridge/SseNotifier.java) |
+| GRASP — Variaciones protegidas | `LanguageModel, GeminiClient.buscarModeloDisponible` | El cambio de proveedor o de modelo queda dentro de `GeminiClient`; si Google retira el modelo, el cliente elige otro y el resto del sistema no cambia. | [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java), [`GeminiClient`](../src/main/java/sistemainventario/ia/GeminiClient.java) |
+| GRASP — Fabricación pura | `BridgeInvoker, LocalWebServer, ReportExcelWriter` | Clases que no son del dominio, creadas para conectar la ventana de Edge con Java y para escribir el Excel, y así no cargar esas tareas al dominio ni a los controladores. | [`BridgeInvoker`](../src/main/java/sistemainventario/bridge/BridgeInvoker.java), [`LocalWebServer`](../src/main/java/sistemainventario/view/LocalWebServer.java), [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
 | GRASP — Alta cohesión | `Controladores del paquete bridge` | Cada controlador atiende un único grupo de casos de uso (en P2 un solo `JavaBridge` hacía todo). |  |
 | GRASP — Alta cohesión | `JsonFileStore, ProfileDirectory, BridgeResponse, ZipArchiver` | Clases pequeñas con un solo propósito. | [`JsonFileStore`](../src/main/java/sistemainventario/repository/JsonFileStore.java), [`ProfileDirectory`](../src/main/java/sistemainventario/repository/ProfileDirectory.java), [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java), [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java) |
 | GRASP — Alta cohesión | `QrSaleScanner` | Solo coordina leer el QR, interpretar el texto y buscar el producto. | [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) |
+| GRASP — Alta cohesión | `ReportService / ReportExportService / ReportExcelWriter` | Calcular el informe, decidir dónde se guarda y escribir el archivo están en clases distintas. | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java), [`ReportExportService`](../src/main/java/sistemainventario/service/ReportExportService.java), [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
 | SOLID — SRP | `JsonFileStore / JsonRepository<T> / Gestor*` | Tres razones de cambio separadas: cómo se escribe en disco, cómo se maneja la colección en memoria y qué reglas de negocio aplican. | [`JsonFileStore`](../src/main/java/sistemainventario/repository/JsonFileStore.java), [`JsonRepository`](../src/main/java/sistemainventario/repository/JsonRepository.java) |
 | SOLID — SRP | `GlobalConfigService, ProfileDirectory` | Salieron de `ProfileService`: uno maneja `configuracion-global.json` y el otro las carpetas de los perfiles. | [`GlobalConfigService`](../src/main/java/sistemainventario/service/GlobalConfigService.java), [`ProfileDirectory`](../src/main/java/sistemainventario/repository/ProfileDirectory.java) |
 | SOLID — SRP | `ZipArchiver / BackupRepository / BackupService` | Comprimir, administrar la carpeta de copias y coordinar el caso de uso están separados. | [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java), [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java), [`BackupService`](../src/main/java/sistemainventario/service/BackupService.java) |
 | SOLID — SRP | `QrGenerator / LabelService / LabelRepository` | Generar el código, dibujar la etiqueta y guardar la imagen están separados. | [`QrGenerator`](../src/main/java/sistemainventario/util/QrGenerator.java), [`LabelService`](../src/main/java/sistemainventario/service/LabelService.java), [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java) |
 | SOLID — SRP | `BridgeResponse.ejecutar(Supplier<String>)` | Un solo lugar traduce las excepciones a `ERROR: …`. | [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java), [`Supplier`](../src/main/java/sistemainventario/model/Supplier.java) |
+| SOLID — SRP | `ReportService / ReportExportService / ReportExcelWriter` | Calcular, nombrar y guardar, y escribir el formato `.xlsx` son tres razones de cambio separadas. | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java), [`ReportExportService`](../src/main/java/sistemainventario/service/ReportExportService.java), [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
+| SOLID — SRP | `AssistantSettingsService / AssistantService / AssistantTools` | Configurar la clave, conversar con el modelo y ejecutar las funciones del inventario están separados. | [`AssistantSettingsService`](../src/main/java/sistemainventario/service/AssistantSettingsService.java), [`AssistantService`](../src/main/java/sistemainventario/service/AssistantService.java), [`AssistantTools`](../src/main/java/sistemainventario/service/AssistantTools.java) |
 | SOLID — OCP | `JsonRepository<T> y sus subclases` | Una entidad nueva se guarda creando una subclase corta, sin modificar la clase base. | [`JsonRepository`](../src/main/java/sistemainventario/repository/JsonRepository.java) |
 | SOLID — OCP | `EntityService<T>.guardar(T) (final)` | El algoritmo de guardar está cerrado; cada gestor lo extiende con `validar()` y `generarId()`. | [`EntityService`](../src/main/java/sistemainventario/service/EntityService.java) |
 | SOLID — OCP | `InventoryMovement.aplicarA(Product)` | `MovementService` trabaja con el tipo abstracto; un movimiento nuevo sería otra subclase. | [`InventoryMovement`](../src/main/java/sistemainventario/model/InventoryMovement.java), [`Product`](../src/main/java/sistemainventario/model/Product.java) |
 | SOLID — OCP | `Repository<T>` | Una implementación con base de datos relacional se podrá agregar sin cambiar los servicios. | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java) |
+| SOLID — OCP | `ViewNotifier` | La ventana de Edge se agregó con una implementación nueva (`SseNotifier`) sin modificar los controladores. | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java) |
 | SOLID — LSP | `StockEntry / StockExit` | Se pueden usar donde se espera `InventoryMovement`; ambas cumplen el contrato de `aplicarA`. | [`StockEntry`](../src/main/java/sistemainventario/model/StockEntry.java), [`StockExit`](../src/main/java/sistemainventario/model/StockExit.java) |
-| SOLID — ISP | `Camera, ViewNotifier, FileOpener` | Interfaces pequeñas: cada una tiene solo los métodos que su cliente necesita. | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java) |
-| SOLID — DIP | `service → Repository<T>; bridge → ViewNotifier, Camera, FileOpener` | Los módulos de alto nivel dependen de abstracciones; `AppContext` y `ProfileServicesFactory` eligen las implementaciones. | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java), [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java) |
+| SOLID — LSP | `WebViewNotifier / SseNotifier` | Cualquiera de las dos funciona donde se espera un `ViewNotifier`. | [`WebViewNotifier`](../src/main/java/sistemainventario/bridge/WebViewNotifier.java), [`SseNotifier`](../src/main/java/sistemainventario/bridge/SseNotifier.java) |
+| SOLID — ISP | `Camera, ViewNotifier, FileOpener, LanguageModel, ScreenTransition` | Interfaces pequeñas: cada una tiene solo los métodos que su cliente necesita. | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) |
+| SOLID — DIP | `service → Repository<T>, LanguageModel; bridge → ViewNotifier, Camera, FileOpener, ScreenTransition` | Los módulos de alto nivel dependen de abstracciones; `AppContext`, `ProfileServicesFactory` y las ventanas eligen las implementaciones. | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java), [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) |
 | Código limpio — Nombres significativos | disminuirStock, cantidadesPorProducto, registrarCambioDeStock, resolverPerfilInicial |  | [`Product`](../src/main/java/sistemainventario/model/Product.java), [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`InventoryService`](../src/main/java/sistemainventario/service/InventoryService.java), [`ProfileService`](../src/main/java/sistemainventario/service/ProfileService.java) |
 | Código limpio — Métodos pequeños | SaleService.registrar delega en métodos privados para verificar y descontar el stock |  | [`SaleService`](../src/main/java/sistemainventario/service/SaleService.java) |
 | Código limpio — Sin código muerto | Se eliminaron Usuario, UsuarioRepository y GestorUsuarios (sin uso) y métodos sin uso de P2 |  | [`IdGenerator`](../src/main/java/sistemainventario/util/IdGenerator.java) |
 | Código limpio — Constantes | Sale.ESTADO_COMPLETADA, StockEntry.PREFIJO_ID, Profile.COLOR_POR_DEFECTO |  | [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`StockEntry`](../src/main/java/sistemainventario/model/StockEntry.java), [`Profile`](../src/main/java/sistemainventario/model/Profile.java) |
 | Código limpio — Excepciones propias | ValidationException y PersistenceException; traducción única en BridgeResponse |  | [`ValidationException`](../src/main/java/sistemainventario/exception/ValidationException.java), [`PersistenceException`](../src/main/java/sistemainventario/exception/PersistenceException.java), [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java) |
-| Código limpio — Validación de entradas | Nombres .zip y .png válidos; protección zip slip; QR ajeno o de producto borrado muestra un aviso |  | [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java), [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java), [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java), [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) |
+| Código limpio — Validación de entradas | Nombres .zip y .png válidos; protección zip slip; QR ajeno o de producto borrado muestra un aviso; método de pago y fiado validados en la venta; argumentos del modelo validados antes de proponer un cambio |  | [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java), [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java), [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java), [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) |
+| Código limpio — Mensajes claros | Los errores del asistente se traducen a frases para el usuario (sin internet, clave inválida, límite gratuito, modelo retirado) |  | [`GeminiClient`](../src/main/java/sistemainventario/ia/GeminiClient.java), [`AssistantException`](../src/main/java/sistemainventario/exception/AssistantException.java) |
 | Código limpio — Javadoc y convenciones | Javadoc en clases y métodos públicos; PascalCase, camelCase y UPPER_SNAKE_CASE |  |  |
 
 ## 6. Reporte final de Git
 
-Historial hasta la etiqueta `v3.2.0`.
+Historial hasta la etiqueta `v3.3.0`.
 
 ### 6.1 Commits por integrante
 
 | Integrante | Commits | PR aprobados y fusionados |
 |---|---|---|
-| Kevin Jhosep Mercado (@kjhosepmercadom) | 15 | 4 |
-| Reinaldo Padilla Pedroza (@rjpadillap) | 14 | 5 |
-| Dair José Quintero (@djosequintero) | 13 | 4 |
-| **Total** | **43** (+1 `Initial commit`) | **13** |
+| Kevin Jhosep Mercado (@kjhosepmercadom) | 17 | 5 |
+| Reinaldo Padilla Pedroza (@rjpadillap) | 17 | 6 |
+| Dair José Quintero (@djosequintero) | 17 | 6 |
+| **Total** | **52** (+1 `Initial commit`) | **17** |
 
 ### 6.2 Versiones
 
@@ -227,6 +247,7 @@ Historial hasta la etiqueta `v3.2.0`.
 | `v3.0.0-avance1` | 2026-10-27 | 22 | Reestructuración en capas con GRASP y SOLID (avance 1) |
 | `v3.1.0` | 2026-10-27 | 32 | Copias de seguridad |
 | `v3.2.0` | 2026-10-28 | 43 | Etiquetas QR y venta por QR |
+| `v3.3.0` | 2026-11-10 | 52 | Utilidad por producto, nombres de clases en inglés, interfaz rediseñada y documentación por fases |
 
 ### 6.3 Ramas creadas y fusionadas
 
@@ -245,5 +266,9 @@ Historial hasta la etiqueta `v3.2.0`.
 | `feature/kevin-qr-sale-service` | Kevin Mercado | #11 | `dev` |
 | `feature/dair-qr-sale-ui` | Dair Quintero | #12 | `dev` |
 | `dev` | Kevin Mercado (integración) | #13 | `main` |
+| `feature/kevin-english-names-profit` | Kevin Mercado | #14 | `dev` |
+| `feature/dair-profit-ui-redesign` | Dair Quintero | #15 | `dev` |
+| `feature/reinaldo-docs-v3.3.0` | Reinaldo Padilla | #16 | `dev` |
+| `dev` | Kevin Mercado (integración) | #17 | `main` |
 
-Se crearon y fusionaron **10 ramas `feature/*`** (borradas después de fusionarse) y la rama `dev` se fusionó en `main` en cada versión (3 veces). El detalle de cada commit está en la [Fase 3](FASE3_Desarrollo.md#62-evidencia-de-commits).
+Se crearon y fusionaron **13 ramas `feature/*`** (borradas después de fusionarse) y la rama `dev` se fusionó en `main` en cada versión (4 veces). El detalle de cada commit está en la [Fase 3](FASE3_Desarrollo.md#62-evidencia-de-commits).

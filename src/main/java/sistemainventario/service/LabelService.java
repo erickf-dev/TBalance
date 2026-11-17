@@ -42,7 +42,7 @@ public class LabelService {
     private static final int MARGEN_HOJA = 25;
 
     private static final int TAMANO_QR = 216;
-    private static final Color COLOR_MARCA = new Color(0xC0, 0x6A, 0x10);
+    private static final Color COLOR_MARCA = new Color(0x31, 0x5D, 0x53);
     private static final Color COLOR_TEXTO = new Color(0x11, 0x18, 0x27);
     private static final Color COLOR_SECUNDARIO = new Color(0x6B, 0x72, 0x80);
     private static final Color COLOR_BORDE = new Color(0xD1, 0xD5, 0xDB);

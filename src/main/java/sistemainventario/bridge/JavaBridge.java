@@ -3,6 +3,8 @@ package sistemainventario.bridge;
 import sistemainventario.AppContext;
 import sistemainventario.dispositivo.WebcamCamera;
 
+import java.util.concurrent.Executor;
+
 /**
  * Objeto expuesto a JavaScript como {@code window.javaBridge}.
  *
@@ -21,24 +23,111 @@ import sistemainventario.dispositivo.WebcamCamera;
  */
 public class JavaBridge {
 
+    /**
+     * Candado de los datos: el servidor de la ventana de Edge atiende cada llamada
+     * de la vista con este candado, y el asistente lo usa para leer o cambiar el
+     * inventario desde su hilo sin cruzarse con la interfaz.
+     */
+    public static final Object CANDADO_DATOS = new Object();
+
     private final ProfileController perfiles;
     private final InventoryController inventario;
     private final CatalogController catalogo;
     private final TransactionController transacciones;
     private final BackupController respaldos;
     private final LabelController etiquetas;
+    private final ReportController informes;
+    private final AssistantController asistente;
     private final ScanController escaneo;
     private final ViewNotifier notificador;
+    /** Transiciones grandes de la ventana; es {@code null} si la vista no las ofrece. */
+    private final ScreenTransition transicion;
 
     public JavaBridge(AppContext contexto, ViewNotifier notificador) {
+        this(contexto, notificador, null, Runnable::run);
+    }
+
+    /**
+     * @param contexto    servicios de la aplicación
+     * @param notificador avisos de Java hacia la vista
+     * @param transicion  transiciones visuales de la ventana (puede ser {@code null})
+     * @param hiloDeDatos ejecuta el acceso a los datos desde otros hilos (el del asistente)
+     *                    en el mismo hilo o con el mismo candado que la vista
+     */
+    public JavaBridge(AppContext contexto, ViewNotifier notificador, ScreenTransition transicion, Executor hiloDeDatos) {
         this.notificador = notificador;
+        this.transicion = transicion;
         this.perfiles = new ProfileController(contexto, notificador);
         this.inventario = new InventoryController(contexto);
         this.catalogo = new CatalogController(contexto);
         this.transacciones = new TransactionController(contexto);
         this.respaldos = new BackupController(contexto, notificador);
         this.etiquetas = new LabelController(contexto, new DesktopFileOpener());
+        this.informes = new ReportController(contexto, new DesktopFileOpener());
+        this.asistente = new AssistantController(contexto, notificador, hiloDeDatos);
         this.escaneo = new ScanController(contexto, WebcamCamera::new, notificador);
+    }
+
+    // ── Transiciones de la ventana ──────────────────────────────────────
+
+    /**
+     * Pide a la ventana que desvanezca una imagen de la zona indicada por encima
+     * de la página (ver {@link ScreenTransition}).
+     *
+     * @return {@code "OK"} si la transición se hizo; {@code "NO"} si la vista no
+     *         la ofrece o falló, y entonces la página cambia sin animación
+     */
+    public String transicionPantalla(double x, double y, double ancho, double alto, int milisegundos) {
+        if (transicion == null) {
+            return "NO";
+        }
+        try {
+            transicion.desvanecerZona(x, y, ancho, alto, milisegundos);
+            return "OK";
+        } catch (RuntimeException e) {
+            System.err.println("[JavaBridge] No se pudo hacer la transición: " + e.getMessage());
+            return "NO";
+        }
+    }
+
+    // ── Informes ────────────────────────────────────────────────────────
+
+    public String obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta) {
+        return informes.obtenerInforme(desde, hasta, anteriorDesde, anteriorHasta);
+    }
+
+    public String exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta) {
+        return informes.exportarInformeExcel(desde, hasta, anteriorDesde, anteriorHasta);
+    }
+
+    // ── Asistente ───────────────────────────────────────────────────────
+
+    public String asistenteEstado() {
+        return asistente.asistenteEstado();
+    }
+
+    public String asistenteConfigurar(String clave, String modelo) {
+        return asistente.asistenteConfigurar(clave, modelo);
+    }
+
+    public String asistenteEnviar(String mensaje) {
+        return asistente.asistenteEnviar(mensaje);
+    }
+
+    public String asistenteProbar() {
+        return asistente.asistenteProbar();
+    }
+
+    public String asistenteConfirmar(String propuestaId) {
+        return asistente.asistenteConfirmar(propuestaId);
+    }
+
+    public String asistenteDescartar(String propuestaId) {
+        return asistente.asistenteDescartar(propuestaId);
+    }
+
+    public String asistenteReiniciar() {
+        return asistente.asistenteReiniciar();
     }
 
     // ── Perfiles ────────────────────────────────────────────────────────

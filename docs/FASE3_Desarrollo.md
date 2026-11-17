@@ -64,7 +64,7 @@ EntityService<T> (abstracta)
 
 ### 2.2 Métodos sobrescritos
 
-El proyecto tiene **34 métodos con `@Override`**:
+El proyecto tiene **37 métodos con `@Override`**:
 
 | Clase | Métodos sobrescritos |
 |---|---|
@@ -77,28 +77,34 @@ El proyecto tiene **34 métodos con `@Override`**:
 | `StockExit` | `aplicarA()`, `getPrefijoId()` |
 | `Supplier` | `getEtiqueta()`, `toString()` |
 | `JsonRepository` | `listarTodos()`, `buscarPorId()`, `existe()`, `filtrar()`, `agregar()`, `actualizar()`, `eliminar()`, `siguienteIdNumerico()` |
+| `GeminiClient` | `generar()` |
 | `CategoryService` | `validar()`, `generarId()`, `nombreEntidad()` |
 | `InventoryService` | `validar()`, `generarId()`, `nombreEntidad()` |
 | `SupplierService` | `validar()`, `generarId()`, `nombreEntidad()` |
 | `DesktopFileOpener` | `abrir()` |
+| `SseNotifier` | `ejecutarScript()` |
 | `WebViewNotifier` | `ejecutarScript()` |
+| `SnapshotTransition` | `desvanecerZona()` |
 | `WebcamCamera` | `abrir()`, `capturar()`, `cerrar()` |
 
 Ejemplo de polimorfismo: `MovementService` valida y aplica cualquier `InventoryMovement` llamando a `aplicarA(producto)`; si es una `StockEntry` el stock sube y si es una `StockExit` baja, sin que el servicio pregunte el tipo.
 
 ### 2.3 Interfaces
 
-`Repository<T>`, `Camera`, `ViewNotifier` y `FileOpener` (detalle en la [Fase 2](FASE2_Arquitectura_y_Diseno.md#42-interfaces)).
+`Repository<T>`, `Camera`, `ViewNotifier`, `FileOpener`, `LanguageModel` y `ScreenTransition` (detalle en la [Fase 2](FASE2_Arquitectura_y_Diseno.md#42-interfaces)).
 
 ### 2.4 Colecciones
 
 | Colección | Usos (`new`) | Clases | Para qué se usa |
 |---|---|---|---|
-| `ArrayList` | 16 | `GlobalConfig`, `JsonRepository`, `JsonUtil`, `LabelService`, `Sale`, `SaleService`, `ZipArchiver` | Caché de cada repositorio y las copias que devuelve, ítems de una venta, lista de perfiles, hojas de etiquetas. |
-| `LinkedHashMap` | 9 | `BusinessType`, `InventoryController`, `LabelController`, `Profile`, `Sale`, `ScanController` | Mapas que conservan el orden: estadísticas del dashboard, configuración de cada perfil, unidades por producto de una venta, respuestas a la vista. |
+| `ArrayList` | 42 | `AssistantService`, `AssistantTools`, `BrowserWindow`, `GeminiClient`, `GlobalConfig`, `JsonRepository`, `JsonUtil`, `LabelService`, `ReportExcelWriter`, `ReportService`, `Sale`, `SaleService`, `SecureConnection`, `ZipArchiver` | Caché de cada repositorio y las copias que devuelve, ítems de una venta, lista de perfiles, hojas de etiquetas, historial del asistente, filas del informe. |
+| `LinkedHashMap` | 11 | `BusinessType`, `InventoryController`, `LabelController`, `Profile`, `ReportService`, `Sale`, `ScanController` | Mapas que conservan el orden: estadísticas del dashboard, configuración de cada perfil, unidades por producto de una venta, grupos de la serie y métodos de pago del informe, respuestas a la vista. |
+| `HashMap` | 2 | `BridgeInvoker`, `ReportService` | Búsquedas por clave donde el orden no importa: acumulado por producto del informe (luego se ordena) y métodos del bridge por nombre. |
+| `ConcurrentHashMap` | 1 | `AssistantService` | Propuestas del asistente por confirmar: se leen desde el hilo del asistente y desde el de la interfaz. |
+| `CopyOnWriteArrayList` | 2 | `AssistantService`, `SseNotifier` | Conexiones abiertas de la ventana de Edge y avisos del asistente, usados desde varios hilos. |
 | `EnumMap` | 2 | `QrGenerator`, `QrReader` | Opciones de ZXing para leer (`QrReader`) y para generar (`QrGenerator`) códigos QR. |
 
-Las listas se declaran con la interfaz `List<T>` y los mapas con `Map<K, V>`. El proyecto no usa `HashMap` simple: se prefirió `LinkedHashMap` para conservar el orden de inserción al convertir a JSON.
+Las listas se declaran con la interfaz `List<T>` y los mapas con `Map<K, V>`. Se usa `LinkedHashMap` cuando el orden de inserción importa al convertir a JSON, `HashMap` cuando no, y colecciones concurrentes cuando dos hilos usan la misma colección.
 
 ## 3. Persistencia
 
@@ -110,7 +116,8 @@ Las listas se declaran con la interfaz `List<T>` y los mapas con `Map<K, V>`. El
 | Implementación | `JsonRepository<T>`: mantiene una caché `List<T>` y la guarda completa en el archivo en cada cambio. |
 | Escritura en disco | `JsonFileStore`: lee y escribe con UTF-8; escribe en un `.tmp` y luego reemplaza el archivo. |
 | Conversión | `JsonUtil` (Gson). |
-| Ubicación | `~/.inventariopro/data/configuracion-global.json`, `perfiles.json` y `perfiles/<ID>/` con `productos.json`, `categorias.json`, `proveedores.json`, `entradas.json`, `salidas.json` y `ventas.json`. |
+| Ubicación | `~/.inventariopro/data/configuracion-global.json`, `perfiles.json` y `perfiles/<ID>/` con `productos.json`, `categorias.json`, `proveedores.json`, `entradas.json`, `salidas.json` y `ventas.json`. La configuración del asistente va aparte en `~/.inventariopro/asistente.json` (`AssistantConfigRepository`) y los informes de Excel en `Documentos/TBalance` (`ReportExcelWriter`). |
+| Compatibilidad | Los campos nuevos de v3.4.0 (`referenciaPago` en la venta y `costoUnitario` en cada ítem) son opcionales: las ventas guardadas antes se leen igual y en los informes usan el costo actual del producto. |
 | Errores | `PersistenceException`. |
 
 El diccionario de los datos guardados está en la [Fase 4](FASE4_Documentacion_Tecnica.md#4-modelo-de-datos).
@@ -123,27 +130,28 @@ El diccionario de los datos guardados está en la [Fase 4](FASE4_Documentacion_T
 
 ### 4.1 Tecnología
 
-La interfaz no se construyó con formularios Swing de NetBeans. Se desarrolló en **IntelliJ IDEA** con **JavaFX 21**: `WebViewMain` crea una ventana con un `WebView` que carga `src/main/resources/html/SistemaInventario.html` (HTML, Tailwind CSS y JavaScript, incluidos en el proyecto). La hoja `css/tbalance.css` se carga después de Tailwind y agrega el diseño propio de TBalance (menú con pestaña activa, tarjetas en forma de carpeta, colores naranja y blanco, fuente Bricolage Grotesque para los títulos) y los estilos de la utilidad sin recompilar Tailwind.
+La interfaz no se construyó con formularios Swing de NetBeans. Se desarrolló en **IntelliJ IDEA** como una página web incluida en el proyecto (`src/main/resources/html/SistemaInventario.html`, con Tailwind CSS y JavaScript). Al arrancar, `DesktopBrowserApp` levanta un servidor local (`LocalWebServer`, solo en `127.0.0.1` y con clave por sesión) y `BrowserWindow` abre la página en **Microsoft Edge en modo aplicación**: una ventana propia, sin barra de direcciones, que dibuja con la tarjeta gráfica y por eso las animaciones son fluidas. Si no hay Edge ni Chrome, `WebViewMain` muestra la misma página en una ventana **JavaFX 21** con un `WebView`. La hoja `css/tbalance.css` se carga después de Tailwind y agrega el diseño propio de TBalance (modo oscuro y claro, fuente Outfit, animaciones) sin recompilar Tailwind; encima, `css/tbalance-vistas.css` deja el diseño plano y `js/tbalance-vistas.js` arma la pantalla Hoy, el cuaderno de caja de Ventas, las frases de Productos e Informes y aplica el color de acento del tipo de negocio del perfil activo.
 
 ### 4.2 Componentes
 
 | Componente | Cantidad / ubicación |
 |---|---|
-| Ventana JavaFX (`Stage`, `Scene`, `WebView`) | `WebViewMain` (1300 × 800, mínimo 1000 × 650) |
-| Secciones | 9: Dashboard, Perfiles, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Respaldos |
-| Botones (`<button>`) | 91 |
-| Campos de texto (`<input>`) | 26 |
-| Listas desplegables (`<select>`) | 10 |
-| Áreas de texto (`<textarea>`) | 1 |
-| Tablas (`<table>`) | 6 |
-| Ventanas modales | Formularios de perfil, producto, categoría, proveedor, entrada, salida, venta y etiqueta QR |
+| Ventana | Edge en modo aplicación (`BrowserWindow`, 1366 × 860) o, de respaldo, JavaFX (`WebViewMain`, 1300 × 800, mínimo 1000 × 650) |
+| Secciones | 10: Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Informes, Mis negocios, Copias de seguridad, más el panel del asistente |
+| Botones (`<button>`) | 127 |
+| Campos de texto (`<input>`) | 33 |
+| Listas desplegables (`<select>`) | 11 |
+| Áreas de texto (`<textarea>`) | 2 |
+| Tablas (`<table>`) | 8 |
+| Ventanas modales | Formularios de perfil, producto, categoría, proveedor, entrada, salida, venta (con método de pago), venta por QR y etiqueta QR |
 
 ### 4.3 Manejo de eventos
 
 | Sentido | Mecanismo | Ejemplo |
 |---|---|---|
-| Vista → Java | Atributos `onclick` (88), `onchange` (6) y `oninput` (5) llaman funciones JavaScript que invocan `window.javaBridge.<método>()`. | Guardar producto → `javaBridge.guardarProducto(json)` → `InventoryController` → `InventoryService.guardar` |
-| Java → Vista | `ViewNotifier.ejecutarScript` ejecuta una función JavaScript con `Platform.runLater`. | `onPerfilesActualizados()`, `onPerfilSeleccionado(id)`, `cargarEstadoDesdeJava()`, `showToast(...)` |
+| Vista → Java | Atributos `onclick` (121), `onchange` (8) y `oninput` (6) llaman funciones JavaScript que invocan `window.javaBridge.<método>()`. En Edge, `javaBridge` envía cada llamada al servidor local (`POST /bridge/<método>`) y `BridgeInvoker` la ejecuta en el `JavaBridge`; en JavaFX es el objeto Java registrado en la página. | Guardar producto → `javaBridge.guardarProducto(json)` → `InventoryController` → `InventoryService.guardar` |
+| Java → Vista | `ViewNotifier.ejecutarScript` ejecuta una función JavaScript: en Edge, `SseNotifier` la envía por una conexión de eventos (`GET /eventos`); en JavaFX, `WebViewNotifier` la ejecuta con `Platform.runLater`. | `onPerfilesActualizados()`, `onPerfilSeleccionado(id)`, `cargarEstadoDesdeJava()`, `showToast(...)` |
+| Asistente → Vista | `AssistantController` responde enseguida y consulta el modelo en otro hilo; al terminar avisa con `onAsistenteRespuesta`, `onAsistentePrueba` u `onAsistenteModelo`. | La interfaz sigue respondiendo mientras el modelo piensa. |
 | Cámara → Vista | `ScanController` llama desde su hilo a las funciones `tbCamaraLista`, `tbCuadroCamara`, `tbProductoEscaneado`, `tbAvisoEscaneo`, `tbErrorCamara` y `tbCamaraDetenida`. | Cada producto leído se agrega al carrito de Venta por QR. |
 
 Cada método del bridge devuelve `OK`, un JSON o `ERROR: mensaje` (`BridgeResponse`), y la vista muestra el error como notificación.
@@ -153,8 +161,8 @@ Cada método del bridge devuelve `OK`, un JSON o `ERROR: mensaje` (`BridgeRespon
 | Capa | Qué hace en un evento |
 |---|---|
 | Presentación (`html`, `view`, `bridge`) | Captura el evento, convierte el JSON y llama al servicio. No tiene reglas de negocio. |
-| Lógica de negocio (`service`, `model`) | Valida y aplica las reglas (stock, vencimiento, totales). |
-| Acceso a datos (`repository`, `dispositivo`) | Guarda y lee los archivos; maneja la cámara. |
+| Lógica de negocio (`service`, `model`) | Valida y aplica las reglas (stock, vencimiento, totales, método de pago, informes, propuestas del asistente). |
+| Acceso a datos (`repository`, `ia`, `dispositivo`) | Guarda y lee los archivos; escribe el Excel; habla con el modelo de lenguaje; maneja la cámara. |
 
 ## 5. Buenas prácticas
 
@@ -165,21 +173,23 @@ Cada método del bridge devuelve `OK`, un JSON o `ERROR: mensaje` (`BridgeRespon
 | Convenciones de nombres | `PascalCase` en clases, `camelCase` en métodos y atributos, `UPPER_SNAKE_CASE` en constantes (`Sale.ESTADO_COMPLETADA`, `StockEntry.PREFIJO_ID`). |
 | Constantes en lugar de valores mágicos | Prefijos de ID, estados, nombres de archivo, medidas de la ventana y de las etiquetas. |
 | Validación de datos | `validar()` en `Product`, `Category`, `Supplier`, `Profile`, `InventoryMovement`, `SaleItem` y `Sale`; nombres de archivo validados en `BackupRepository` y `LabelRepository`; rutas validadas en `ZipArchiver.extraer`. |
-| Manejo de excepciones | `ValidationException` para reglas y `PersistenceException` para errores de archivos; `BridgeResponse.ejecutar` las convierte en `ERROR: mensaje` en un solo lugar. |
+| Manejo de excepciones | `ValidationException` para reglas, `PersistenceException` para errores de archivos y `AssistantException` para fallas del asistente con un mensaje claro (sin internet, clave inválida, límite gratuito); `BridgeResponse.ejecutar` las convierte en `ERROR: mensaje` en un solo lugar y `AssistantLog` deja el detalle en `~/.inventariopro/asistente.log`. |
+| Concurrencia | El asistente trabaja en su propio hilo y accede a los datos con `JavaBridge.CANDADO_DATOS` o en el hilo de la interfaz; las colecciones compartidas son concurrentes. |
+| Seguridad | La clave del asistente no está en el código ni en GitHub; el servidor local solo escucha en `127.0.0.1` y exige una clave por sesión; el asistente no cambia datos sin confirmación. |
 
 La tabla de trazabilidad GRASP / SOLID / Código limpio está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
 
 ## 6. Gestión del proyecto con Git
 
-Datos tomados del historial del repositorio hasta la etiqueta `v3.2.0` (2026-10-28).
+Datos tomados del historial del repositorio hasta la etiqueta `v3.3.0` (2026-11-10).
 
 ### 6.1 Resumen de commits por integrante
 
 | Integrante | Usuario GitHub | Commits | Fusiones de PR aprobadas |
 |---|---|---|---|
-| Kevin Jhosep Mercado | @kjhosepmercadom | 15 | 4 |
-| Reinaldo Padilla Pedroza | @rjpadillap | 14 | 5 |
-| Dair José Quintero | @djosequintero | 13 | 4 |
+| Kevin Jhosep Mercado | @kjhosepmercadom | 17 | 5 |
+| Reinaldo Padilla Pedroza | @rjpadillap | 17 | 6 |
+| Dair José Quintero | @djosequintero | 17 | 6 |
 
 Además está el commit `Initial commit` con el que GitHub creó el repositorio. Las fusiones las hace el integrante que revisa y aprueba el Pull Request, nunca su autor.
 
@@ -204,6 +214,8 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `bd12671` | 2026-10-28 | feat(service): add GestorEtiquetas to draw labels and printable sheets |
 | `87af73a` | 2026-10-28 | feat(service): add EscanerVentaQR to turn camera frames into products |
 | `009c723` | 2026-10-28 | feat(bridge): add EtiquetaController and EscaneoController |
+| `f1d0457` | 2026-11-10 | refactor: rename all classes to English |
+| `bbc9f3e` | 2026-11-10 | feat: purchase price and estimated profit per product |
 
 **Reinaldo Padilla Pedroza**
 
@@ -223,6 +235,9 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `2b39064` | 2026-10-28 | feat(util): add GeneradorQR and LectorQR to create and read QR codes |
 | `f6e9e76` | 2026-10-28 | feat(repository): add EtiquetaRepository to store QR label images |
 | `ae54179` | 2026-10-28 | feat(device): add Camara interface and webcam implementation |
+| `e5e2227` | 2026-11-10 | docs: update the diagrams with the English class names |
+| `6ff8804` | 2026-11-10 | docs: add phase 1 specification and phase 2 design |
+| `48ac0de` | 2026-11-10 | docs: add phases 3 and 4, update traceability and README |
 
 **Dair José Quintero**
 
@@ -241,6 +256,10 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `10a5d23` | 2026-10-28 | feat(ui): add QR label preview and printable sheet to Productos |
 | `7a6389c` | 2026-10-28 | feat(ui): add sale by QR with live camera and cart |
 | `a875307` | 2026-10-28 | docs: document the sale by QR feature and update the traceability table |
+| `44e8ab5` | 2026-11-10 | feat(ui): add the Bricolage Grotesque font for titles |
+| `b041923` | 2026-11-10 | feat(ui): add the TBalance stylesheet in orange and white |
+| `0202eb4` | 2026-11-10 | feat(ui): purchase and sale price, profit column and new dashboard |
+| `4d0212a` | 2026-11-10 | docs: add screenshots of the redesigned interface |
 
 ### 6.3 Ramas y fusiones
 
@@ -259,6 +278,10 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | #11 | `feature/kevin-qr-sale-service` | `dev` | 2026-10-28 | @djosequintero |
 | #12 | `feature/dair-qr-sale-ui` | `dev` | 2026-10-28 | @rjpadillap |
 | #13 | `dev` | `main` | 2026-10-28 | @djosequintero |
+| #14 | `feature/kevin-english-names-profit` | `dev` | 2026-11-10 | @djosequintero |
+| #15 | `feature/dair-profit-ui-redesign` | `dev` | 2026-11-10 | @rjpadillap |
+| #16 | `feature/reinaldo-docs-v3.3.0` | `dev` | 2026-11-10 | @kjhosepmercadom |
+| #17 | `dev` | `main` | 2026-11-10 | @djosequintero |
 
 Las ramas `feature/*` se borraron después de fusionarse; en el repositorio quedan `main` y `dev`.
 
@@ -284,6 +307,13 @@ Las ramas `feature/*` se borraron después de fusionarse; en el repositorio qued
 | Dair Quintero | Rediseño de la interfaz: menú con pestaña activa, tarjetas en forma de carpeta, dashboard nuevo e íconos propios (`css/tbalance.css`) | Completada | v3.3.0 |
 | Dair Quintero | Precio de compra y de venta en el formulario, columna de utilidad y tarjeta en el dashboard | Completada | v3.3.0 |
 | Reinaldo Padilla | Documentación organizada según la estructura del proyecto de aula (Fases 1 a 4) | Completada | v3.3.0 |
+| Kevin Mercado | Métodos de pago colombianos y costo de cada venta (`PaymentMethod`, `Sale`, `SaleItem`, `SaleService`) | Completada | v3.4.0 |
+| Kevin Mercado | Informes de ventas y exportación a Excel (`SalesReport`, `ReportService`, `ReportExportService`, `ReportExcelWriter`, `ReportController`) | Completada | v3.4.0 |
+| Kevin Mercado | Asistente con Gemini (`ia`, `AssistantService`, `AssistantTools`, `AssistantSettingsService`, `AssistantController`) | Completada | v3.4.0 |
+| Dair Quintero | Fuente Outfit, logo de la T e íconos de la aplicación en alta resolución | Completada | v3.4.0 |
+| Dair Quintero | Ventana de Edge con servidor local y transiciones de JavaFX (`DesktopBrowserApp`, `LocalWebServer`, `BrowserWindow`, `SseNotifier`, `BridgeInvoker`) | Completada | v3.4.0 |
+| Dair Quintero | Interfaz plana con color por tipo de negocio, pantalla Hoy, cuaderno de caja, Informes con PDF, asistente y métodos de pago en las ventas | Completada | v3.4.0 |
+| Reinaldo Padilla | Documentación v3.4.0: diagramas, requerimientos, clases nuevas y trazabilidad | Completada | v3.4.0 |
 | Por asignar | Persistencia en base de datos relacional con DAO (implementación de `Repository<T>`) | Pendiente | — |
 | Por asignar | MER y diccionario de datos de la base de datos relacional | Pendiente | — |
 

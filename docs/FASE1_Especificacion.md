@@ -17,12 +17,12 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 | **Docente** | Ing. Esp. Alfredo Bautista |
 | **Integrantes** | Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quintero |
 | **Repositorio** | https://github.com/kjhosepmercadom/TBalance |
-| **Versión documentada** | v3.3.0 |
+| **Versión documentada** | v3.4.0 |
 | **Lugar y año** | Valledupar, 2026 |
 
 ## Resumen
 
-TBalance es una aplicación de escritorio para llevar el inventario de pequeños negocios. Permite tener varios perfiles de negocio independientes y, en cada uno, administrar productos, categorías y proveedores, registrar entradas, salidas y ventas, consultar un dashboard con alertas de stock y vencimiento, hacer copias de seguridad y vender leyendo etiquetas QR con la webcam del computador. Está desarrollada en Java 17 con JavaFX (WebView) y guarda los datos en archivos JSON locales. El proyecto parte del sistema construido en Programación II y en Programación III se reorganizó en capas aplicando patrones GRASP, principios SOLID y código limpio, y se le agregaron las copias de seguridad y la venta por QR.
+TBalance es una aplicación de escritorio para llevar el inventario de pequeños negocios. Permite tener varios perfiles de negocio independientes y, en cada uno, administrar productos, categorías y proveedores, registrar entradas, salidas y ventas, consultar un dashboard con alertas de stock y vencimiento, ver informes de ventas con la utilidad real y exportarlos a Excel o PDF, hacer copias de seguridad, vender leyendo etiquetas QR con la webcam del computador y pedirle cosas a un asistente con inteligencia artificial. Está desarrollada en Java 17; la interfaz web se muestra en una ventana de Edge (o en JavaFX) y los datos se guardan en archivos JSON locales. El proyecto parte del sistema construido en Programación II y en Programación III se reorganizó en capas aplicando patrones GRASP, principios SOLID y código limpio, y se le agregaron las copias de seguridad, la venta por QR, los informes, los métodos de pago y el asistente.
 
 ## 1. Introducción
 
@@ -36,7 +36,7 @@ Un control de inventario confiable evita perder ventas por falta de producto, re
 
 ### 1.3 Breve descripción
 
-TBalance es un programa de escritorio que funciona sin conexión. El usuario crea un perfil por negocio (eligiendo el tipo: boutique, farmacia, ferretería, supermercado, tienda de barrio, tecnología u otro), registra sus productos y a partir de ahí cada entrada, salida o venta actualiza el stock automáticamente. El dashboard muestra las alertas, se pueden hacer copias de seguridad de todos los datos y cada producto puede tener una etiqueta QR que se lee con la webcam para vender más rápido.
+TBalance es un programa de escritorio que funciona sin conexión (solo el asistente necesita internet). El usuario crea un perfil por negocio (eligiendo el tipo: boutique, farmacia, ferretería, supermercado, tienda de barrio, tecnología u otro), registra sus productos y a partir de ahí cada entrada, salida o venta actualiza el stock automáticamente. El dashboard muestra las alertas, la sección Informes resume las ventas y la utilidad de cualquier período, se pueden hacer copias de seguridad de todos los datos y cada producto puede tener una etiqueta QR que se lee con la webcam para vender más rápido. Con conexión a internet, un asistente responde preguntas como “¿qué le falta de Postobón?” cuando llega el proveedor y prepara ventas o entradas para que el usuario las confirme.
 
 ## 2. Planteamiento del problema
 
@@ -46,7 +46,7 @@ Los negocios pequeños no tienen una forma sencilla y económica de saber en tod
 
 ### 2.2 Justificación
 
-Se desarrolla TBalance porque responde a esa necesidad con una herramienta gratuita, de escritorio y sin internet, que actualiza el stock con cada movimiento, avisa de los productos en riesgo, protege la información con copias de seguridad y agiliza la venta con códigos QR. Desde lo académico, el proyecto permite aplicar los temas de la asignatura: programación orientada a objetos, herencia y polimorfismo, interfaces, colecciones, arquitectura en capas, patrones GRASP y principios SOLID.
+Se desarrolla TBalance porque responde a esa necesidad con una herramienta gratuita, de escritorio y sin internet, que actualiza el stock con cada movimiento, avisa de los productos en riesgo, protege la información con copias de seguridad, agiliza la venta con códigos QR y muestra cuánto se vende y se gana. Desde lo académico, el proyecto permite aplicar los temas de la asignatura: programación orientada a objetos, herencia y polimorfismo, interfaces, colecciones, arquitectura en capas, patrones GRASP y principios SOLID.
 
 ### 2.3 Estado del arte / vigilancia tecnológica
 
@@ -56,7 +56,7 @@ Se desarrolla TBalance porque responde a esa necesidad con una herramienta gratu
 | Loyverse POS | Punto de venta en la nube | Gratuito, funciona en celulares y tabletas, inventario y reportes. | Depende de la nube y de dispositivos móviles; TBalance es de escritorio y local. |
 | Alegra | Software contable y POS en la nube | Facturación, inventario y lector de código de barras; pago por suscripción. | TBalance es gratuito y no requiere cuenta ni suscripción. |
 | Odoo Inventory | ERP (módulo de inventario) | Muy completo, escáner de código de barras y QR; gratis para una sola aplicación. | Requiere instalación y configuración de un ERP; TBalance está pensado para un negocio pequeño. |
-| **TBalance** | Aplicación de escritorio | Gratuita, sin internet, varios perfiles de negocio, alertas de stock y vencimiento, copias de seguridad y venta por QR con la webcam. | — |
+| **TBalance** | Aplicación de escritorio | Gratuita, sin internet, varios perfiles de negocio, alertas de stock y vencimiento, informes con utilidad real, métodos de pago colombianos, copias de seguridad, venta por QR con la webcam y asistente con IA. | — |
 
 ## 3. Objetivos
 
@@ -71,15 +71,17 @@ Desarrollar una aplicación de escritorio en Java para gestionar el inventario d
 3. Implementar la gestión de perfiles, productos, categorías, proveedores, entradas, salidas y ventas con validación de los datos.
 4. Implementar copias de seguridad para proteger la información del usuario.
 5. Implementar etiquetas QR y la venta por QR con la webcam del computador.
-6. Gestionar el desarrollo en equipo con Git y GitHub, usando ramas por integrante y funcionalidad y Pull Requests revisados.
+6. Implementar informes de ventas con utilidad real y exportación a Excel y PDF, y registrar el método de pago de cada venta.
+7. Integrar un asistente con un modelo de lenguaje gratuito que consulte el inventario y proponga cambios que el usuario confirma.
+8. Gestionar el desarrollo en equipo con Git y GitHub, usando ramas por integrante y funcionalidad y Pull Requests revisados.
 
 ## 4. Descripción de la solución
 
 ### 4.1 Descripción general
 
-TBalance se compone de una interfaz web (HTML, CSS y JavaScript) que se muestra dentro de una ventana JavaFX con un `WebView`. La interfaz llama a los métodos de Java a través del objeto `window.javaBridge`; el bridge delega en los servicios, que aplican las reglas de negocio usando las clases del modelo, y los repositorios guardan los datos en archivos JSON. La arquitectura se describe en la [Fase 2](FASE2_Arquitectura_y_Diseno.md).
+TBalance se compone de una interfaz web (HTML, CSS y JavaScript) que se muestra en una ventana de Microsoft Edge en modo aplicación; un servidor local (`LocalWebServer`, solo en `127.0.0.1`) entrega la página y atiende sus llamadas. Si no hay Edge ni Chrome, la misma interfaz se muestra en una ventana JavaFX con un `WebView`. En los dos casos la interfaz llama a los métodos de Java a través del objeto `window.javaBridge`; el bridge delega en los servicios, que aplican las reglas de negocio usando las clases del modelo, y los repositorios guardan los datos en archivos JSON. La arquitectura se describe en la [Fase 2](FASE2_Arquitectura_y_Diseno.md).
 
-Secciones de la interfaz: Dashboard, Perfiles, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas (con Venta por QR) y Respaldos.
+Secciones de la interfaz: Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas (con Venta por QR), Informes, Mis negocios (perfiles) y Copias de seguridad, más el asistente flotante disponible en todas.
 
 ### 4.2 Requerimientos funcionales
 
@@ -92,26 +94,33 @@ Secciones de la interfaz: Dashboard, Perfiles, Productos, Categorías, Proveedor
 | RF05 | Gestionar proveedores | Crear, editar y eliminar proveedores (nombre, contacto, teléfono, email, dirección, categoría y estado). |
 | RF06 | Registrar entradas | Registrar el ingreso de mercancía de un producto; el stock aumenta automáticamente. |
 | RF07 | Registrar salidas | Registrar la salida de unidades con su motivo; el stock disminuye y no se permite sacar más de lo disponible. |
-| RF08 | Registrar ventas | Registrar una venta con uno o varios productos, cliente, método de pago y observación; se valida el stock de todos los ítems antes de descontarlo. |
-| RF09 | Consultar el dashboard | Ver el total de productos, productos en bajo stock, número de ventas, total de proveedores, utilidad estimada del inventario, productos por reponer (con acceso directo a registrar su entrada), ventas de los últimos 14 días y, si el perfil controla vencimientos, productos vencidos y por vencer en 7 y 30 días. |
+| RF08 | Registrar ventas | Registrar una venta con uno o varios productos, cliente, método de pago y observación; se valida el stock de todos los ítems antes de descontarlo y se guarda el costo de cada producto en ese momento. |
+| RF09 | Consultar el resumen del día (Hoy) | Ver en una frase lo vendido hoy, el número de ventas y la ganancia, comparado con el mismo día de la semana anterior; lo que está por resolver ordenado por urgencia (productos vencidos o por vencer en 7 días, agotados, con stock bajo, ventas fiadas y productos sin precio de compra); las ventas del día y los pedidos sugeridos por proveedor, que se pueden copiar. |
 | RF10 | Copias de seguridad | Crear una copia `.zip` de todos los datos, listarlas, restaurar una (guardando antes una copia del estado actual) y eliminarlas. |
 | RF11 | Etiquetas QR | Ver y guardar la etiqueta con código QR de un producto y generar hojas tamaño carta de 18 etiquetas (3 × 6) con todos los productos. |
 | RF12 | Venta por QR | Encender la webcam del computador, leer las etiquetas QR y agregar cada producto leído a la venta; ajustar cantidades y registrar la venta. |
 | RF13 | Estimar la utilidad | Al registrar o editar un producto se piden el precio de compra y el de venta y se muestra la utilidad por unidad y el margen; la tabla de productos muestra la utilidad de cada uno y el dashboard la utilidad estimada de todo el stock. |
+| RF14 | Métodos de pago colombianos | En Nueva venta y Venta por QR se elige el método de pago (`PaymentMethod`): efectivo, Nequi, Daviplata, Bre-B, transferencia Bancolombia, tarjeta débito, tarjeta crédito o fiado. Los pagos digitales admiten el número de comprobante y el fiado exige el nombre del cliente. El método se guarda en la venta y se muestra en la tabla de Ventas. |
+| RF15 | Informes de ventas | Sección Informes del menú lateral: ventas de hoy, la semana, el mes, el año o un rango, comparadas con el período anterior; número de ventas, ticket promedio, utilidad real y margen; gráfica de ventas y utilidad por día, semana o mes; productos más vendidos (por unidades, dinero o utilidad) y ventas por método de pago. |
+| RF16 | Exportar informes | Exportar el informe a Excel (`.xlsx` de cuatro hojas: resumen, ventas por período, productos y detalle de ventas, con totales, filtros y formato de impresión) en `Documentos/TBalance`, y a PDF con un documento A4 propio (encabezado, indicadores, gráfica, tablas y número de página). |
+| RF17 | Asistente con inteligencia artificial | Chat flotante (botón o `Ctrl+K`) con un modelo gratuito de Google Gemini que consulta el inventario con funciones: qué reponer y qué pedirle a cada proveedor, buscar productos, resumen de ventas y vencimientos. También prepara ventas, entradas, salidas, cambios de precio y productos nuevos, que solo se registran cuando el usuario pulsa Confirmar en la tarjeta propuesta. |
 
 ### 4.3 Requerimientos no funcionales
 
 | Código | Requerimiento | Descripción |
 |---|---|---|
-| RNF01 | Plataforma | Aplicación de escritorio en Java 17 o superior con JavaFX 21; se construye y ejecuta con Maven. |
-| RNF02 | Funcionamiento sin internet | La interfaz, las fuentes, Tailwind CSS y las librerías se incluyen en el proyecto; no se necesita conexión. |
+| RNF01 | Plataforma | Aplicación de escritorio en Java 17 o superior con JavaFX 21; se construye y ejecuta con Maven. La interfaz se abre en una ventana de Microsoft Edge en modo aplicación (incluido en Windows 10 y 11); si no hay Edge ni Chrome se usa el visor de JavaFX. |
+| RNF02 | Funcionamiento sin internet | La interfaz, las fuentes, Tailwind CSS y las librerías se incluyen en el proyecto; todo funciona sin conexión excepto el asistente, que es la única parte que usa internet. |
 | RNF03 | Persistencia local compatible | Los datos se guardan en archivos JSON en `~/.inventariopro/data` con el mismo formato de la versión de Programación II. |
 | RNF04 | Integridad de los datos | Cada archivo se escribe primero en un temporal y luego se reemplaza (`JsonFileStore.escribir`), para no dejar archivos a medias. |
 | RNF05 | Validación y mensajes | Las reglas de negocio se validan en el modelo y los servicios; los errores llegan a la vista como `ERROR: mensaje` y se muestran como notificación. |
 | RNF06 | Mantenibilidad | Arquitectura en capas, principios GRASP y SOLID, Javadoc y convenciones de nombres de Java. |
 | RNF07 | Rendimiento de la cámara | La cámara funciona en un hilo propio (pausa de 90 ms entre cuadros), por lo que la ventana no se congela; una etiqueta quieta se cuenta una sola vez (2 s). |
 | RNF08 | Seguridad de archivos | Solo se aceptan nombres de copia `.zip` y de etiqueta `.png` válidos, y al extraer un `.zip` se rechazan rutas fuera de la carpeta destino (*zip slip*). |
-| RNF09 | Usabilidad | Interfaz en naranja y blanco con menú lateral cuya sección activa se ve como una pestaña unida a la página, tarjetas en forma de carpeta, modo claro y oscuro, íconos propios y notificaciones de cada operación. |
+| RNF09 | Usabilidad | Diseño plano con base neutra y un color de acento según el tipo de negocio (tienda de barrio amarillo, supermercado rojo, ferretería naranja, farmacia verde azulado, boutique vino, tecnología azul y personalizado verde #315D53), modo oscuro y claro, logo de la T, íconos Lucide y fuente Outfit; las cifras importantes se dicen en frases, el dinero se muestra en pesos colombianos ($ 1.250.000), las ventas se ven como un cuaderno de caja por día y cada operación muestra una notificación; la búsqueda solo aparece en Productos y los botones de venta en Hoy y Ventas. |
+| RNF10 | Fluidez | La ventana de Edge dibuja la página con la tarjeta gráfica (unos 60 cuadros por segundo en las transiciones); el indicador del menú, la entrada de las tarjetas, los números y las ventanas modales tienen animaciones propias. En el visor de JavaFX las transiciones grandes se hacen con imágenes de JavaFX (`SnapshotTransition`). |
+| RNF11 | Seguridad del asistente y de la ventana | La clave del asistente se guarda solo en el computador (`~/.inventariopro/asistente.json`), fuera de los respaldos y del repositorio. El asistente no cambia datos sin confirmación del usuario. El servidor local de la ventana solo escucha en `127.0.0.1` y exige una clave aleatoria por sesión. |
+| RNF12 | Concurrencia | El asistente consulta el modelo en su propio hilo; cuando lee o cambia el inventario lo hace con el mismo candado (`JavaBridge.CANDADO_DATOS`) o en el hilo de la interfaz, para no cruzarse con lo que hace el usuario. |
 
 ## 5. Gestión del proyecto con Git
 
@@ -121,15 +130,15 @@ Secciones de la interfaz: Dashboard, Perfiles, Productos, Categorías, Proveedor
 |---|---|
 | **Nombre** | TBalance |
 | **URL** | https://github.com/kjhosepmercadom/TBalance |
-| **Descripción** | Sistema de inventario de escritorio en Java 17 y JavaFX para pequeños negocios, con perfiles, ventas, copias de seguridad y venta por QR. Proyecto de aula de Programación III. |
+| **Descripción** | Sistema de inventario de escritorio en Java 17 para pequeños negocios, con perfiles, ventas, informes, copias de seguridad, venta por QR y asistente con IA. Proyecto de aula de Programación III. |
 
 ### 5.2 Roles del equipo
 
 | Integrante | Usuario GitHub | Rol | Responsabilidades |
 |---|---|---|---|
 | Kevin Jhosep Mercado | @kjhosepmercadom | Líder e integrador | Dueño del repositorio; capa de servicios, `AppContext` y controladores del bridge; Pull Requests de `dev` a `main` y etiquetas de versión. |
-| Reinaldo Padilla Pedroza | @rjpadillap | Persistencia y dispositivos | Capa de acceso a datos (repositorios JSON, respaldos, etiquetas), librerías QR y cámara. |
-| Dair José Quintero | @djosequintero | Modelo, interfaz y documentación | Modelo de dominio, interfaz web (HTML/JS) y documentación del proyecto. |
+| Reinaldo Padilla Pedroza | @rjpadillap | Persistencia, dispositivos y documentación | Capa de acceso a datos (repositorios JSON, respaldos, etiquetas), librerías QR y cámara; documentación por fases y diagramas. |
+| Dair José Quintero | @djosequintero | Modelo e interfaz | Modelo de dominio, interfaz web (HTML/CSS/JS), ventana de Edge y capturas. |
 
 Cada Pull Request es revisado y aprobado por otro integrante antes de fusionarse.
 
@@ -137,7 +146,7 @@ Cada Pull Request es revisado y aprobado por otro integrante antes de fusionarse
 
 | Rama | Uso |
 |---|---|
-| `main` | Versiones entregadas; solo recibe fusiones desde `dev` y cada fusión se marca con una etiqueta (`v3.0.0-avance1`, `v3.1.0`, `v3.2.0`). |
+| `main` | Versiones entregadas; solo recibe fusiones desde `dev` y cada fusión se marca con una etiqueta (`v3.0.0-avance1`, `v3.1.0`, `v3.2.0`, `v3.3.0`, `v3.4.0`). |
 | `dev` | Integración del equipo; recibe los Pull Requests de las ramas de funcionalidad. |
 | `feature/<integrante>-<funcionalidad>` | Una rama por integrante y funcionalidad (por ejemplo `feature/reinaldo-persistencia-json`). Se borra después de fusionarse. |
 
@@ -158,6 +167,12 @@ Convención de commits: `tipo(alcance): descripción`, con los tipos `feat`, `re
 | Reinaldo Padilla | Dependencias ZXing y webcam-capture, `QrGenerator`, `QrReader`, `LabelRepository`, `Camera` | `feature/reinaldo-qr-reader-camera` | v3.2.0 |
 | Kevin Mercado | QR en `Product`, `LabelService`, `QrSaleScanner`, `LabelController`, `ScanController` | `feature/kevin-qr-sale-service` | v3.2.0 |
 | Dair Quintero | Etiquetas QR en Productos y pantalla Venta por QR | `feature/dair-qr-sale-ui` | v3.2.0 |
+| Kevin Mercado | Nombres de las clases en inglés y utilidad por producto | `feature/kevin-english-names-profit` | v3.3.0 |
+| Dair Quintero | Precio de compra y venta, columna de utilidad e interfaz rediseñada | `feature/dair-profit-ui-redesign` | v3.3.0 |
+| Reinaldo Padilla | Documentación por fases (Fase 1 a 4) | `feature/reinaldo-docs-v3.3.0` | v3.3.0 |
+| Kevin Mercado | Métodos de pago (`PaymentMethod`), informes (`ReportService`, Excel) y asistente (`ia`, `AssistantService`) | `feature/kevin-payments-reports-assistant` | v3.4.0 |
+| Dair Quintero | Ventana de Edge, interfaz plana con color por tipo de negocio, pantalla Hoy, cuaderno de caja, Informes, asistente y métodos de pago, capturas | `feature/dair-edge-window-new-ui` | v3.4.0 |
+| Reinaldo Padilla | Documentación v3.4.0: diagramas, requerimientos, clases nuevas y trazabilidad | `feature/reinaldo-docs-v3.4.0` | v3.4.0 |
 
 El estado de cada tarea y la evidencia de los commits están en la [Fase 3](FASE3_Desarrollo.md#6-gestión-del-proyecto-con-git).
 
@@ -165,8 +180,9 @@ El estado de cada tarea y la evidencia de los commits están en la [Fase 3](FASE
 
 1. Separar el sistema en capas permitió agregar las copias de seguridad y la venta por QR creando clases nuevas en cada capa, sin cambiar el formato de los datos ni romper lo que ya funcionaba.
 2. Aplicar Experto en Información hizo que las reglas (stock, vencimiento, total de una venta) queden en la clase que tiene los datos, en lugar de repetirse en los servicios.
-3. Depender de interfaces (`Repository<T>`, `Camera`, `ViewNotifier`, `FileOpener`) reduce el acoplamiento y deja preparado el cambio a una base de datos relacional.
-4. Trabajar con ramas por integrante y Pull Requests aprobados por otro compañero dejó un historial claro de quién hizo cada parte.
+3. Depender de interfaces (`Repository<T>`, `Camera`, `ViewNotifier`, `FileOpener`) reduce el acoplamiento y deja preparado el cambio a una base de datos relacional. Gracias a `ViewNotifier`, la interfaz pudo pasar del visor de JavaFX a una ventana de Edge agregando `SseNotifier`, sin cambiar los controladores.
+4. La interfaz `LanguageModel` aísla al asistente del proveedor: cuando Google retiró un modelo solo cambió `GeminiClient`, y el asistente nunca registra nada sin la confirmación del usuario.
+5. Trabajar con ramas por integrante y Pull Requests aprobados por otro compañero dejó un historial claro de quién hizo cada parte.
 
 ## 7. Bibliografía
 
@@ -183,3 +199,7 @@ El estado de cada tarea y la evidencia de los commits están en la [Fase 3](FASE
 - Loyverse POS en Capterra. https://www.capterra.es/software/150632/loyverse-pos
 - Alegra. *Cómo aprovechar al máximo Alegra si tienes un negocio de retail*. https://blog.alegra.com/colombia/como-aprovechar-al-maximo-alegra-si-tienes-un-negocio-de-retail/
 - Odoo. *Inventory*. https://www.odoo.com/app/inventory
+- Google. *Gemini API: llamadas a funciones*. https://ai.google.dev/gemini-api/docs/function-calling
+- Google. *Guía para desarrolladores de Gemini 3*. https://ai.google.dev/gemini-api/docs/gemini-3
+- Microsoft. *Microsoft Edge: opciones de línea de comandos (modo aplicación)*. https://learn.microsoft.com/es-es/deployedge/
+- Ecma International. *ECMA-376 Office Open XML File Formats*. https://ecma-international.org/publications-and-standards/standards/ecma-376/

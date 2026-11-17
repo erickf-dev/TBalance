@@ -25,6 +25,8 @@ public class Sale extends IdentifiedEntity {
     private String cliente;
     private String metodoPago;
     private String observacion;
+    /** Número de comprobante de un pago digital (Nequi, Daviplata, tarjeta...); opcional. */
+    private String referenciaPago;
     private String fecha;
     private String estado;
     private List<SaleItem> items = new ArrayList<>();
@@ -54,6 +56,7 @@ public class Sale extends IdentifiedEntity {
      */
     public SaleItem agregarItem(Product producto, int cantidad, double precioUnitario) {
         SaleItem item = new SaleItem(producto.getId(), producto.getNombre(), cantidad, precioUnitario);
+        item.setCostoUnitario(producto.getPrecioCompra());
         item.validar();
         itemsSeguros().add(item);
         recalcularTotal();
@@ -144,6 +147,36 @@ public class Sale extends IdentifiedEntity {
 
     public void setMetodoPago(String metodoPago) {
         this.metodoPago = metodoPago;
+    }
+
+    /**
+     * Deja el método de pago con su nombre oficial y revisa sus reglas: un
+     * fiado necesita el nombre del cliente y solo los pagos digitales llevan
+     * comprobante.
+     *
+     * @throws ValidationException si el método no se reconoce o falta el cliente del fiado
+     */
+    public void normalizarPago() {
+        PaymentMethod metodo = PaymentMethod.desdeTexto(metodoPago)
+                .orElseThrow(() -> new ValidationException("Elija un método de pago válido"));
+        metodoPago = metodo.getEtiqueta();
+        if (metodo == PaymentMethod.FIADO && (cliente == null || cliente.isBlank()
+                || cliente.trim().toLowerCase().startsWith("cliente"))) {
+            throw new ValidationException("Para fiar escriba el nombre del cliente");
+        }
+        if (!metodo.esDigital() || referenciaPago == null || referenciaPago.isBlank()) {
+            referenciaPago = null;
+        } else {
+            referenciaPago = referenciaPago.trim();
+        }
+    }
+
+    public String getReferenciaPago() {
+        return referenciaPago;
+    }
+
+    public void setReferenciaPago(String referenciaPago) {
+        this.referenciaPago = referenciaPago;
     }
 
     public String getObservacion() {

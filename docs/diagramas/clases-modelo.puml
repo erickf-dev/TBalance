@@ -150,6 +150,7 @@ class Sale {
   - cliente : String
   - metodoPago : String
   - observacion : String
+  - referenciaPago : String
   - fecha : String
   - estado : String
   - items : List<SaleItem>
@@ -162,6 +163,7 @@ class Sale {
   + getTotalUnidades() : int
   + cantidadesPorProducto() : Map<String, Integer>
   + estaCompletada() : boolean
+  + normalizarPago()
   + getEstado() : String
 }
 class SaleItem {
@@ -170,20 +172,44 @@ class SaleItem {
   - cantidad : int
   - precioUnitario : double
   - subtotal : double
+  - costoUnitario : double
   + validar()
+  + tieneCosto() : boolean
+  + utilidadCon(costo : double) : double
   + getSubtotal() : double
   ~ sincronizarSubtotal()
+}
+enum PaymentMethod {
+  EFECTIVO
+  NEQUI
+  DAVIPLATA
+  BRE_B
+  BANCOLOMBIA
+  TARJETA_DEBITO
+  TARJETA_CREDITO
+  FIADO
+  - etiqueta : String
+  - digital : boolean
+  + getEtiqueta() : String
+  + esDigital() : boolean
+  + desdeTexto(texto : String) : Optional<PaymentMethod> {static}
 }
 class Backup {
   - nombre : String
   - fecha : String
   - tamanoBytes : long
 }
+class AssistantSettings <<record>> {
+  - clave : String
+  - modelo : String
+}
 }
 package exception {
 class ValidationException {
 }
 class PersistenceException {
+}
+class AssistantException {
 }
 }
 
@@ -201,8 +227,10 @@ GlobalConfig "1" o-- "*" Profile : perfiles
 Profile ..> BusinessType : tipoNegocio
 InventoryMovement ..> Product : aplicarA()
 Sale ..> Product : agregarItem()
+Sale ..> PaymentMethod : normalizarPago()
 RuntimeException <|-- ValidationException
 RuntimeException <|-- PersistenceException
+RuntimeException <|-- AssistantException
 note bottom of Product : Getters y setters omitidos
 
 @enduml

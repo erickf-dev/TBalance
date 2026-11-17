@@ -17,6 +17,12 @@ public class SaleItem {
     private int cantidad;
     private double precioUnitario;
     private double subtotal;
+    /**
+     * Precio de compra del producto en el momento de la venta. Sirve para calcular
+     * la utilidad real aunque después cambie el costo. Las ventas anteriores a
+     * v3.4.0 no lo tienen (vale 0).
+     */
+    private double costoUnitario;
 
     /** Constructor vacío requerido por Gson. */
     public SaleItem() {
@@ -48,6 +54,27 @@ public class SaleItem {
         if (precioUnitario < 0) {
             throw new ValidationException("El precio unitario no puede ser negativo");
         }
+    }
+
+    /** @return {@code true} si la venta guardó el costo del producto */
+    public boolean tieneCosto() {
+        return costoUnitario > 0;
+    }
+
+    /**
+     * @param costo costo unitario a usar (el guardado o, si no hay, el actual del producto)
+     * @return utilidad del ítem: (precio de venta - costo) por cantidad
+     */
+    public double utilidadCon(double costo) {
+        return (precioUnitario - costo) * cantidad;
+    }
+
+    public double getCostoUnitario() {
+        return costoUnitario;
+    }
+
+    public void setCostoUnitario(double costoUnitario) {
+        this.costoUnitario = Math.max(0, costoUnitario);
     }
 
     /** @return cantidad × precio unitario, siempre calculado */
