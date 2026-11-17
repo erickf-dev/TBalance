@@ -53,14 +53,14 @@ entity "StockExit" as SA {
 entity "Sale" as VE {
   * id : String <<PK>>
   --
-  cliente, metodoPago, observacion
-  fecha, estado, total
+  cliente, metodoPago, referenciaPago
+  observacion, fecha, estado, total
 }
 entity "SaleItem" as IV {
   productoId <<FK>>
   --
   nombreProducto, cantidad
-  precioUnitario, subtotal
+  precioUnitario, subtotal, costoUnitario
 }
 P ||--o{ CA : tiene
 P ||--o{ PR : tiene

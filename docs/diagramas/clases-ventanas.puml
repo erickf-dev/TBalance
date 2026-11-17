@@ -1,0 +1,117 @@
+@startuml
+skinparam shadowing false
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam ArrowColor #2e6b4f
+skinparam class {
+  BackgroundColor #f5faf6
+  BorderColor #1e4a35
+  HeaderBackgroundColor #e2efe6
+}
+skinparam package {
+  BorderColor #1e4a35
+  FontColor #14281d
+}
+skinparam note {
+  BackgroundColor #fdf8ea
+  BorderColor #d4a72c
+}
+hide empty members
+
+title Diagrama de clases — ventanas: Edge (servidor local) y JavaFX
+package sistemainventario {
+class Main {
+  + start(ventanaPrincipal : Stage)
+  + main(args : String[]) {static}
+}
+class Launcher {
+  + main(args : String[]) {static}
+}
+class AppContext
+}
+package view {
+class DesktopBrowserApp {
+  + iniciar(contexto : AppContext) : boolean {static}
+}
+class LocalWebServer {
+  - invocador : BridgeInvoker
+  - notificador : SseNotifier
+  - clave : String
+  - servidor : HttpServer
+  - hilos : ExecutorService
+  + iniciar() : String
+  + detener()
+}
+class BrowserWindow {
+  - carpetaPerfil : Path
+  - proceso : Process
+  + buscarNavegador() : Optional<String> {static}
+  + abrir(navegador : String, url : String)
+  + cerrar()
+}
+class WindowsTaskbarIcon {
+  ~ aplicar(carpeta : Path) {static}
+}
+class WebViewMain {
+  - contexto : AppContext
+  - motor : WebEngine
+  - webView : WebView
+  - raiz : StackPane
+  - bridge : JavaBridge
+  + show(ventana : Stage)
+  + actualizarTitulo(ventana : Stage)
+}
+class SnapshotTransition {
+  - raiz : StackPane
+  - vista : WebView
+  + desvanecerZona(x : double, y : double, ancho : double, alto : double, milisegundos : int)
+}
+}
+package bridge {
+class JavaBridge
+interface ViewNotifier
+class SseNotifier {
+  - conexiones : List<OutputStream>
+  + agregar(salida : OutputStream)
+  + quitar(salida : OutputStream)
+  + conectadas() : int
+  + ejecutarScript(script : String)
+  + latido()
+  ~ formatear(script : String) : String {static}
+}
+class BridgeInvoker {
+  - puente : Object
+  - gson : Gson
+  - metodos : Map<String, List<Method>>
+  + invocar(nombre : String, argumentosJson : String) : String
+}
+interface ScreenTransition {
+  + desvanecerZona(x : double, y : double, ancho : double, alto : double, milisegundos : int)
+}
+class WebViewNotifier
+}
+
+class Application
+Application <|-- Main
+Launcher ..> Main
+Main ..> DesktopBrowserApp : iniciar()
+Main ..> WebViewMain : si no hay Edge
+DesktopBrowserApp *-- JavaBridge
+DesktopBrowserApp *-- SseNotifier
+DesktopBrowserApp *-- LocalWebServer
+DesktopBrowserApp *-- BrowserWindow
+DesktopBrowserApp ..> WindowsTaskbarIcon : aplicar()
+DesktopBrowserApp ..> AppContext
+LocalWebServer o-- BridgeInvoker : POST /bridge
+LocalWebServer o-- SseNotifier : GET /eventos
+BridgeInvoker ..> JavaBridge : invocar()
+ViewNotifier <|.. SseNotifier
+ViewNotifier <|.. WebViewNotifier
+WebViewMain *-- JavaBridge : bridge
+WebViewMain *-- SnapshotTransition
+WebViewMain ..> WebViewNotifier
+ScreenTransition <|.. SnapshotTransition
+
+@enduml

@@ -20,25 +20,9 @@ skinparam note {
 }
 hide empty members
 
-title Diagrama de clases — paquetes bridge, view y dispositivo
+title Diagrama de clases — paquetes bridge y dispositivo
 package sistemainventario {
-class Main {
-  + start(ventanaPrincipal : Stage)
-  + main(args : String[]) {static}
-}
-class Launcher {
-  + main(args : String[]) {static}
-}
 class AppContext
-}
-package view {
-class WebViewMain {
-  - contexto : AppContext
-  - motor : WebEngine
-  - bridge : JavaBridge
-  + show(ventana : Stage)
-  + actualizarTitulo(ventana : Stage)
-}
 }
 package bridge {
 class JavaBridge {
@@ -48,15 +32,18 @@ class JavaBridge {
   - transacciones : TransactionController
   - respaldos : BackupController
   - etiquetas : LabelController
+  - informes : ReportController
+  - asistente : AssistantController
   - escaneo : ScanController
   - notificador : ViewNotifier
-  + listarPerfiles() : String
-  + obtenerPerfilActivo() : String
-  + obtenerSugerencias() : String
-  + requiereControlVencimiento() : boolean
-  + obtenerTiposNegocio() : String
-  + crearPerfil(jsonPerfil : String) : String
-  .. 35 métodos más que delegan ..
+  - transicion : ScreenTransition
+  + transicionPantalla(x : double, y : double, ancho : double, alto : double, milisegundos : int) : String
+  + obtenerInforme(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
+  + exportarInformeExcel(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
+  + asistenteEstado() : String
+  + asistenteConfigurar(clave : String, modelo : String) : String
+  + asistenteEnviar(mensaje : String) : String
+  .. 45 métodos más que delegan ..
 }
 class ProfileController {
   - contexto : AppContext
@@ -116,6 +103,28 @@ class LabelController {
   + guardarEtiquetaQR(productoId : String) : String
   + generarHojaEtiquetas() : String
 }
+class ReportController {
+  - contexto : AppContext
+  - abridor : FileOpener
+  + obtenerInforme(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
+  + exportarInformeExcel(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
+}
+class AssistantController {
+  - contexto : AppContext
+  - notificador : ViewNotifier
+  - hiloDeDatos : Executor
+  - ajustes : AssistantSettingsService
+  - segundoPlano : ExecutorService
+  - asistente : AssistantService
+  - perfilDeLaConversacion : String
+  + asistenteEstado() : String
+  + asistenteConfigurar(clave : String, modelo : String) : String
+  + asistenteEnviar(mensaje : String) : String
+  + asistenteProbar() : String
+  + asistenteConfirmar(propuestaId : String) : String
+  + asistenteDescartar(propuestaId : String) : String
+  + asistenteReiniciar() : String
+}
 class ScanController {
   - contexto : AppContext
   - fabricaCamara : Supplier<Camera>
@@ -161,27 +170,31 @@ class WebcamCamera {
 }
 }
 
-class Application
-Application <|-- Main
-Launcher ..> Main
-Main ..> WebViewMain
-WebViewMain *-- JavaBridge : bridge
+interface ScreenTransition
+class SseNotifier
 JavaBridge *-- ProfileController
 JavaBridge *-- InventoryController
 JavaBridge *-- CatalogController
 JavaBridge *-- TransactionController
 JavaBridge *-- BackupController
 JavaBridge *-- LabelController
+JavaBridge *-- ReportController
+JavaBridge *-- AssistantController
 JavaBridge *-- ScanController
 JavaBridge o-- ViewNotifier
+JavaBridge o-- ScreenTransition : transicion
 ViewNotifier <|.. WebViewNotifier
+ViewNotifier <|.. SseNotifier
 FileOpener <|.. DesktopFileOpener
 Camera <|.. WebcamCamera
 ScanController o-- Camera : fabricaCamara
 ScanController o-- ViewNotifier
 LabelController o-- FileOpener
+ReportController o-- FileOpener
 ProfileController o-- ViewNotifier
 BackupController o-- ViewNotifier
+AssistantController o-- ViewNotifier
 JavaBridge ..> AppContext
+note bottom of SseNotifier : Detalle en el diagrama de ventanas
 
 @enduml
