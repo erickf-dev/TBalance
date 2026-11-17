@@ -3,6 +3,8 @@ package sistemainventario.bridge;
 import sistemainventario.AppContext;
 import sistemainventario.dispositivo.WebcamCamera;
 
+import java.util.concurrent.Executor;
+
 /**
  * Objeto expuesto a JavaScript como {@code window.javaBridge}.
  *
@@ -21,16 +23,35 @@ import sistemainventario.dispositivo.WebcamCamera;
  */
 public class JavaBridge {
 
+    /**
+     * Candado de los datos: el servidor de la ventana de Edge atiende cada llamada
+     * de la vista con este candado, y el asistente lo usa para leer o cambiar el
+     * inventario desde su hilo sin cruzarse con la interfaz.
+     */
+    public static final Object CANDADO_DATOS = new Object();
+
     private final ProfileController perfiles;
     private final InventoryController inventario;
     private final CatalogController catalogo;
     private final TransactionController transacciones;
     private final BackupController respaldos;
     private final LabelController etiquetas;
+    private final ReportController informes;
+    private final AssistantController asistente;
     private final ScanController escaneo;
     private final ViewNotifier notificador;
 
     public JavaBridge(AppContext contexto, ViewNotifier notificador) {
+        this(contexto, notificador, Runnable::run);
+    }
+
+    /**
+     * @param contexto    servicios de la aplicación
+     * @param notificador avisos de Java hacia la vista
+     * @param hiloDeDatos ejecuta el acceso a los datos desde otros hilos (el del asistente)
+     *                    en el mismo hilo o con el mismo candado que la vista
+     */
+    public JavaBridge(AppContext contexto, ViewNotifier notificador, Executor hiloDeDatos) {
         this.notificador = notificador;
         this.perfiles = new ProfileController(contexto, notificador);
         this.inventario = new InventoryController(contexto);
@@ -38,7 +59,49 @@ public class JavaBridge {
         this.transacciones = new TransactionController(contexto);
         this.respaldos = new BackupController(contexto, notificador);
         this.etiquetas = new LabelController(contexto, new DesktopFileOpener());
+        this.informes = new ReportController(contexto, new DesktopFileOpener());
+        this.asistente = new AssistantController(contexto, notificador, hiloDeDatos);
         this.escaneo = new ScanController(contexto, WebcamCamera::new, notificador);
+    }
+
+    // ── Informes ────────────────────────────────────────────────────────
+
+    public String obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta) {
+        return informes.obtenerInforme(desde, hasta, anteriorDesde, anteriorHasta);
+    }
+
+    public String exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta) {
+        return informes.exportarInformeExcel(desde, hasta, anteriorDesde, anteriorHasta);
+    }
+
+    // ── Asistente ───────────────────────────────────────────────────────
+
+    public String asistenteEstado() {
+        return asistente.asistenteEstado();
+    }
+
+    public String asistenteConfigurar(String clave, String modelo) {
+        return asistente.asistenteConfigurar(clave, modelo);
+    }
+
+    public String asistenteEnviar(String mensaje) {
+        return asistente.asistenteEnviar(mensaje);
+    }
+
+    public String asistenteProbar() {
+        return asistente.asistenteProbar();
+    }
+
+    public String asistenteConfirmar(String propuestaId) {
+        return asistente.asistenteConfirmar(propuestaId);
+    }
+
+    public String asistenteDescartar(String propuestaId) {
+        return asistente.asistenteDescartar(propuestaId);
+    }
+
+    public String asistenteReiniciar() {
+        return asistente.asistenteReiniciar();
     }
 
     // ── Perfiles ────────────────────────────────────────────────────────

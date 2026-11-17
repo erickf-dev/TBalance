@@ -9,12 +9,16 @@ import sistemainventario.repository.LabelRepository;
 import sistemainventario.repository.JsonFileStore;
 import sistemainventario.repository.ProfileRepository;
 import sistemainventario.repository.BackupRepository;
+import sistemainventario.repository.AssistantConfigRepository;
+import sistemainventario.repository.ReportExcelWriter;
 import sistemainventario.service.ProfileServicesFactory;
 import sistemainventario.service.GlobalConfigService;
 import sistemainventario.service.LabelService;
 import sistemainventario.service.ProfileService;
 import sistemainventario.service.BackupService;
 import sistemainventario.service.ProfileServices;
+import sistemainventario.service.AssistantSettingsService;
+import sistemainventario.service.ReportExportService;
 import sistemainventario.util.QrGenerator;
 
 import java.nio.file.Path;
@@ -40,12 +44,15 @@ public final class AppContext {
 
     private static final String CARPETA_RESPALDOS = "respaldos";
     private static final String CARPETA_ETIQUETAS = "etiquetas";
+    private static final String ARCHIVO_ASISTENTE = "asistente.json";
 
     private static AppContext instancia;
 
     private final Path directorioDatos;
     private final BackupService gestorRespaldo;
     private final LabelService gestorEtiquetas;
+    private final AssistantSettingsService ajustesAsistente;
+    private final ReportExportService exportadorInformes;
     private ProfileService gestorPerfiles;
     private ProfileServices serviciosActivos;
 
@@ -57,6 +64,10 @@ public final class AppContext {
                 new BackupRepository(carpetaRespaldos), new ZipArchiver());
         this.gestorEtiquetas = new LabelService(new QrGenerator(),
                 new LabelRepository(directorioDatos.resolveSibling(CARPETA_ETIQUETAS)));
+        this.ajustesAsistente = new AssistantSettingsService(
+                new AssistantConfigRepository(directorioDatos.resolveSibling(ARCHIVO_ASISTENTE)));
+        this.exportadorInformes = new ReportExportService(new ReportExcelWriter(),
+                ReportExportService.carpetaPorDefecto(Path.of(System.getProperty("user.home"))));
         recargar();
     }
 
@@ -91,6 +102,16 @@ public final class AppContext {
 
     public BackupService getGestorRespaldo() {
         return gestorRespaldo;
+    }
+
+    /** @return configuración del asistente (clave y modelo, fuera de los datos de los perfiles) */
+    public AssistantSettingsService getAjustesAsistente() {
+        return ajustesAsistente;
+    }
+
+    /** @return exportación de informes a Excel */
+    public ReportExportService getExportadorInformes() {
+        return exportadorInformes;
     }
 
     public LabelService getGestorEtiquetas() {
