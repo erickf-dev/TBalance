@@ -1,0 +1,247 @@
+/*
+ * TBalance: diseño plano que se carga después de tbalance.css.
+ * Base neutra de TBalance (verde botella) y acento propio de cada negocio.
+ * Tarjetas planas, sin vidrio ni sombras en reposo; cifras en frases.
+ * El acento (--acc, --acc-ink, --mark) lo pone tbalance-vistas.js según el perfil activo.
+ */
+
+/* Solo en pantalla: el informe impreso (PDF) conserva sus propios estilos */
+@media screen {
+
+
+/* ── Tokens ──────────────────────────────────────────────────────── */
+:root {
+  --acc: #315d53; --acc-ink: #ffffff; --mark: #315d53;
+  --c-bg: #f7f7f7; --c-surface: #ebebeb; --c-card: #ffffff;
+  --c-ink: #0d2a1c; --c-text: rgba(13, 42, 28, .86); --c-muted: #5f6b64;
+  --c-line: rgba(13, 42, 28, .11); --c-field: rgba(13, 42, 28, .22); --c-invert: #f7f7f7;
+
+  /* variables de la v3.4.0, llevadas a la base plana */
+  --fondo: var(--c-bg); --halo-1: transparent; --halo-2: transparent;
+  --marco: var(--c-bg); --marco-borde: transparent;
+  --sup: var(--c-card); --sup-2: var(--c-card); --sup-hover: rgba(13, 42, 28, .05);
+  --borde: var(--c-line); --borde-fuerte: var(--c-field); --brillo: transparent;
+  --tinta: var(--c-ink); --tinta-15: var(--c-text); --tinta-2: var(--c-muted); --tinta-3: var(--c-muted);
+  --sombra: none; --sombra-alta: none;
+  --pildora: var(--c-surface); --pildora-borde: transparent; --texto-activo: var(--c-ink);
+  --acento: var(--c-ink); --acento-suave: rgba(13, 42, 28, .07);
+  --ok: #1f6b3a; --alerta: #8a5a00; --error: #b4231b;
+}
+.dark {
+  --c-bg: #0b1511; --c-surface: #1a2a23; --c-card: #13201b;
+  --c-ink: #eef3ef; --c-text: rgba(238, 243, 239, .86); --c-muted: #9db0a6;
+  --c-line: rgba(238, 243, 239, .10); --c-field: rgba(238, 243, 239, .22); --c-invert: #0b1511;
+  --fondo: var(--c-bg); --halo-1: transparent; --halo-2: transparent;
+  --marco: var(--c-bg); --marco-borde: transparent;
+  --sup: var(--c-card); --sup-2: var(--c-card); --sup-hover: rgba(238, 243, 239, .06);
+  --borde: var(--c-line); --borde-fuerte: var(--c-field); --brillo: transparent;
+  --tinta: var(--c-ink); --tinta-15: var(--c-text); --tinta-2: var(--c-muted); --tinta-3: var(--c-muted);
+  --sombra: none; --sombra-alta: none;
+  --pildora: var(--c-surface); --pildora-borde: transparent; --texto-activo: var(--c-ink);
+  --acento: var(--c-ink); --acento-suave: rgba(238, 243, 239, .07);
+  --ok: #7fd3a3; --alerta: #f0c060; --error: #ff8a80;
+}
+
+/* ── Marco: sin vidrio ───────────────────────────────────────────── */
+html, body { background: var(--c-bg) !important; }
+body { padding: 0 !important; color: var(--c-ink); transition: background-color .3s, color .3s; }
+body > div.flex.h-screen { height: 100vh !important; border-radius: 0 !important; border: 0 !important; box-shadow: none !important; background: var(--c-bg) !important; }
+.tb-difuso, [class*="backdrop-blur"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+::selection { background: color-mix(in srgb, var(--acc) 35%, transparent); }
+:focus-visible { outline: 2px solid var(--c-ink) !important; outline-offset: 2px; }
+
+/* ── Menú lateral ────────────────────────────────────────────────── */
+#sidebar { width: 248px !important; min-width: 248px !important; border-right: 1px solid var(--c-line) !important; background: var(--c-bg) !important; }
+#sidebar > div:first-child { border-bottom: 0 !important; padding: 26px 24px 18px !important; }
+#sidebar > div:first-child span { font-weight: 500 !important; letter-spacing: -.03em; font-size: 22px !important; }
+.tb-logo-b { fill: var(--acc) !important; opacity: 1 !important; }
+#sidebar nav { padding: 6px 20px !important; }
+#sidebar .nav-item { border-radius: 10px !important; color: var(--c-text) !important; font-weight: 400 !important; font-size: 16px !important; padding: 10px 12px !important; margin-bottom: 2px; }
+#sidebar .nav-item svg { color: var(--c-muted) !important; }
+#sidebar .nav-item:hover { background: var(--sup-hover) !important; color: var(--c-ink) !important; }
+#sidebar .nav-item.nav-active { color: var(--c-ink) !important; font-weight: 500 !important; }
+#sidebar .nav-item.nav-active svg { color: var(--c-ink) !important; }
+#tb-nav-ind { left: 20px !important; right: 20px !important; border-radius: 10px !important; background: var(--c-surface) !important; border: 0 !important; box-shadow: none !important; }
+#tb-nav-ind::before { content: ""; position: absolute; left: 0; top: 11px; bottom: 11px; width: 3px; border-radius: 0 3px 3px 0; background: var(--mark); }
+#sidebar > div:last-child { border-top: 1px solid var(--c-line) !important; padding: 16px 24px !important; }
+#theme-label { color: var(--c-text) !important; font-size: 14px !important; font-weight: 400 !important; }
+#theme-toggle, .dark #theme-toggle { background: var(--c-surface) !important; box-shadow: inset 0 0 0 1px var(--c-line) !important; }
+#theme-toggle-dot { background: var(--c-ink) !important; box-shadow: none !important; }
+
+/* ── Barra superior ──────────────────────────────────────────────── */
+header.h-14 { height: 64px !important; background: var(--c-bg) !important; border-bottom: 1px solid var(--c-line) !important; box-shadow: none !important; padding: 0 40px !important; }
+#header-search { background: var(--c-card) !important; border: 1px solid var(--c-line) !important; border-radius: 12px !important; height: 44px; font-size: 15px !important; }
+#profile-selector-btn { background: transparent !important; border: 1px solid var(--c-line) !important; border-radius: 12px !important; }
+#profile-avatar { background: var(--acc) !important; color: var(--acc-ink) !important; box-shadow: none !important; border-radius: 8px !important; }
+#profile-selector-btn p:first-child { text-transform: none !important; font-size: 12px !important; font-weight: 400 !important; color: var(--c-muted) !important; letter-spacing: 0 !important; }
+#profile-name { font-weight: 500 !important; color: var(--c-ink) !important; }
+#profile-menu, .dark #profile-menu { background: var(--c-card) !important; border: 1px solid var(--c-line) !important; box-shadow: 0 18px 40px -20px rgba(0, 0, 0, .35) !important; }
+
+/* Botones de la barra: uno principal (acento) y uno como enlace */
+.tb-top-btn { height: 44px !important; border-radius: 12px !important; box-shadow: none !important; font-weight: 500 !important; font-size: 15px !important; transition: transform .15s, filter .15s !important; }
+.tb-top-btn.pri { background: var(--acc) !important; color: var(--acc-ink) !important; border: 0 !important; }
+.tb-top-btn.sec { background: transparent !important; border: 0 !important; color: var(--c-ink) !important; text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1.5px; }
+.tb-top-btn.sec svg { display: none; }
+.tb-top-btn:hover { transform: translateY(-1px); filter: brightness(.94); }
+.tb-top-btn:active { transform: translateY(1px) scale(.985); }
+
+/* ── Contenido ───────────────────────────────────────────────────── */
+main.flex-1 { padding: 40px 56px 110px !important; background: var(--c-bg) !important; }
+main h1.text-xl, main .tb-titulo { font-size: 44px !important; line-height: 50px !important; font-weight: 400 !important; letter-spacing: -.035em; color: var(--c-ink) !important; }
+main h1.text-xl + p, main h1.text-xl + nav, main .tb-subtitulo { font-size: 18px !important; line-height: 28px !important; color: var(--c-text) !important; margin-top: 10px !important; }
+main h1.text-xl + nav { display: none !important; }                 /* migas de pan */
+main h2, main h3.text-base, main h3.text-sm, .tb-card-titulo { font-weight: 400 !important; letter-spacing: -.02em; color: var(--c-ink) !important; }
+main .font-bold, main .font-semibold, .fixed.inset-0 .font-bold, .fixed.inset-0 .font-semibold { font-weight: 500 !important; }
+main .uppercase, .fixed.inset-0 .uppercase { text-transform: none !important; letter-spacing: 0 !important; }
+.text-gray-900, .text-gray-800, .dark .dark\:text-white { color: var(--c-ink) !important; }
+.text-gray-700, .text-gray-600, .text-gray-500, .dark .dark\:text-gray-300, .dark .dark\:text-gray-200 { color: var(--c-text) !important; }
+.text-gray-400, .dark .dark\:text-gray-400 { color: var(--c-muted) !important; }
+.text-brand-600, .text-brand-500, .dark .dark\:text-brand-400 { color: var(--c-ink) !important; }
+
+/* Tarjetas planas */
+main .rounded-2xl.border, main .rounded-2xl.shadow-sm, .tb-card, .tb-kpi, .tb-utilidad-card,
+.dark main .rounded-2xl.border, .dark main .rounded-2xl.shadow-sm, .dark .tb-card, .dark .tb-kpi, .dark .tb-utilidad-card {
+  background: var(--c-card) !important; border: 1px solid var(--c-line) !important; box-shadow: none !important; border-radius: 20px !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+main .rounded-2xl:not(.border):not(.shadow-sm) { box-shadow: none !important; }
+
+/* Tablas */
+main table thead tr, .dark main table thead tr { background: transparent !important; }
+main table th { font-size: 13px !important; font-weight: 500 !important; color: var(--c-muted) !important; border-bottom: 1px solid var(--c-line) !important; padding-top: 16px !important; padding-bottom: 12px !important; }
+main table td { border-color: var(--c-line) !important; font-size: 15px !important; padding-top: 16px !important; padding-bottom: 16px !important; color: var(--c-text); }
+main table tbody tr:hover, .dark main table tbody tr:hover { background: var(--sup-hover) !important; }
+main table tbody { border-color: var(--c-line) !important; }
+main .divide-y > * + * { border-color: var(--c-line) !important; }
+
+/* Botones: el principal con el acento; los secundarios como contorno discreto */
+.bg-brand-500, .bg-brand-600, .hover\:bg-brand-600:hover, .hover\:bg-brand-700:hover, .bg-brand-700 { background-color: var(--acc) !important; color: var(--acc-ink) !important; }
+button.bg-brand-500, button.bg-brand-600 { box-shadow: none !important; border-radius: 12px !important; transition: transform .15s, filter .15s !important; }
+button.bg-brand-500:hover, button.bg-brand-600:hover { transform: translateY(-1px); filter: brightness(.94); }
+button.bg-brand-500:active, button.bg-brand-600:active { transform: translateY(1px) scale(.985); }
+.bg-brand-50, .dark .dark\:bg-brand-900\/20, .dark .dark\:bg-brand-900\/30 { background-color: var(--c-surface) !important; }
+.ring-brand-500, .focus\:ring-brand-400:focus, .focus\:ring-brand-500:focus { --tw-ring-color: var(--c-ink) !important; }
+button.border.rounded-xl { border-color: var(--c-field) !important; background: transparent !important; color: var(--c-ink) !important; }
+
+/* Campos */
+main input:not([type=checkbox]):not([type=radio]), main select, main textarea,
+.fixed.inset-0 input:not([type=checkbox]):not([type=radio]), .fixed.inset-0 select, .fixed.inset-0 textarea {
+  background: var(--c-card) !important; border: 1px solid var(--c-field) !important; border-radius: 12px !important; color: var(--c-ink) !important; box-shadow: none !important;
+}
+.fixed.inset-0 label, main label { color: var(--c-ink) !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important; }
+
+/* Ventanas */
+.fixed.inset-0 { background: rgba(13, 42, 28, .42) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+.dark .fixed.inset-0 { background: rgba(0, 0, 0, .55) !important; }
+.fixed.inset-0 > .rounded-2xl, .dark .fixed.inset-0 > .rounded-2xl { background: var(--c-card) !important; border: 1px solid var(--c-line) !important; box-shadow: none !important; border-radius: 20px !important; }
+#toast > div, #toast { box-shadow: none !important; }
+
+/* Estados de stock y chips de pago: tinta y punto del acento, sin colores sueltos */
+.tb-chip-pago, .tb-pago-chip { background: transparent !important; border: 0 !important; color: var(--c-text) !important; padding: 0 !important; font-weight: 400 !important; }
+.tb-pago-op.activo, .tb-pago-op[aria-pressed=true] { background: var(--c-ink) !important; color: var(--c-invert) !important; border-color: var(--c-ink) !important; }
+
+/* Panel del asistente y botón flotante */
+.tb-asis-panel, .dark .tb-asis-panel { background: var(--c-card) !important; border: 1px solid var(--c-line) !important; box-shadow: 0 24px 60px -30px rgba(0, 0, 0, .45) !important; }
+#tb-asis-boton { background: var(--c-ink) !important; color: var(--c-invert) !important; box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .5) !important; }
+.tb-asis-primario { background: var(--acc) !important; color: var(--acc-ink) !important; }
+
+/* La v3.4.0 escalonaba la entrada de cada tarjeta; ahora entra la sección una sola vez */
+.tb-entrando [style*="--i"], .tb-entrando .tb-kpi, .tb-entrando .tb-card { animation: none !important; }
+.section-panel.active { animation: tbv-entra .34s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes tbv-entra { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .section-panel.active, .tbv-barras i { animation: none !important; } }
+
+/* ── Hoy ─────────────────────────────────────────────────────────── */
+#sec-dashboard > :not(#tbv-hoy) { display: none !important; }
+#tbv-hoy { display: flex; flex-direction: column; gap: 36px; color: var(--c-ink); }
+.tbv-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; }
+.tbv-meta { font-size: 14px; color: var(--c-muted); margin: 0 0 8px; }
+.tbv-h1 { margin: 0; font-size: 52px; line-height: 58px; font-weight: 400; letter-spacing: -.035em; }
+.tbv-lead { margin: 12px 0 0; font-size: 20px; line-height: 30px; color: var(--c-text); max-width: 760px; }
+.tbv-acciones { display: flex; align-items: center; gap: 24px; flex-shrink: 0; padding-bottom: 6px; }
+.tbv-btn { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 24px; border: 0; border-radius: 12px; background: var(--acc); color: var(--acc-ink); font: 500 16px Outfit, sans-serif; white-space: nowrap; cursor: pointer; transition: transform .15s, filter .15s; }
+.tbv-btn:hover { transform: translateY(-1px); filter: brightness(.94); }
+.tbv-btn:active { transform: translateY(1px) scale(.985); }
+.tbv-link { background: none; border: 0; padding: 0; color: var(--c-ink); font: 500 16px Outfit, sans-serif; text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1.5px; white-space: nowrap; cursor: pointer; }
+.tbv-link:hover { text-decoration-thickness: 2.5px; }
+.tbv-h2 { margin: 0 0 16px; font-size: 28px; line-height: 34px; font-weight: 400; letter-spacing: -.025em; }
+.tbv-h3 { margin: 0; font-size: 20px; line-height: 26px; font-weight: 500; letter-spacing: -.01em; }
+.tbv-card { background: var(--c-card); border: 1px solid var(--c-line); border-radius: 20px; transition: transform .18s, border-color .18s; }
+.tbv-card.go:hover { transform: translateY(-2px); border-color: var(--c-field); }
+.tbv-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.tbv-g3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.tbv-col { display: flex; flex-direction: column; }
+.tbv-sub { font-size: 13px; line-height: 20px; color: var(--c-muted); }
+.tbv-list { list-style: none; margin: 0; padding: 4px 28px; }
+.tbv-list li { display: grid; grid-template-columns: 28px 1fr auto; gap: 14px; align-items: start; padding: 22px 0; border-bottom: 1px solid var(--c-line); }
+.tbv-list li:last-child { border-bottom: 0; }
+.tbv-list p { margin: 0; color: var(--c-text); font-size: 16px; line-height: 26px; }
+.tbv-list p b { font-weight: 500; color: var(--c-ink); }
+.tbv-list small { display: block; font-size: 13px; line-height: 20px; color: var(--c-muted); margin-top: 2px; }
+.tbv-list svg { color: var(--c-ink); }
+.tbv-vacio { padding: 28px; color: var(--c-text); }
+.tbv-sale { display: grid; grid-template-columns: 76px 1fr auto; gap: 16px; padding: 16px 28px; border-bottom: 1px solid var(--c-line); align-items: baseline; }
+.tbv-sale:last-of-type { border-bottom: 0; }
+.tbv-sale time { font-size: 14px; color: var(--c-muted); }
+.tbv-sale .p { color: var(--c-text); }
+.tbv-sale b { font-weight: 500; text-align: right; white-space: nowrap; }
+.tbv-kv { margin: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 10px; }
+.tbv-kv dt { color: var(--c-text); } .tbv-kv dd { margin: 0; font-weight: 500; }
+.tbv-foot { display: flex; gap: 24px; margin-top: auto; padding-top: 24px; flex-wrap: wrap; }
+.tbv-pad { padding: 28px; }
+.tbv-num { font-variant-numeric: tabular-nums; }
+.tbv-flag { font-weight: 500; color: var(--c-ink); white-space: nowrap; }
+.tbv-flag::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--mark); margin-right: 8px; vertical-align: 1px; }
+
+/* ── Ventas: cuaderno de caja ────────────────────────────────────── */
+#sec-ventas > .bg-white.rounded-2xl { display: none !important; }
+#tbv-cuaderno { display: flex; flex-direction: column; gap: 32px; }
+.tbv-dia { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 14px; gap: 16px; flex-wrap: wrap; }
+.tbv-dia .tot { font-size: 15px; color: var(--c-text); }
+.tbv-dia .tot b { font-weight: 500; color: var(--c-ink); }
+.tbv-venta { display: grid; grid-template-columns: 84px 1fr 240px 120px 70px; gap: 16px; padding: 16px 28px; border-bottom: 1px solid var(--c-line); align-items: baseline; transition: background .15s; }
+.tbv-venta:last-child { border-bottom: 0; }
+.tbv-venta:hover { background: var(--sup-hover); }
+.tbv-venta time { font-size: 14px; color: var(--c-muted); }
+.tbv-venta .p { color: var(--c-text); }
+.tbv-venta .pago { font-size: 14px; color: var(--c-muted); }
+.tbv-venta b { font-weight: 500; text-align: right; white-space: nowrap; }
+.tbv-venta .tbv-link { font-size: 14px; justify-self: end; }
+
+/* ── Informes y Productos: frase principal ───────────────────────── */
+.tbv-frase { font-size: 44px !important; line-height: 50px !important; font-weight: 400 !important; letter-spacing: -.035em; }
+.tb-inf-col i, .tb-inf-barra { background: var(--c-surface) !important; }
+.tb-inf-col i.u, .tb-inf-col .u, .tb-inf-util { background: var(--c-ink) !important; }
+.tb-seg, .tb-segmento { background: var(--c-surface) !important; border-radius: 12px !important; border: 0 !important; }
+.tb-seg button.activo, .tb-segmento button.activo, .tb-seg .activo, .tb-segmento .activo { background: var(--c-ink) !important; color: var(--c-invert) !important; box-shadow: none !important; }
+
+/* ── Ajustes tras la primera prueba ──────────────────────────────── */
+main h1 ~ nav { display: none !important; }                       /* migas de pan, también con la frase */
+#sec-informes .tb-kpis { display: none !important; }              /* la frase ya dice ventas, ticket y ganancia */
+/* Estados y utilidad: tinta y el punto del acento, sin verdes, rojos ni amarillos sueltos */
+main table .text-green-500, main table .text-green-600, main table .text-green-400,
+main table .text-yellow-600, main table .text-red-500, main table .text-red-600 { color: var(--c-ink) !important; }
+main table .bg-green-400 { background: var(--c-muted) !important; }
+main table .bg-yellow-400, main table .bg-red-400 { background: var(--mark) !important; }
+main table .text-red-500, main table .text-yellow-600 { font-weight: 500 !important; }
+.tb-util-v { color: var(--c-ink) !important; font-weight: 500 !important; }
+.tb-util-m { color: var(--c-muted) !important; }
+.tb-util-barra { background: var(--c-surface) !important; } .tb-util-barra i { background: var(--c-ink) !important; }
+.tb-sin-costo { background: transparent !important; color: var(--c-muted) !important; padding: 0 !important; border: 0 !important; font-size: 14px !important; }
+.tb-util-celda.perdida .tb-util-v { color: var(--error) !important; }
+
+/* Botones principales dentro de main y modales: acento del negocio (gana a tbalance.css) */
+main button.bg-brand-500, .fixed button.bg-brand-500, main button.bg-brand-600, .fixed button.bg-brand-600 {
+  background: var(--acc) !important; color: var(--acc-ink) !important; border: 0 !important;
+  border-radius: 12px !important; box-shadow: none !important; font-weight: 500 !important;
+}
+main button.bg-brand-500:hover, .fixed button.bg-brand-500:hover { background: var(--acc) !important; filter: brightness(.94); }
+#ven-total-display, #vqr-total { color: var(--c-ink) !important; font-weight: 500 !important; }
+/* Avatar sobre amarillo (tienda de barrio): letra oscura para contraste */
+[style*="#f6e016"], [style*="#F6E016"] { color: #0d2a1c !important; }
+
+/* Campos: un solo borde al enfocar (sin el contorno doble) */
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none !important; }
+input:focus, select:focus, textarea:focus { border-color: var(--c-ink) !important; box-shadow: 0 0 0 1px var(--c-ink) !important; }
+
+} /* fin @media screen */

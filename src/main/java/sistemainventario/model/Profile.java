@@ -16,7 +16,7 @@ import java.util.Map;
  */
 public class Profile extends IdentifiedEntity {
 
-    public static final String COLOR_POR_DEFECTO = "#d4821b";
+    public static final String COLOR_POR_DEFECTO = "#315D53";
 
     private String nombre;
     private String descripcion;

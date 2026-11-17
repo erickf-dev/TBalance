@@ -1,7 +1,11 @@
 package sistemainventario.view;
 
+import javafx.application.Platform;
 import javafx.concurrent.Worker;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
+import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
@@ -12,6 +16,8 @@ import sistemainventario.bridge.WebViewNotifier;
 import sistemainventario.model.Profile;
 
 import java.net.URL;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 /**
  * Ventana principal: carga la interfaz HTML en un {@link WebView} y registra
@@ -30,6 +36,9 @@ public class WebViewMain {
 
     private final AppContext contexto;
     private WebEngine motor;
+    private WebView webView;
+    /** Contenedor de la ventana: el visor web y, encima, las imágenes de las transiciones. */
+    private StackPane raiz;
     /** Se conserva como atributo para que el recolector de basura no lo elimine. */
     private JavaBridge bridge;
 
@@ -43,7 +52,9 @@ public class WebViewMain {
      * @param ventana escenario principal de JavaFX
      */
     public void show(Stage ventana) {
-        WebView webView = new WebView();
+        webView = new WebView();
+        raiz = new StackPane(webView);
+        raiz.setAlignment(Pos.TOP_LEFT);
         motor = webView.getEngine();
         motor.setOnAlert(evento -> System.out.println("[HTML Alert] " + evento.getData()));
         motor.getLoadWorker().stateProperty().addListener((obs, anterior, nuevo) -> {
@@ -54,10 +65,14 @@ public class WebViewMain {
         });
         motor.load(localizarHtml());
 
-        ventana.setScene(new Scene(webView, ANCHO_INICIAL, ALTO_INICIAL));
+        ventana.setScene(new Scene(raiz, ANCHO_INICIAL, ALTO_INICIAL));
         ventana.setMinWidth(ANCHO_MINIMO);
         ventana.setMinHeight(ALTO_MINIMO);
         ventana.setOnHidden(evento -> apagarCamara());
+        URL icono = getClass().getResource("/html/img/tbalance-app-256.png");
+        if (icono != null) {
+            ventana.getIcons().add(new Image(icono.toExternalForm()));
+        }
         actualizarTitulo(ventana);
         ventana.show();
     }
@@ -88,9 +103,30 @@ public class WebViewMain {
     }
 
     private void registrarBridge() {
-        bridge = new JavaBridge(contexto, new WebViewNotifier(motor));
+        bridge = new JavaBridge(contexto, new WebViewNotifier(motor), new SnapshotTransition(raiz, webView),
+                WebViewMain::enHiloDeInterfaz);
         JSObject ventanaJs = (JSObject) motor.executeScript("window");
         ventanaJs.setMember("javaBridge", bridge);
+    }
+
+    /**
+     * Ejecuta una tarea en el hilo de JavaFX y espera a que termine (el asistente
+     * trabaja en otro hilo y así no toca los datos al mismo tiempo que la interfaz).
+     */
+    private static void enHiloDeInterfaz(Runnable tarea) {
+        if (Platform.isFxApplicationThread()) {
+            tarea.run();
+            return;
+        }
+        FutureTask<Void> pendiente = new FutureTask<>(tarea, null);
+        Platform.runLater(pendiente);
+        try {
+            pendiente.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            throw new IllegalStateException(e.getCause());
+        }
     }
 
     private void inicializarEstadoHtml() {

@@ -26,6 +26,8 @@ class AppContext {
   - directorioDatos : Path
   - gestorRespaldo : BackupService
   - gestorEtiquetas : LabelService
+  - ajustesAsistente : AssistantSettingsService
+  - exportadorInformes : ReportExportService
   - gestorPerfiles : ProfileService
   - serviciosActivos : ProfileServices
   + recargar()
@@ -147,6 +149,21 @@ class QrSaleScanner {
   - ultimaLectura : long
   + procesar(cuadro : BufferedImage, inventario : InventoryService) : Optional<Product>
 }
+class AssistantSettingsService {
+  - repositorio : AssistantConfigRepository
+  + leer() : Optional<AssistantSettings>
+  + modeloActual() : String
+  + configurar(clave : String, modelo : String)
+  + requerir() : AssistantSettings
+  + crearModelo(alCambiarModelo : Consumer<String>) : LanguageModel
+  + probarConexion(alCambiarModelo : Consumer<String>) : ConnectionTest
+}
+class ReportExportService {
+  - excel : ReportExcelWriter
+  - carpeta : Path
+  + exportarExcel(informe : SalesReport, negocio : String) : Path
+  + carpetaPorDefecto(usuario : Path) : Path {static}
+}
 }
 package util {
 class QrGenerator {
@@ -176,6 +193,8 @@ ProfileService o-- GlobalConfigService
 AppContext *-- ProfileService
 AppContext *-- BackupService
 AppContext *-- LabelService
+AppContext *-- AssistantSettingsService
+AppContext *-- ReportExportService
 AppContext o-- ProfileServices : serviciosActivos
 LabelService o-- QrGenerator
 QrSaleScanner o-- QrReader

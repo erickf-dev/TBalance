@@ -3,6 +3,7 @@ package sistemainventario.service;
 import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Product;
 import sistemainventario.model.Sale;
+import sistemainventario.model.SaleItem;
 import sistemainventario.repository.Repository;
 import sistemainventario.util.DateUtil;
 import sistemainventario.util.IdGenerator;
@@ -40,8 +41,10 @@ public class SaleService {
             throw new ValidationException("No se recibieron datos de la venta");
         }
         venta.validar();
+        venta.normalizarPago();
         Map<String, Integer> cantidades = venta.cantidadesPorProducto();
         verificarStock(cantidades);
+        guardarCostos(venta);
         descontarStock(cantidades);
         venta.completar(IdGenerator.conPrefijo(Sale.PREFIJO_ID), DateUtil.hoy());
         ventas.agregar(venta);
@@ -51,6 +54,13 @@ public class SaleService {
     private void verificarStock(Map<String, Integer> cantidades) {
         cantidades.forEach((productoId, cantidad) ->
                 inventario.obtener(productoId).verificarStockDisponible(cantidad));
+    }
+
+    /** Guarda en cada ítem el precio de compra actual del producto, para la utilidad real. */
+    private void guardarCostos(Sale venta) {
+        for (SaleItem item : venta.getItems()) {
+            item.setCostoUnitario(inventario.obtener(item.getProductoId()).getPrecioCompra());
+        }
     }
 
     private void descontarStock(Map<String, Integer> cantidades) {
