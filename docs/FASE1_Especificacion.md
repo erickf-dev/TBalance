@@ -22,7 +22,7 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 
 ## Resumen
 
-TBalance es una aplicación de escritorio para llevar el inventario de pequeños negocios. Permite tener varios perfiles de negocio independientes y, en cada uno, administrar productos, categorías y proveedores, registrar entradas, salidas y ventas, consultar un dashboard con alertas de stock y vencimiento, ver informes de ventas con la utilidad real y exportarlos a Excel o PDF, hacer copias de seguridad, vender leyendo etiquetas QR con la webcam del computador y pedirle cosas a un asistente con inteligencia artificial. Está desarrollada en Java 17; la interfaz web se muestra en una ventana de Edge (o en JavaFX) y los datos se guardan en archivos JSON locales. El proyecto parte del sistema construido en Programación II y en Programación III se reorganizó en capas aplicando patrones GRASP, principios SOLID y código limpio, y se le agregaron las copias de seguridad, la venta por QR, los informes, los métodos de pago y el asistente.
+TBalance es una aplicación de escritorio para llevar el inventario de pequeños negocios. Permite tener varios perfiles de negocio independientes y, en cada uno, administrar productos, categorías y proveedores, registrar entradas, salidas y ventas, consultar un dashboard con alertas de stock y vencimiento, ver informes de ventas con la utilidad real y exportarlos a Excel o PDF, hacer copias de seguridad, vender leyendo etiquetas QR con la webcam del computador y pedirle cosas a un asistente con inteligencia artificial. Está desarrollada en Java 17; la interfaz web se muestra en una ventana de Edge (o en JavaFX) y los datos se guardan en PostgreSQL, Oracle o archivos JSON locales. El proyecto parte del sistema construido en Programación II y en Programación III se reorganizó en capas aplicando patrones GRASP, principios SOLID y código limpio, y se le agregaron las copias de seguridad, la venta por QR, los informes, los métodos de pago y el asistente.
 
 ## 1. Introducción
 
@@ -79,7 +79,7 @@ Desarrollar una aplicación de escritorio en Java para gestionar el inventario d
 
 ### 4.1 Descripción general
 
-TBalance se compone de una interfaz web (HTML, CSS y JavaScript) que se muestra en una ventana de Microsoft Edge en modo aplicación; un servidor local (`LocalWebServer`, solo en `127.0.0.1`) entrega la página y atiende sus llamadas. Si no hay Edge ni Chrome, la misma interfaz se muestra en una ventana JavaFX con un `WebView`. En los dos casos la interfaz llama a los métodos de Java a través del objeto `window.javaBridge`; el bridge delega en los servicios, que aplican las reglas de negocio usando las clases del modelo, y los repositorios guardan los datos en archivos JSON. La arquitectura se describe en la [Fase 2](FASE2_Arquitectura_y_Diseno.md).
+TBalance se compone de una interfaz web (HTML, CSS y JavaScript) que se muestra en una ventana de Microsoft Edge en modo aplicación; un servidor local (`LocalWebServer`, solo en `127.0.0.1`) entrega la página y atiende sus llamadas. Si no hay Edge ni Chrome, la misma interfaz se muestra en una ventana JavaFX con un `WebView`. En los dos casos la interfaz llama a los métodos de Java a través del objeto `window.javaBridge`; el bridge delega en los servicios, que aplican las reglas de negocio usando las clases del modelo, y los repositorios guardan los datos en PostgreSQL u Oracle (con JDBC) o en archivos JSON. La arquitectura se describe en la [Fase 2](FASE2_Arquitectura_y_Diseno.md).
 
 Secciones de la interfaz: Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas (con Venta por QR), Informes, Mis negocios (perfiles) y Copias de seguridad, más el asistente flotante disponible en todas.
 
@@ -104,6 +104,7 @@ Secciones de la interfaz: Hoy, Productos, Categorías, Proveedores, Entradas, Sa
 | RF15 | Informes de ventas | Sección Informes del menú lateral: ventas de hoy, la semana, el mes, el año o un rango, comparadas con el período anterior; número de ventas, ticket promedio, utilidad real y margen; gráfica de ventas y utilidad por día, semana o mes; productos más vendidos (por unidades, dinero o utilidad) y ventas por método de pago. |
 | RF16 | Exportar informes | Exportar el informe a Excel (`.xlsx` de cuatro hojas: resumen, ventas por período, productos y detalle de ventas, con totales, filtros y formato de impresión) en `Documentos/TBalance`, y a PDF con un documento A4 propio (encabezado, indicadores, gráfica, tablas y número de página). |
 | RF17 | Asistente con inteligencia artificial | Chat flotante (botón o `Ctrl+K`) con un modelo gratuito de Google Gemini que consulta el inventario con funciones: qué reponer y qué pedirle a cada proveedor, buscar productos, resumen de ventas y vencimientos. También prepara ventas, entradas, salidas, cambios de precio y productos nuevos, que solo se registran cuando el usuario pulsa Confirmar en la tarjeta propuesta. |
+| RF18 | Elegir dónde se guardan los datos | En Copias de seguridad, elegir archivos de este computador, PostgreSQL u Oracle; escribir la URL JDBC, el usuario y la clave; probar la conexión y empezar a usarla. La primera vez se crean las tablas y los disparadores (validación de productos e historial de precios) y se copian los negocios existentes. |
 
 ### 4.3 Requerimientos no funcionales
 
@@ -111,7 +112,7 @@ Secciones de la interfaz: Hoy, Productos, Categorías, Proveedores, Entradas, Sa
 |---|---|---|
 | RNF01 | Plataforma | Aplicación de escritorio en Java 17 o superior con JavaFX 21; se construye y ejecuta con Maven. La interfaz se abre en una ventana de Microsoft Edge en modo aplicación (incluido en Windows 10 y 11); si no hay Edge ni Chrome se usa el visor de JavaFX. |
 | RNF02 | Funcionamiento sin internet | La interfaz, las fuentes, Tailwind CSS y las librerías se incluyen en el proyecto; todo funciona sin conexión excepto el asistente, que es la única parte que usa internet. |
-| RNF03 | Persistencia local compatible | Los datos se guardan en archivos JSON en `~/.inventariopro/data` con el mismo formato de la versión de Programación II. |
+| RNF03 | Persistencia en base de datos | Los datos se pueden guardar en PostgreSQL (11 o superior) u Oracle (18c XE o superior) mediante JDBC, o en archivos JSON en `~/.inventariopro/data` con el mismo formato de la versión de Programación II. Al conectarse a una base vacía se crean las tablas y los disparadores y se copian los datos de los archivos. |
 | RNF04 | Integridad de los datos | Cada archivo se escribe primero en un temporal y luego se reemplaza (`JsonFileStore.escribir`), para no dejar archivos a medias. |
 | RNF05 | Validación y mensajes | Las reglas de negocio se validan en el modelo y los servicios; los errores llegan a la vista como `ERROR: mensaje` y se muestran como notificación. |
 | RNF06 | Mantenibilidad | Arquitectura en capas, principios GRASP y SOLID, Javadoc y convenciones de nombres de Java. |

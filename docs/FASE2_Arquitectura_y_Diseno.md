@@ -15,7 +15,7 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 |---|---|---|
 | Presentación | `resources/html`, `view`, `bridge` | Interfaz web (HTML, CSS y JavaScript), ventana de Edge con su servidor local o ventana JavaFX con el `WebView`, y controladores que reciben los eventos de la vista. |
 | Lógica de negocio | `service`, `model` | Casos de uso y reglas de negocio (incluye informes y asistente); entidades del dominio con sus propias reglas. |
-| Acceso a datos | `repository`, `ia`, `dispositivo` | Lectura y escritura de archivos JSON, copias `.zip`, imágenes `.png` y libros `.xlsx`; cliente del modelo de lenguaje (Gemini); acceso a la webcam. |
+| Acceso a datos | `repository`, `ia`, `dispositivo` | Lectura y escritura en PostgreSQL u Oracle (JDBC) o en archivos JSON, copias `.zip`, imágenes `.png` y libros `.xlsx`; cliente del modelo de lenguaje (Gemini); acceso a la webcam. |
 | Transversal | `util`, `exception` | Utilidades sin estado (fechas, IDs, texto, JSON, QR) y excepciones del proyecto. |
 | Raíz | `sistemainventario` | `Launcher` y `Main` arrancan la aplicación; `AppContext` crea y conecta los objetos. |
 

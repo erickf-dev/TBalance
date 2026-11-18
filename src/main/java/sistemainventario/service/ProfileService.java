@@ -164,7 +164,11 @@ public class ProfileService {
                 .orElseThrow(() -> new ValidationException("Perfil no encontrado"));
     }
 
-    private void sincronizarConfiguracion() {
+    /**
+     * Copia la lista de perfiles al archivo de configuración. Al abrir una base
+     * de datos que ya tiene negocios, evita que TBalance crea que es la primera vez.
+     */
+    public void sincronizarConfiguracion() {
         configuracion.sincronizarPerfiles(perfiles.listarTodos());
     }
 }

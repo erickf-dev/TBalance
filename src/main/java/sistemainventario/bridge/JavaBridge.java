@@ -14,7 +14,7 @@ import java.util.concurrent.Executor;
  * errores. Ahora solo delega en controladores por caso de uso
  * ({@link ProfileController}, {@link InventoryController},
  * {@link CatalogController}, {@link TransactionController},
- * {@link BackupController}, {@link LabelController},
+ * {@link BackupController}, {@link StorageController}, {@link LabelController},
  * {@link ScanController}), cada uno con
  * <b>alta cohesión</b>.</p>
  *
@@ -35,6 +35,7 @@ public class JavaBridge {
     private final CatalogController catalogo;
     private final TransactionController transacciones;
     private final BackupController respaldos;
+    private final StorageController almacenamiento;
     private final LabelController etiquetas;
     private final ReportController informes;
     private final AssistantController asistente;
@@ -62,6 +63,7 @@ public class JavaBridge {
         this.catalogo = new CatalogController(contexto);
         this.transacciones = new TransactionController(contexto);
         this.respaldos = new BackupController(contexto, notificador);
+        this.almacenamiento = new StorageController(contexto, notificador);
         this.etiquetas = new LabelController(contexto, new DesktopFileOpener());
         this.informes = new ReportController(contexto, new DesktopFileOpener());
         this.asistente = new AssistantController(contexto, notificador, hiloDeDatos);
@@ -276,6 +278,29 @@ public class JavaBridge {
 
     public String obtenerCarpetaRespaldos() {
         return respaldos.obtenerCarpetaRespaldos();
+    }
+
+    // ---- Base de datos ------------------------------------------------------
+
+    /** @return configuración del almacenamiento (sin la clave) */
+    public String obtenerAlmacenamiento() {
+        return almacenamiento.obtenerAlmacenamiento();
+    }
+
+    /**
+     * @param datosJson motor, URL, usuario y clave
+     * @return resultado de la prueba de conexión
+     */
+    public String probarAlmacenamiento(String datosJson) {
+        return almacenamiento.probarAlmacenamiento(datosJson);
+    }
+
+    /**
+     * @param datosJson motor, URL, usuario y clave
+     * @return mensaje del cambio de almacenamiento
+     */
+    public String guardarAlmacenamiento(String datosJson) {
+        return almacenamiento.guardarAlmacenamiento(datosJson);
     }
 
     // ── Etiquetas con código QR ─────────────────────────────────────────

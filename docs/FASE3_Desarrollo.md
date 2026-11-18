@@ -124,7 +124,34 @@ El diccionario de los datos guardados está en la [Fase 4](FASE4_Documentacion_T
 
 ### 3.2 Base de datos relacional y DAO
 
-**Estado: pendiente.** El proyecto todavía no usa una base de datos relacional. Los servicios dependen solo de la interfaz `Repository<T>`, por lo que la clase DAO con base de datos se agregará como otra implementación de esa interfaz y se conectará en `ProfileServicesFactory`, sin cambiar los servicios ni la interfaz.
+TBalance guarda los datos en **PostgreSQL** u **Oracle** (18c Express Edition o superior), o en archivos JSON como antes. Se elige en **Copias de seguridad → Dónde se guardan los datos**: motor, URL JDBC, usuario y clave, con los botones *Probar conexión* y *Guardar y usar*. La configuración queda en `~/.inventariopro/basedatos.json`, solo en ese computador (nunca en GitHub).
+
+![Persistencia con base de datos](diagramas/clases-persistencia-bd.png)
+
+| Pieza | Clase | Qué hace |
+|---|---|---|
+| Interfaz del DAO | `Repository<T>` | La misma interfaz de siempre; los servicios no cambiaron. |
+| DAO genérico | `JdbcRepository<T>` (abstracta) | Arma el `SELECT`, `INSERT`, `UPDATE` y `DELETE` de la tabla con `PreparedStatement`. Cada escritura va en una transacción; si la base la rechaza, se deshace y la memoria no cambia. |
+| DAO por tabla | `ProfileJdbcRepository`, `CategoryJdbcRepository`, `SupplierJdbcRepository`, `ProductJdbcRepository`, `StockEntryJdbcRepository`, `StockExitJdbcRepository`, `SaleJdbcRepository` | Dicen su tabla, sus columnas y cómo convertir una fila en objeto. `SaleJdbcRepository` guarda la venta y su `DETALLE_VENTA` en la misma transacción. |
+| Conexión | `Database` | Abre la conexión JDBC, ejecuta los scripts, consulta y traduce los errores: el mensaje de un disparador llega al usuario como `ValidationException`. |
+| Diferencias entre motores | `SqlDialect`, `PostgresDialect`, `OracleDialect` | Carpeta de scripts, cómo saber si una tabla existe, cómo separar las sentencias (bloques PL/SQL con `/` en Oracle, funciones con `$$` en PostgreSQL) y cómo leer el error de un disparador. |
+| Fábrica | `StorageProvider`, `JsonStorageProvider`, `DatabaseStorageProvider` | Fábrica abstracta: `ProfileServicesFactory` le pide los repositorios y no sabe si son JSON o JDBC. |
+| Elegir y preparar | `StorageService`, `DataTransferService` | Al conectarse por primera vez crea las tablas y los disparadores y copia los negocios de los archivos JSON. Si la base no responde al abrir, TBalance sigue con los archivos y muestra un aviso. |
+| Copias de seguridad | `DataSnapshot`, `DatabaseSnapshot` | Las copias siguen siendo un .zip de archivos JSON: antes de comprimir se vuelcan las tablas y al restaurar se cargan en la base. |
+
+Los scripts están en `src/main/resources/sql/oracle` y `src/main/resources/sql/postgresql` (TBalance ejecuta los dos primeros solo la primera vez):
+
+| Script | Oracle (SQL Developer) | PostgreSQL (pgAdmin o psql) |
+|---|---|---|
+| `00` | `00_crear_usuario.sql`: usuario `TBALANCE` (como SYSTEM en XEPDB1) | `00_crear_base.sql`: usuario y base `tbalance` (como postgres) |
+| `01_tablas.sql` | 10 tablas con llaves primarias, foráneas y CHECK | Las mismas tablas |
+| `02_disparadores.sql` | `TRG_PRODUCTO_VALIDAR` y `TRG_PRODUCTO_HISTORIAL_PRECIO` en PL/SQL | Los mismos, en PL/pgSQL |
+| `03_probar_disparadores.sql` | Prueba los dos disparadores y deshace todo | Igual |
+| `99_borrar_todo.sql` | Borra las tablas | Igual |
+
+**Disparadores.** `TRG_PRODUCTO_VALIDAR` (BEFORE INSERT OR UPDATE ON PRODUCTO, por fila) rechaza stock o precios negativos, deja el stock mínimo en 0 si llega vacío o negativo y registra `FECHA_MODIFICACION`. `TRG_PRODUCTO_HISTORIAL_PRECIO` (AFTER UPDATE OF PRECIO_COMPRA, PRECIO_VENTA ON PRODUCTO, por fila) guarda en `HISTORIAL_PRECIO` el precio anterior y el nuevo cada vez que cambian.
+
+Los drivers JDBC están en el `pom.xml`: `org.postgresql:postgresql` y `com.oracle.database.jdbc:ojdbc11` (versión 21, compatible con Oracle 18c).
 
 ## 4. Interfaz gráfica
 

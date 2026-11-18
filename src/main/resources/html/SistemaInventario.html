@@ -600,6 +600,38 @@
             Crear copia
           </button>
         </div>
+        <div id="bd-tarjeta" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm px-6 py-5 mb-5">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">Dónde se guardan los datos</h2>
+              <p id="bd-en-uso" class="text-xs text-gray-400 mt-0.5"></p>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(180px,220px) 1fr 1fr;gap:12px;align-items:end">
+            <div>
+              <label for="bd-motor" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Almacenamiento</label>
+              <select id="bd-motor" onchange="bdCambioMotor()" class="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white"></select>
+            </div>
+            <div class="bd-campo" style="grid-column:span 2">
+              <label for="bd-url" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">URL de conexión (JDBC)</label>
+              <input id="bd-url" type="text" spellcheck="false" class="w-full px-3 py-2.5 text-sm font-mono border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
+            </div>
+            <div class="bd-campo">
+              <label for="bd-usuario" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Usuario</label>
+              <input id="bd-usuario" type="text" spellcheck="false" class="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
+            </div>
+            <div class="bd-campo">
+              <label for="bd-clave" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Clave</label>
+              <input id="bd-clave" type="password" autocomplete="new-password" class="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
+            </div>
+            <div class="flex items-end gap-2" style="grid-column:1 / -1">
+              <button id="bd-probar" onclick="bdProbar()" class="bd-campo px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-xl transition">Probar conexión</button>
+              <button id="bd-guardar" onclick="bdGuardar()" class="px-4 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition">Guardar y usar</button>
+            </div>
+          </div>
+          <p id="bd-resultado" class="text-sm mt-3 text-gray-600 dark:text-gray-300" role="status" aria-live="polite"></p>
+          <p class="text-xs text-gray-400 mt-2 bd-campo">Primero cree el usuario con el script <span class="font-mono">00</span> de la carpeta <span class="font-mono">src/main/resources/sql</span> (Oracle: SQL Developer como SYSTEM; PostgreSQL: pgAdmin como postgres). Al guardar, TBalance crea las tablas y los disparadores y copia sus negocios; si la base ya tiene negocios, usa esos. La clave queda solo en este computador.</p>
+        </div>
         <div class="flex items-start gap-3 bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-2xl px-5 py-4 mb-5">
           <svg class="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           <div class="text-sm text-gray-600 dark:text-gray-300">
@@ -1253,6 +1285,7 @@ function cargarEstadoDesdeJava() {
   renderTablaSalidas();
   renderTablaVentas();
   renderRespaldos();
+  renderBaseDeDatos();
   actualizarDashboard();
   checkPrimerArranque();
 }
@@ -3692,6 +3725,85 @@ function restaurarRespaldo(nombre) {
   if (typeof r === 'string' && r.startsWith('ERROR')) { showToast(r, 'error'); return; }
   cargarEstadoDesdeJava();
   showToast('Copia restaurada. Copia previa guardada como ' + JSON.parse(r).nombre);
+}
+
+// ── BASE DE DATOS (archivos, PostgreSQL u Oracle) ─────────
+let bdMotores = [];
+let bdAvisoMostrado = false;
+
+function bdDatos() {
+  return {
+    motor: document.getElementById('bd-motor').value,
+    url: document.getElementById('bd-url').value.trim(),
+    usuario: document.getElementById('bd-usuario').value.trim(),
+    clave: document.getElementById('bd-clave').value
+  };
+}
+
+function bdResultado(texto, error) {
+  const el = document.getElementById('bd-resultado');
+  if (!el) return;
+  el.textContent = texto || '';
+  el.classList.toggle('text-red-600', !!error);
+}
+
+function renderBaseDeDatos() {
+  if (typeof window.javaBridge === 'undefined' || !window.javaBridge.obtenerAlmacenamiento) return;
+  const raw = window.javaBridge.obtenerAlmacenamiento();
+  if (typeof raw !== 'string' || raw.startsWith('ERROR')) return;
+  const info = JSON.parse(raw);
+  bdMotores = info.motores || [];
+  const select = document.getElementById('bd-motor');
+  if (select) {
+    select.innerHTML = bdMotores.map(function(m) { return '<option value="' + esc(m.id) + '">' + esc(m.etiqueta) + '</option>'; }).join('');
+    select.value = info.motor;
+    document.getElementById('bd-url').value = info.url || '';
+    document.getElementById('bd-usuario').value = info.usuario || '';
+    const clave = document.getElementById('bd-clave');
+    clave.value = '';
+    clave.placeholder = info.tieneClave ? 'Guardada (escriba otra para cambiarla)' : '';
+    document.getElementById('bd-en-uso').textContent = 'Ahora: ' + info.enUso;
+    bdMostrarCampos();
+  }
+  if (info.aviso && !bdAvisoMostrado) {
+    bdAvisoMostrado = true;
+    showToast(info.aviso, info.avisoEsError ? 'error' : 'success');
+  }
+}
+
+function bdMostrarCampos() {
+  const relacional = document.getElementById('bd-motor').value !== 'JSON';
+  document.querySelectorAll('#bd-tarjeta .bd-campo').forEach(function(el) { el.style.display = relacional ? '' : 'none'; });
+}
+
+function bdCambioMotor() {
+  const motor = document.getElementById('bd-motor').value;
+  const elegido = bdMotores.find(function(m) { return m.id === motor; });
+  const url = document.getElementById('bd-url');
+  const prefijo = elegido && elegido.urlPorDefecto ? elegido.urlPorDefecto.split(':').slice(0, 2).join(':') : '';
+  if (prefijo && url.value.indexOf(prefijo) !== 0) url.value = elegido.urlPorDefecto;
+  bdResultado('');
+  bdMostrarCampos();
+}
+
+function bdProbar() {
+  bdResultado('Probando la conexión…');
+  setTimeout(function() {
+    const r = window.javaBridge.probarAlmacenamiento(JSON.stringify(bdDatos()));
+    if (typeof r === 'string' && r.startsWith('ERROR')) { bdResultado(r.replace(/^ERROR:\s*/, ''), true); return; }
+    bdResultado(r);
+  }, 30);
+}
+
+function bdGuardar() {
+  bdResultado('Guardando…');
+  setTimeout(function() {
+    const r = window.javaBridge.guardarAlmacenamiento(JSON.stringify(bdDatos()));
+    if (typeof r === 'string' && r.startsWith('ERROR')) { bdResultado(r.replace(/^ERROR:\s*/, ''), true); return; }
+    bdResultado(r);
+    cargarEstadoDesdeJava();
+    showToast(r);
+  }, 30);
 }
 
 function confirmarEliminarRespaldo(nombre) {

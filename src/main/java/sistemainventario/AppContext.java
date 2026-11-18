@@ -2,12 +2,14 @@ package sistemainventario;
 
 import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Backup;
+import sistemainventario.model.DatabaseSettings;
 import sistemainventario.repository.ZipArchiver;
 import sistemainventario.repository.GlobalConfigRepository;
 import sistemainventario.repository.ProfileDirectory;
 import sistemainventario.repository.LabelRepository;
 import sistemainventario.repository.JsonFileStore;
-import sistemainventario.repository.ProfileRepository;
+import sistemainventario.repository.DatabaseSettingsRepository;
+import sistemainventario.repository.StorageProvider;
 import sistemainventario.repository.BackupRepository;
 import sistemainventario.repository.AssistantConfigRepository;
 import sistemainventario.repository.ReportExcelWriter;
@@ -19,6 +21,8 @@ import sistemainventario.service.BackupService;
 import sistemainventario.service.ProfileServices;
 import sistemainventario.service.AssistantSettingsService;
 import sistemainventario.service.ReportExportService;
+import sistemainventario.service.DataTransferService;
+import sistemainventario.service.StorageService;
 import sistemainventario.util.QrGenerator;
 
 import java.nio.file.Path;
@@ -29,8 +33,9 @@ import java.util.Optional;
  * Contexto de la aplicación (Singleton) y raíz de composición.
  *
  * <p>Es el único lugar donde se conectan las implementaciones concretas
- * (repositorios JSON) con los servicios. Mantiene los servicios del perfil
- * activo y los reemplaza al cambiar de perfil.</p>
+ * (repositorios JSON o JDBC, según {@link StorageService}) con los servicios.
+ * Mantiene los servicios del perfil activo y los reemplaza al cambiar de perfil
+ * o de almacenamiento.</p>
  *
  * <p>Cambios respecto a P2: los campos dejaron de ser públicos y mutables
  * (encapsulamiento) y ya no se crean repositorios duplicados para el mismo
@@ -45,6 +50,7 @@ public final class AppContext {
     private static final String CARPETA_RESPALDOS = "respaldos";
     private static final String CARPETA_ETIQUETAS = "etiquetas";
     private static final String ARCHIVO_ASISTENTE = "asistente.json";
+    private static final String ARCHIVO_BASE_DATOS = "basedatos.json";
 
     private static AppContext instancia;
 
@@ -53,6 +59,9 @@ public final class AppContext {
     private final LabelService gestorEtiquetas;
     private final AssistantSettingsService ajustesAsistente;
     private final ReportExportService exportadorInformes;
+    private final StorageService almacenamiento;
+    private StorageProvider almacenActual;
+    private String avisoAlmacenamiento;
     private ProfileService gestorPerfiles;
     private ProfileServices serviciosActivos;
 
@@ -68,6 +77,9 @@ public final class AppContext {
                 new AssistantConfigRepository(directorioDatos.resolveSibling(ARCHIVO_ASISTENTE)));
         this.exportadorInformes = new ReportExportService(new ReportExcelWriter(),
                 ReportExportService.carpetaPorDefecto(Path.of(System.getProperty("user.home"))));
+        this.almacenamiento = new StorageService(
+                new DatabaseSettingsRepository(directorioDatos.resolveSibling(ARCHIVO_BASE_DATOS)),
+                directorioDatos, new DataTransferService());
         recargar();
     }
 
@@ -77,23 +89,66 @@ public final class AppContext {
      */
     public void recargar() {
         JsonFileStore.crearDirectorio(directorioDatos);
-        ProfileDirectory directorios = new ProfileDirectory(directorioDatos);
+        if (almacenActual != null) {
+            almacenActual.close();
+        }
+        StorageService.Apertura apertura = almacenamiento.abrir();
+        this.almacenActual = apertura.almacen();
+        this.avisoAlmacenamiento = apertura.aviso();
+        gestorRespaldo.usar(apertura.copias());
         this.gestorPerfiles = new ProfileService(
-                new ProfileRepository(directorioDatos),
+                almacenActual.perfiles(),
                 new GlobalConfigService(new GlobalConfigRepository(directorioDatos)),
-                directorios,
-                new ProfileServicesFactory(directorios));
+                new ProfileDirectory(directorioDatos),
+                new ProfileServicesFactory(almacenActual));
+        gestorPerfiles.sincronizarConfiguracion();
         this.serviciosActivos = gestorPerfiles.resolverPerfilInicial()
                 .map(gestorPerfiles::crearServicios)
                 .orElse(null);
     }
 
     /**
-     * Restaura una copia de seguridad y recarga todos los datos en memoria.
+     * Cambia dónde se guardan los datos. Si se pasa de una base de datos a
+     * archivos, primero se copian los datos de la base a los archivos.
      *
-     * @param nombre archivo .zip a restaurar
-     * @return la copia automática del estado anterior
+     * @param nueva motor, URL, usuario y clave
+     * @return mensaje para el usuario
      */
+    public String cambiarAlmacenamiento(DatabaseSettings nueva) {
+        boolean veniaDeBase = almacenamiento.leer().usaBaseDeDatos() && avisoAlmacenamiento == null;
+        if (veniaDeBase && !nueva.usaBaseDeDatos()) {
+            crearRespaldoAntesDeCambiar();
+        }
+        almacenamiento.guardar(nueva);
+        recargar();
+        String mensaje = "Ahora los datos se guardan en " + almacenActual.nombre() + ".";
+        return avisoAlmacenamiento == null ? mensaje : mensaje + " " + avisoAlmacenamiento;
+    }
+
+    /** @return configuración de la base de datos de este computador */
+    public DatabaseSettings getAjustesBaseDeDatos() {
+        return almacenamiento.leer();
+    }
+
+    /** @return servicio que prueba y guarda la configuración de la base */
+    public StorageService getAlmacenamiento() {
+        return almacenamiento;
+    }
+
+    /** @return nombre del almacenamiento en uso ("Archivos JSON", "PostgreSQL", "Oracle") */
+    public String getAlmacenEnUso() {
+        return almacenActual.nombre();
+    }
+
+    /** @return aviso pendiente sobre el almacenamiento (migración o error de conexión), o {@code null} */
+    public String getAvisoAlmacenamiento() {
+        return avisoAlmacenamiento;
+    }
+
+    private void crearRespaldoAntesDeCambiar() {
+        gestorRespaldo.crear();
+    }
+
     public Backup restaurarRespaldo(String nombre) {
         Backup copiaPrevia = gestorRespaldo.restaurar(nombre);
         recargar();

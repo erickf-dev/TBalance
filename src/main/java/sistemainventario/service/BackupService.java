@@ -39,11 +39,22 @@ public class BackupService {
     private final Path directorioDatos;
     private final BackupRepository respaldos;
     private final ZipArchiver archivador;
+    private DataSnapshot copia = DataSnapshot.NINGUNO;
 
     public BackupService(Path directorioDatos, BackupRepository respaldos, ZipArchiver archivador) {
         this.directorioDatos = Objects.requireNonNull(directorioDatos);
         this.respaldos = Objects.requireNonNull(respaldos);
         this.archivador = Objects.requireNonNull(archivador);
+    }
+
+    /**
+     * Indica qué hacer antes de comprimir y después de restaurar según dónde
+     * estén los datos (archivos o base de datos).
+     *
+     * @param copia pasos del almacenamiento actual
+     */
+    public void usar(DataSnapshot copia) {
+        this.copia = Objects.requireNonNull(copia);
     }
 
     /** @return respaldos guardados, del más reciente al más antiguo */
@@ -77,6 +88,7 @@ public class BackupService {
             validarContenido(temporal);
             Backup copiaPrevia = crearConPrefijo(PREFIJO_SEGURIDAD);
             reemplazarDatos(temporal);
+            copia.cargarDesdeCarpeta();
             return copiaPrevia;
         } finally {
             borrarCarpeta(temporal);
@@ -97,6 +109,7 @@ public class BackupService {
 
     private Backup crearConPrefijo(String prefijo) {
         Path destino = nombreDisponible(prefijo);
+        copia.volcarACarpeta();
         archivador.comprimir(directorioDatos, destino);
         return respaldos.describir(destino);
     }

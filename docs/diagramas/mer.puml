@@ -2,6 +2,7 @@
 skinparam shadowing false
 skinparam defaultFontName Helvetica
 skinparam ArrowColor #2e6b4f
+skinparam linetype ortho
 skinparam class {
   BackgroundColor #f5faf6
   BorderColor #1e4a35
@@ -9,70 +10,113 @@ skinparam class {
 }
 hide circle
 hide empty methods
-title Modelo entidad-relación de los datos guardados (JSON)
-entity "Profile" as P {
-  * id : String <<PK>>
+title Modelo entidad-relación (PostgreSQL y Oracle)
+legend bottom left
+  Línea punteada: ENTRADA, SALIDA y DETALLE_VENTA guardan PRODUCTO_ID
+  sin llave foránea (es historial y se conserva si el producto se borra).
+endlegend
+
+entity "PERFIL" as PERFIL {
+  * ID <<PK>>
   --
-  nombre, descripcion, color
-  tipoNegocio, fechaCreacion
-  configuracion
+  * NOMBRE
+  DESCRIPCION
+  COLOR
+  TIPO_NEGOCIO
+  FECHA_CREACION
 }
-entity "Category" as CA {
-  * id : String <<PK>>
+entity "PERFIL_CONFIGURACION" as CONF {
+  * PERFIL_ID <<PK, FK>>
+  * CLAVE <<PK>>
   --
-  nombre, descripcion
+  VALOR
 }
-entity "Supplier" as PR {
-  * id : String <<PK>>
+entity "CATEGORIA" as CAT {
+  * PERFIL_ID <<PK, FK>>
+  * ID <<PK>>
   --
-  nombre, contacto, telefono, email
-  direccion, categoria, activo
+  * NOMBRE
+  DESCRIPCION
 }
-entity "Product" as PO {
-  * id : String <<PK>>
+entity "PROVEEDOR" as PROV {
+  * PERFIL_ID <<PK, FK>>
+  * ID <<PK>>
   --
-  categoriaId <<FK>>
-  proveedorId <<FK>>
-  nombre, codigo, descripcion, categoria
-  precioCompra, precioVenta, stock, stockMin
-  tipo, requiereVencimiento, fechaVencimiento
+  * NOMBRE
+  CONTACTO, TELEFONO, EMAIL
+  DIRECCION, CATEGORIA
+  * ACTIVO
 }
-entity "StockEntry" as EN {
-  * id : String <<PK>>
+entity "PRODUCTO" as PROD {
+  * PERFIL_ID <<PK, FK>>
+  * ID <<PK>>
   --
-  productoId <<FK>>
-  proveedorId <<FK>>
-  cantidad, fecha, precioUnitario, observacion
+  * NOMBRE
+  CODIGO, DESCRIPCION, CATEGORIA
+  CATEGORIA_ID <<FK>>
+  PROVEEDOR_ID <<FK>>
+  * PRECIO_COMPRA, * PRECIO_VENTA
+  * STOCK, * STOCK_MIN
+  TIPO, * REQUIERE_VENCIMIENTO
+  FECHA_VENCIMIENTO, FECHA_MODIFICACION
 }
-entity "StockExit" as SA {
-  * id : String <<PK>>
+entity "ENTRADA" as ENT {
+  * PERFIL_ID <<PK, FK>>
+  * ID <<PK>>
   --
-  productoId <<FK>>
-  cantidad, fecha, motivo, tipo
+  * PRODUCTO_ID
+  * CANTIDAD
+  FECHA, PROVEEDOR_ID
+  * PRECIO_UNITARIO, OBSERVACION
 }
-entity "Sale" as VE {
-  * id : String <<PK>>
+entity "SALIDA" as SAL {
+  * PERFIL_ID <<PK, FK>>
+  * ID <<PK>>
   --
-  cliente, metodoPago, referenciaPago
-  observacion, fecha, estado, total
+  * PRODUCTO_ID
+  * CANTIDAD
+  FECHA, MOTIVO, TIPO
 }
-entity "SaleItem" as IV {
-  productoId <<FK>>
+entity "VENTA" as VEN {
+  * PERFIL_ID <<PK, FK>>
+  * ID <<PK>>
   --
-  nombreProducto, cantidad
-  precioUnitario, subtotal, costoUnitario
+  CLIENTE, METODO_PAGO
+  OBSERVACION, REFERENCIA_PAGO
+  FECHA, ESTADO, * TOTAL
 }
-P ||--o{ CA : tiene
-P ||--o{ PR : tiene
-P ||--o{ PO : tiene
-P ||--o{ EN : tiene
-P ||--o{ SA : tiene
-P ||--o{ VE : tiene
-CA |o--o{ PO : agrupa
-PR |o--o{ PO : provee
-PO ||--o{ EN : recibe
-PR |o--o{ EN : entrega
-PO ||--o{ SA : registra
-VE ||--|{ IV : contiene
-PO ||--o{ IV : vendido en
+entity "DETALLE_VENTA" as DET {
+  * PERFIL_ID <<PK, FK>>
+  * VENTA_ID <<PK, FK>>
+  * LINEA <<PK>>
+  --
+  * PRODUCTO_ID, NOMBRE_PRODUCTO
+  * CANTIDAD, * PRECIO_UNITARIO
+  * SUBTOTAL, * COSTO_UNITARIO
+}
+entity "HISTORIAL_PRECIO" as HIS {
+  * ID <<PK>> (identidad)
+  --
+  * PERFIL_ID <<FK>>
+  * PRODUCTO_ID
+  PRECIO_COMPRA_ANTERIOR, PRECIO_COMPRA_NUEVO
+  PRECIO_VENTA_ANTERIOR, PRECIO_VENTA_NUEVO
+  * FECHA_CAMBIO, USUARIO_BD
+}
+
+PERFIL ||--o{ CONF
+PERFIL ||--o{ CAT
+PERFIL ||--o{ PROV
+PERFIL ||--o{ PROD
+PERFIL ||--o{ ENT
+PERFIL ||--o{ SAL
+PERFIL ||--o{ VEN
+PERFIL ||--o{ HIS
+CAT |o--o{ PROD
+PROV |o--o{ PROD
+VEN ||--|{ DET
+PROD ..o{ ENT
+PROD ..o{ SAL
+PROD ..o{ DET : historial\n(sin FK)
+PROD ..o{ HIS : disparador\nTRG_PRODUCTO_HISTORIAL_PRECIO
 @enduml

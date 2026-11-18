@@ -1,6 +1,6 @@
 # TBalance — Sistema de Inventario
 
-Aplicación de escritorio en **Java 17** para llevar el inventario de pequeños negocios con perfiles independientes, ventas con métodos de pago colombianos, informes con utilidad real (Excel y PDF), copias de seguridad, venta por QR con la webcam y un asistente con inteligencia artificial. La interfaz se abre en una ventana de **Microsoft Edge** (o en JavaFX), los datos se guardan en archivos **JSON** locales y todo funciona sin internet excepto el asistente.
+Aplicación de escritorio en **Java 17** para llevar el inventario de pequeños negocios con perfiles independientes, ventas con métodos de pago colombianos, informes con utilidad real (Excel y PDF), copias de seguridad, venta por QR con la webcam y un asistente con inteligencia artificial. La interfaz se abre en una ventana de **Microsoft Edge** (o en JavaFX), los datos se guardan en **PostgreSQL**, **Oracle** o archivos **JSON** locales (se elige en la aplicación) y, con archivos o una base local, todo funciona sin internet excepto el asistente.
 
 Proyecto de aula de **Programación de Computadores III (SS462)** — Universidad Popular del Cesar. Docente: Ing. Esp. Alfredo Bautista. Evolución del sistema TBalance de Programación II.
 
@@ -50,7 +50,7 @@ src/main/java/sistemainventario/
 ├── AppContext, Main, Launcher   arranque y composición
 ├── model/        entidades del dominio
 ├── exception/    excepciones del proyecto
-├── repository/   acceso a datos (JSON, respaldos, etiquetas, Excel)
+├── repository/   acceso a datos (JSON, PostgreSQL/Oracle con JDBC, respaldos, etiquetas, Excel)
 ├── ia/           cliente del modelo de lenguaje (Gemini)
 ├── service/      casos de uso (incluye informes y asistente)
 ├── bridge/       controladores que atienden la vista

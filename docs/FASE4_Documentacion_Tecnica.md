@@ -32,6 +32,8 @@ Las seis vistas del diagrama de clases final (95 clases):
 
 ![Persistencia](diagramas/clases-persistencia.png)
 
+![Persistencia con base de datos](diagramas/clases-persistencia-bd.png)
+
 ![Servicios](diagramas/clases-servicios.png)
 
 ![Presentación](diagramas/clases-presentacion.png)
@@ -46,131 +48,181 @@ La descripción de cada clase (tipo, responsabilidad, atributos y métodos) est�
 
 ### 4.1 Modelo entidad-relación
 
-El proyecto guarda los datos en archivos JSON (no hay base de datos relacional todavía). El diagrama muestra las entidades guardadas y cómo se relacionan por sus identificadores:
+Las tablas son las mismas en PostgreSQL y en Oracle (scripts `src/main/resources/sql/*/01_tablas.sql`).
 
 ![Modelo entidad-relación](diagramas/mer.png)
 
-- Un **perfil** tiene sus propios productos, categorías, proveedores, entradas, salidas y ventas (cada perfil tiene su carpeta `perfiles/<ID>/`).
-- Un **producto** pertenece a una categoría (`categoriaId`) y puede tener un proveedor (`proveedorId`).
-- Cada **entrada** y **salida** se refiere a un producto (`productoId`); la entrada puede indicar el proveedor.
-- Una **venta** tiene uno o más **ítems** y cada ítem se refiere a un producto. La venta guarda su método de pago (`metodoPago`, uno de `PaymentMethod`) y el comprobante si es digital; cada ítem guarda el costo del producto en ese momento (`costoUnitario`), con el que se calcula la utilidad real de los informes.
+- Un **perfil** (negocio) tiene sus propias categorías, proveedores, productos, entradas, salidas, ventas y ajustes. Por eso la llave de esas tablas es **(PERFIL_ID, ID)**: el producto "1001" de una ferretería y el "1001" de una droguería son distintos. Al borrar un perfil, la base borra sus datos (`ON DELETE CASCADE`).
+- Un **producto** puede tener una categoría y un proveedor (llaves foráneas compuestas, opcionales). Al borrar una categoría o un proveedor, sus productos quedan sin ella.
+- Una **venta** tiene uno o más renglones en **DETALLE_VENTA** (llave foránea con `ON DELETE CASCADE`). Cada renglón guarda el nombre y el costo del producto al vender.
+- **ENTRADA**, **SALIDA** y **DETALLE_VENTA** guardan `PRODUCTO_ID` sin llave foránea a PRODUCTO: son historial y se conservan aunque el producto se elimine.
+- **HISTORIAL_PRECIO** la llena el disparador `TRG_PRODUCTO_HISTORIAL_PRECIO`.
 
-Cuando se implemente la base de datos relacional (pendiente, ver [Fase 3](FASE3_Desarrollo.md#32-base-de-datos-relacional-y-dao)) estas entidades serán las tablas y los campos `...Id` las claves foráneas.
+En modo de archivos, cada tabla corresponde a un archivo JSON con los mismos campos: `perfiles.json` y, por negocio, `perfiles/<ID>/categorias.json`, `proveedores.json`, `productos.json`, `entradas.json`, `salidas.json` y `ventas.json` (con los ítems dentro de cada venta).
 
 ### 4.2 Diccionario de datos
 
-Los campos son los atributos de las clases del modelo que Gson guarda en cada archivo (incluye los heredados de `IdentifiedEntity` y `InventoryMovement`). Las fechas se guardan como texto ISO (`yyyy-MM-dd` o `yyyy-MM-ddTHH:mm:ss`).
+#### `PERFIL` — Negocio (perfil). Cada negocio tiene sus propios datos.
 
-#### `perfiles.json` — Profile
+Clase Java: `Profile`. Llave primaria: (ID).
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre del negocio | Obligatorio |
-| `descripcion` | `String` | Descripción opcional | — |
-| `color` | `String` | Color identificador (hex) | — |
-| `tipoNegocio` | `String` | Clave del tipo de negocio (BusinessType) | — |
-| `fechaCreacion` | `String` | Fecha de creación | — |
-| `configuracion` | `Map<String, String>` | Ajustes clave-valor del perfil | — |
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK | Identificador del negocio |
+| `NOMBRE` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | No | — | Nombre del negocio |
+| `DESCRIPCION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Descripción opcional |
+| `COLOR` | `VARCHAR2(9 CHAR)` | `VARCHAR(9)` | Sí | — | Color de acento elegido (hex) |
+| `TIPO_NEGOCIO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | Sí | — | Clave de BusinessType (FERRETERIA, FARMACIA...) |
+| `FECHA_CREACION` | `DATE` | `DATE` | Sí | — | Fecha en que se creó |
 
-#### `configuracion-global.json` — GlobalConfig
+#### `PERFIL_CONFIGURACION` — Ajustes clave-valor de cada negocio.
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `perfiles` | `List<Profile>` | Perfiles registrados | — |
-| `perfilActivoId` | `String` | ID del perfil activo | Referencia a Profile.id |
-| `version` | `String` | Versión del formato de configuración | — |
+Clase Java: `Profile.configuracion`. Llave primaria: (PERFIL_ID, CLAVE).
 
-#### `perfiles/<ID>/productos.json` — Product
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio |
+| `CLAVE` | `VARCHAR2(50 CHAR)` | `VARCHAR(50)` | No | PK | Nombre del ajuste (moneda, stockMin...) |
+| `VALOR` | `VARCHAR2(200 CHAR)` | `VARCHAR(200)` | Sí | — | Valor del ajuste |
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre del producto | Obligatorio |
-| `codigo` | `String` | Código interno o de barras | — |
-| `descripcion` | `String` | Descripción opcional | — |
-| `categoria` | `String` | Nombre de la categoría | — |
-| `categoriaId` | `String` | ID de la categoría | Referencia a Category.id |
-| `proveedorId` | `String` | ID del proveedor | Referencia a Supplier.id |
-| `precioCompra` | `double` | Precio de compra | ≥ 0 |
-| `precioVenta` | `double` | Precio de venta | ≥ 0 |
-| `stock` | `int` | Unidades disponibles | ≥ 0 |
-| `stockMin` | `int` | Límite para alerta de bajo stock | ≥ 0 |
-| `tipo` | `String` | Tipo de producto | — |
-| `requiereVencimiento` | `boolean` | Si controla fecha de vencimiento | — |
-| `fechaVencimiento` | `String` | Fecha de vencimiento (ISO) | Fecha ISO válida cuando se controla vencimiento |
+#### `CATEGORIA` — Categorías de productos de un negocio.
 
-#### `perfiles/<ID>/categorias.json` — Category
+Clase Java: `Category`. Llave primaria: (PERFIL_ID, ID).
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre de la categoría | Obligatorio |
-| `descripcion` | `String` | Descripción opcional | — |
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador de la categoría |
+| `NOMBRE` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | No | — | Nombre |
+| `DESCRIPCION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Descripción opcional |
 
-#### `perfiles/<ID>/proveedores.json` — Supplier
+#### `PROVEEDOR` — Proveedores de un negocio.
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre del proveedor | Obligatorio |
-| `contacto` | `String` | Persona de contacto | — |
-| `telefono` | `String` | Teléfono | — |
-| `email` | `String` | Correo electrónico | — |
-| `direccion` | `String` | Dirección | — |
-| `categoria` | `String` | Rubro que abastece | — |
-| `activo` | `boolean` | Si el proveedor está activo | — |
+Clase Java: `Supplier`. Llave primaria: (PERFIL_ID, ID).
 
-#### `perfiles/<ID>/entradas.json` — StockEntry
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador del proveedor |
+| `NOMBRE` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | No | — | Nombre o razón social |
+| `CONTACTO` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Persona de contacto |
+| `TELEFONO` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | — | Teléfono |
+| `EMAIL` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Correo |
+| `DIRECCION` | `VARCHAR2(200 CHAR)` | `VARCHAR(200)` | Sí | — | Dirección |
+| `CATEGORIA` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Tipo de productos que surte |
+| `ACTIVO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 activo, 0 inactivo. Por defecto 1. |
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `productoId` | `String` | Product afectado | Obligatorio; referencia a Product.id |
-| `cantidad` | `int` | Unidades del movimiento | > 0 |
-| `fecha` | `String` | Fecha y hora del registro | — |
-| `proveedorId` | `String` | Supplier de la mercancía | Referencia a Supplier.id |
-| `precioUnitario` | `double` | Precio de compra por unidad | — |
-| `observacion` | `String` | Nota opcional | — |
+Restricciones CHECK: `ACTIVO IN (0, 1)`.
 
-#### `perfiles/<ID>/salidas.json` — StockExit
+#### `PRODUCTO` — Productos del inventario de un negocio.
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `productoId` | `String` | Product afectado | Obligatorio; referencia a Product.id |
-| `cantidad` | `int` | Unidades del movimiento | > 0 |
-| `fecha` | `String` | Fecha y hora del registro | — |
-| `motivo` | `String` | Razón del retiro | — |
-| `tipo` | `String` | Tipo de salida | — |
+Clase Java: `Product`. Llave primaria: (PERFIL_ID, ID).
 
-#### `perfiles/<ID>/ventas.json` — Sale
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → CATEGORIA, PERFIL, PROVEEDOR | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador del producto |
+| `NOMBRE` | `VARCHAR2(150 CHAR)` | `VARCHAR(150)` | No | — | Nombre |
+| `CODIGO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Código de barras o interno |
+| `DESCRIPCION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Descripción opcional |
+| `CATEGORIA` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de la categoría (texto) |
+| `CATEGORIA_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | FK → CATEGORIA | Categoría (opcional) |
+| `PROVEEDOR_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | FK → PROVEEDOR | Proveedor (opcional) |
+| `PRECIO_COMPRA` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Costo por unidad. Por defecto 0. |
+| `PRECIO_VENTA` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Precio de venta por unidad. Por defecto 0. |
+| `STOCK` | `NUMBER(10)` | `INTEGER` | No | — | Unidades disponibles. Por defecto 0. |
+| `STOCK_MIN` | `NUMBER(10)` | `INTEGER` | No | — | Stock mínimo antes de avisar. Por defecto 0. |
+| `TIPO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Presentación o tipo |
+| `REQUIERE_VENCIMIENTO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 si se controla vencimiento. Por defecto 0. |
+| `FECHA_VENCIMIENTO` | `DATE` | `DATE` | Sí | — | Fecha de vencimiento |
+| `FECHA_MODIFICACION` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Último cambio (la llena TRG_PRODUCTO_VALIDAR) |
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `cliente` | `String` | Cliente | — |
-| `metodoPago` | `String` | Método de pago (nombre de un PaymentMethod) | Uno de PaymentMethod; Fiado exige cliente |
-| `observacion` | `String` | Nota opcional | — |
-| `referenciaPago` | `String` | Comprobante de un pago digital (opcional) | Solo en pagos digitales; opcional |
-| `fecha` | `String` | Fecha y hora de la venta | — |
-| `estado` | `String` | Estado (COMPLETADA) | — |
-| `items` | `List<SaleItem>` | Ítems de la venta | Al menos 1 ítem |
-| `total` | `double` | Total (se guarda en el JSON) | — |
+Restricciones CHECK: `REQUIERE_VENCIMIENTO IN (0, 1)`.
 
-#### `(dentro de cada venta, en `items`)` — SaleItem
+#### `ENTRADA` — Entradas de inventario (compras, reposiciones).
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `productoId` | `String` | Product vendido | Obligatorio; referencia a Product.id |
-| `nombreProducto` | `String` | Nombre del producto al momento de la venta | — |
-| `cantidad` | `int` | Unidades vendidas | > 0 |
-| `precioUnitario` | `double` | Precio por unidad | ≥ 0 |
-| `subtotal` | `double` | Cantidad × precio (se guarda en el JSON) | — |
-| `costoUnitario` | `double` | Precio de compra del producto al momento de la venta | ≥ 0; 0 = sin costo (ventas anteriores a v3.4.0) |
+Clase Java: `StockEntry`. Llave primaria: (PERFIL_ID, ID).
 
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador (ENT-...) |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto que entró (historial, sin FK) |
+| `CANTIDAD` | `NUMBER(10)` | `INTEGER` | No | — | Unidades |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Fecha y hora |
+| `PROVEEDOR_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | — | Proveedor que entregó |
+| `PRECIO_UNITARIO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Costo por unidad en esa entrada. Por defecto 0. |
+| `OBSERVACION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Nota |
 
-Otros archivos que genera el programa (no son tablas de datos): copias de seguridad `~/.inventariopro/respaldos/TBalance_<fecha>_<hora>.zip`, etiquetas `~/.inventariopro/etiquetas/*.png`, informes `Documentos/TBalance/Informe de ventas - <negocio> - <desde> a <hasta>.xlsx`, la configuración del asistente `~/.inventariopro/asistente.json` (`clave`, `modelo`; solo en ese computador), su registro de errores `asistente.log` y el perfil de la ventana de Edge `~/.inventariopro/ventana/`.
+Restricciones CHECK: `CANTIDAD > 0`.
+
+#### `SALIDA` — Salidas de inventario que no son ventas (daño, consumo...).
+
+Clase Java: `StockExit`. Llave primaria: (PERFIL_ID, ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador (SAL-...) |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto que salió (historial, sin FK) |
+| `CANTIDAD` | `NUMBER(10)` | `INTEGER` | No | — | Unidades |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Fecha y hora |
+| `MOTIVO` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Motivo |
+| `TIPO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Tipo de salida |
+
+Restricciones CHECK: `CANTIDAD > 0`.
+
+#### `VENTA` — Ventas de un negocio.
+
+Clase Java: `Sale`. Llave primaria: (PERFIL_ID, ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador (VTA-...) |
+| `CLIENTE` | `VARCHAR2(150 CHAR)` | `VARCHAR(150)` | Sí | — | Nombre del cliente |
+| `METODO_PAGO` | `VARCHAR2(40 CHAR)` | `VARCHAR(40)` | Sí | — | Efectivo, Nequi, Daviplata, Fiado... (PaymentMethod) |
+| `OBSERVACION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Nota |
+| `REFERENCIA_PAGO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Comprobante del pago digital |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Fecha y hora |
+| `ESTADO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | Sí | — | COMPLETADA |
+| `TOTAL` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Suma de los subtotales. Por defecto 0. |
+
+#### `DETALLE_VENTA` — Productos de cada venta.
+
+Clase Java: `SaleItem`. Llave primaria: (PERFIL_ID, VENTA_ID, LINEA).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → VENTA | Negocio dueño |
+| `VENTA_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK FK → VENTA | Venta |
+| `LINEA` | `NUMBER(4)` | `SMALLINT` | No | PK | Número de línea dentro de la venta |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto vendido (historial, sin FK) |
+| `NOMBRE_PRODUCTO` | `VARCHAR2(150 CHAR)` | `VARCHAR(150)` | Sí | — | Nombre del producto al vender |
+| `CANTIDAD` | `NUMBER(10)` | `INTEGER` | No | — | Unidades |
+| `PRECIO_UNITARIO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Precio por unidad. Por defecto 0. |
+| `SUBTOTAL` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Cantidad × precio. Por defecto 0. |
+| `COSTO_UNITARIO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Costo del producto al vender (para la utilidad). Por defecto 0. |
+
+Restricciones CHECK: `CANTIDAD > 0`.
+
+#### `HISTORIAL_PRECIO` — Cambios de precio de los productos. La llena el disparador TRG_PRODUCTO_HISTORIAL_PRECIO; TBalance no escribe en ella.
+
+Clase Java: `— (solo base de datos)`. Llave primaria: (ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `ID` | `NUMBER GENERATED ALWAYS AS IDENTITY` | `BIGINT GENERATED ALWAYS AS IDENTITY` | No | PK | Consecutivo automático (identidad) |
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | FK → PERFIL | Negocio |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto que cambió |
+| `PRECIO_COMPRA_ANTERIOR` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Costo antes del cambio |
+| `PRECIO_COMPRA_NUEVO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Costo después |
+| `PRECIO_VENTA_ANTERIOR` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Precio de venta antes |
+| `PRECIO_VENTA_NUEVO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Precio de venta después |
+| `FECHA_CAMBIO` | `TIMESTAMP` | `TIMESTAMP` | No | — | Momento del cambio. Por defecto SYSTIMESTAMP. |
+| `USUARIO_BD` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Usuario de la base que hizo el cambio |
+
+Otros archivos que genera el programa (no son tablas de datos): copias de seguridad `~/.inventariopro/respaldos/TBalance_<fecha>_<hora>.zip`, etiquetas `~/.inventariopro/etiquetas/*.png`, informes `Documentos/TBalance/Informe de ventas - <negocio> - <desde> a <hasta>.xlsx`, la configuración del asistente `~/.inventariopro/asistente.json` (`clave`, `modelo`; solo en ese computador), su registro de errores `asistente.log`, la configuración de la base de datos `~/.inventariopro/basedatos.json` (`motor`, `url`, `usuario`, `clave`; solo en ese computador) y el perfil de la ventana de Edge `~/.inventariopro/ventana/`.
 
 ## 5. Tabla consolidada de principios aplicados
 

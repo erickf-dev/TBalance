@@ -1,30 +1,25 @@
 package sistemainventario.service;
 
-import sistemainventario.repository.CategoryRepository;
-import sistemainventario.repository.ProfileDirectory;
-import sistemainventario.repository.StockEntryRepository;
-import sistemainventario.repository.ProductRepository;
-import sistemainventario.repository.SupplierRepository;
-import sistemainventario.repository.StockExitRepository;
-import sistemainventario.repository.SaleRepository;
+import sistemainventario.repository.StorageProvider;
 
-import java.nio.file.Path;
 import java.util.Objects;
 
 /**
  * Construye los repositorios y servicios de un perfil.
  *
  * <p><b>GRASP Creator:</b> es la clase que posee los datos de inicialización
- * (la carpeta del perfil) y por eso es responsable de crear los
- * repositorios JSON y de inyectarlos en los gestores. Así ningún gestor hace
- * {@code new XxxRepository(...)}, lo que reduce el acoplamiento.</p>
+ * (el ID del perfil) y por eso es responsable de pedir los repositorios al
+ * almacenamiento ({@link StorageProvider}: archivos JSON, PostgreSQL u Oracle)
+ * e inyectarlos en los gestores. Así ningún gestor sabe dónde se guardan los
+ * datos, lo que reduce el acoplamiento.</p>
  */
 public class ProfileServicesFactory {
 
-    private final ProfileDirectory directorios;
+    private final StorageProvider almacen;
 
-    public ProfileServicesFactory(ProfileDirectory directorios) {
-        this.directorios = Objects.requireNonNull(directorios);
+    /** @param almacen almacenamiento de donde salen los repositorios */
+    public ProfileServicesFactory(StorageProvider almacen) {
+        this.almacen = Objects.requireNonNull(almacen);
     }
 
     /**
@@ -32,13 +27,12 @@ public class ProfileServicesFactory {
      * @return servicios listos para operar sobre los datos de ese perfil
      */
     public ProfileServices crear(String perfilId) {
-        Path carpeta = directorios.crear(perfilId);
-        InventoryService inventario = new InventoryService(new ProductRepository(carpeta));
+        InventoryService inventario = new InventoryService(almacen.productos(perfilId));
         return new ProfileServices(
                 inventario,
-                new CategoryService(new CategoryRepository(carpeta)),
-                new SupplierService(new SupplierRepository(carpeta)),
-                new MovementService(inventario, new StockEntryRepository(carpeta), new StockExitRepository(carpeta)),
-                new SaleService(inventario, new SaleRepository(carpeta)));
+                new CategoryService(almacen.categorias(perfilId)),
+                new SupplierService(almacen.proveedores(perfilId)),
+                new MovementService(inventario, almacen.entradas(perfilId), almacen.salidas(perfilId)),
+                new SaleService(inventario, almacen.ventas(perfilId)));
     }
 }
