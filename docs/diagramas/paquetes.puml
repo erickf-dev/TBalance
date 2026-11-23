@@ -20,7 +20,7 @@ skinparam note {
 }
 hide empty members
 
-title Diagrama de paquetes organizados por capas — TBalance v3.4.0
+title Diagrama de paquetes organizados por capas — TBalance v3.5.0
 
 left to right direction
 skinparam packageStyle folder

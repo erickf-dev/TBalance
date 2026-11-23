@@ -14,26 +14,111 @@ skinparam package {
   BorderColor #1e4a35
   FontColor #14281d
 }
-skinparam note {
-  BackgroundColor #fdf8ea
-  BorderColor #d4a72c
-}
 hide empty members
 
-title Diagrama de clases — ventanas: Edge (servidor local) y JavaFX
-package sistemainventario {
-class Main {
-  + start(ventanaPrincipal : Stage)
-  + main(args : String[]) {static}
+title Diagrama de clases — ventanas, cámaras y utilidades (view, dispositivo, util) — TBalance v3.5.0
+
+package dispositivo {
+interface Camera {
+  + {abstract} abrir()
+  + {abstract} capturar() : BufferedImage
+  + {abstract} cerrar()
+  + avisar()
 }
-class Launcher {
-  + main(args : String[]) {static}
+interface CameraProvider {
+  + {abstract} listar() : List<String>
+  + {abstract} crear() : Camera
 }
-class AppContext
+class PhoneCamera {
+  - enlace : PhoneLink
+  + abrir()
+  + capturar() : BufferedImage
+  + cerrar()
+  + avisar()
+}
+class PhoneLink {
+  - carpeta : Path
+  - servidor : HttpsServer
+  - clave : String
+  - direccion : String
+  - ultimaFoto : byte[]
+  - fotoNueva : boolean
+  - ultimaFotoMs : long
+  - avisos : List<String>
+  + iniciar() : String
+  + detener()
+  + prepararCertificado()
+  + estaActivo() : boolean
+  + celularConectado() : boolean
+  + tomarFotoNueva() : BufferedImage
+  + avisar()
+  + {static} direccionLocal() : Optional<String>
+}
+class WebcamCamera {
+  - nombre : String
+  - webcam : Webcam
+  + {static} disponibles() : List<String>
+  + abrir()
+  + capturar() : BufferedImage
+  + cerrar()
+}
+}
+package util {
+class DateUtil {
+  + {static} hoy() : String
+  + {static} ahora() : String
+  + {static} parsear() : Optional<LocalDate>
+  + {static} formatearFecha() : String
+  + {static} parsearMomento() : Optional<LocalDateTime>
+}
+class FileUtil {
+  + {static} carpetaTemporal() : Path
+  + {static} borrarCarpeta()
+  + {static} copiarCarpeta()
+}
+class IdGenerator {
+  + {static} conPrefijo() : String
+  + {static} siguienteNumerico() : String
+}
+class ImageEncoder {
+  + {static} aJpegDataUri() : String
+  + {static} aPngDataUri() : String
+}
+class JsonUtil {
+  + {static} toJsonCompacto() : String
+  + {static} toJson() : String
+  + {static} fromJson() : T
+  + {static} fromJsonList() : List<T>
+  + {static} getGson() : Gson
+}
+class PasswordHasher {
+  + {static} resumir() : String
+  + {static} coincide() : boolean
+}
+class QrGenerator {
+  + generar() : BufferedImage
+}
+class QrReader {
+  - pistas : Map<DecodeHintType, Object>
+  + leer() : Optional<String>
+}
+class TextUtil {
+  + {static} esVacio() : boolean
+  + {static} contieneIgnorandoMayusculas() : boolean
+  + {static} normalizar() : String
+  + {static} recortar() : String
+}
 }
 package view {
+class BrowserWindow {
+  - carpetaPerfil : Path
+  - proceso : Process
+  + {static} buscarNavegador() : Optional<String>
+  + abrir()
+  + cerrar()
+}
 class DesktopBrowserApp {
-  + iniciar(contexto : AppContext) : boolean {static}
+  + {static} iniciar() : boolean
 }
 class LocalWebServer {
   - invocador : BridgeInvoker
@@ -44,15 +129,14 @@ class LocalWebServer {
   + iniciar() : String
   + detener()
 }
-class BrowserWindow {
-  - carpetaPerfil : Path
-  - proceso : Process
-  + buscarNavegador() : Optional<String> {static}
-  + abrir(navegador : String, url : String)
-  + cerrar()
+class SnapshotTransition {
+  - raiz : StackPane
+  - vista : WebView
+  + desvanecerZona()
 }
-class WindowsTaskbarIcon {
-  ~ aplicar(carpeta : Path) {static}
+class WebViewBridgeAdapter {
+  - invocador : BridgeInvoker
+  + llamar() : String
 }
 class WebViewMain {
   - contexto : AppContext
@@ -60,58 +144,18 @@ class WebViewMain {
   - webView : WebView
   - raiz : StackPane
   - bridge : JavaBridge
-  + show(ventana : Stage)
-  + actualizarTitulo(ventana : Stage)
+  - puenteJs : WebViewBridgeAdapter
+  + show()
+  + actualizarTitulo()
 }
-class SnapshotTransition {
-  - raiz : StackPane
-  - vista : WebView
-  + desvanecerZona(x : double, y : double, ancho : double, alto : double, milisegundos : int)
+class WindowsTaskbarIcon {
+  + {static} aplicar()
 }
 }
-package bridge {
-class JavaBridge
-interface ViewNotifier
-class SseNotifier {
-  - conexiones : List<OutputStream>
-  + agregar(salida : OutputStream)
-  + quitar(salida : OutputStream)
-  + conectadas() : int
-  + ejecutarScript(script : String)
-  + latido()
-  ~ formatear(script : String) : String {static}
-}
-class BridgeInvoker {
-  - puente : Object
-  - gson : Gson
-  - metodos : Map<String, List<Method>>
-  + invocar(nombre : String, argumentosJson : String) : String
-}
-interface ScreenTransition {
-  + desvanecerZona(x : double, y : double, ancho : double, alto : double, milisegundos : int)
-}
-class WebViewNotifier
-}
-
-class Application
-Application <|-- Main
-Launcher ..> Main
-Main ..> DesktopBrowserApp : iniciar()
-Main ..> WebViewMain : si no hay Edge
-DesktopBrowserApp *-- JavaBridge
-DesktopBrowserApp *-- SseNotifier
-DesktopBrowserApp *-- LocalWebServer
-DesktopBrowserApp *-- BrowserWindow
-DesktopBrowserApp ..> WindowsTaskbarIcon : aplicar()
-DesktopBrowserApp ..> AppContext
-LocalWebServer o-- BridgeInvoker : POST /bridge
-LocalWebServer o-- SseNotifier : GET /eventos
-BridgeInvoker ..> JavaBridge : invocar()
-ViewNotifier <|.. SseNotifier
-ViewNotifier <|.. WebViewNotifier
-WebViewMain *-- JavaBridge : bridge
-WebViewMain *-- SnapshotTransition
-WebViewMain ..> WebViewNotifier
+interface ScreenTransition <<otro diagrama>>
+Camera <|.. PhoneCamera
+Camera <|.. WebcamCamera
+PhoneCamera --> PhoneLink
 ScreenTransition <|.. SnapshotTransition
-
+WebViewMain --> WebViewBridgeAdapter
 @enduml

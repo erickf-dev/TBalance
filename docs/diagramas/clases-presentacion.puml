@@ -14,36 +14,160 @@ skinparam package {
   BorderColor #1e4a35
   FontColor #14281d
 }
-skinparam note {
-  BackgroundColor #fdf8ea
-  BorderColor #d4a72c
-}
 hide empty members
 
-title Diagrama de clases — paquetes bridge y dispositivo
+title Diagrama de clases — presentación (bridge y raíz) — TBalance v3.5.0
+
 package sistemainventario {
-class AppContext
+class AppContext {
+  - directorioDatos : Path
+  - gestorRespaldo : BackupService
+  - respaldosEnCarpeta : BackupRepository
+  - gestorEtiquetas : LabelService
+  - ajustesAsistente : AssistantSettingsService
+  - exportadorInformes : ReportExportService
+  - almacenamiento : StorageService
+  - almacenActual : StorageProvider
+  - ... (6 más)
+  + recargar()
+  + iniciarSesion() : User
+  + crearPrimerDueno() : User
+  + cerrarSesion()
+  + perfilesPermitidos() : List<Profile>
+  + rolActual() : Optional<Rol>
+  + puedeCrearNegocios() : boolean
+  + esDuenoDe() : boolean
+  + registrarNegocioCreado()
+  + ... (14 más)
+}
+class Launcher {
+  + {static} main()
+}
+class Main {
+  + start()
+  + {static} main()
+}
 }
 package bridge {
+class AccessPolicy {
+  - contexto : AppContext
+  - historial : AuditTrail
+  + antesDeLlamar() : AuditTrail.Momento
+  + revisar() : Optional<String>
+  + filtrar() : Object
+}
+class AssistantController {
+  - contexto : AppContext
+  - notificador : ViewNotifier
+  - hiloDeDatos : Executor
+  - ajustes : AssistantSettingsService
+  - asistente : AssistantService
+  - perfilDeLaConversacion : String
+  + asistenteEstado() : String
+  + asistenteConfigurar() : String
+  + asistenteEnviar() : String
+  + asistenteProbar() : String
+  + asistenteProbarClave() : String
+  + asistenteConfirmar() : String
+  + asistenteDescartar() : String
+  + asistenteReiniciar() : String
+}
+class AuditTrail {
+  - contexto : AppContext
+  + antes() : Momento
+  + anotar()
+}
+class BackupController {
+  - contexto : AppContext
+  - notificador : ViewNotifier
+  + listarRespaldos() : String
+  + crearRespaldo() : String
+  + restaurarRespaldo() : String
+  + eliminarRespaldo() : String
+  + obtenerCarpetaRespaldos() : String
+}
+class BridgeInvoker {
+  - puente : Object
+  - politica : AccessPolicy
+  - gson : Gson
+  - metodos : Map<String, List<Method>>
+  + invocar() : String
+}
+class BridgeResponse {
+  + {static} json() : String
+  + {static} error() : String
+  + {static} ejecutar() : String
+  + {static} ejecutarOk() : String
+  + {static} literalJs() : String
+}
+class CatalogController {
+  - contexto : AppContext
+  + obtenerCategorias() : String
+  + guardarCategoria() : String
+  + obtenerCategoriasDeshabilitadas() : String
+  + cambiarEstadoCategoria() : String
+  + obtenerProveedores() : String
+  + guardarProveedor() : String
+  + obtenerProveedoresDeshabilitados() : String
+  + cambiarEstadoProveedor() : String
+}
+class CostController {
+  - contexto : AppContext
+  + obtenerCostos() : String
+}
+class CreditController {
+  - contexto : AppContext
+  + listarFiados() : String
+  + resumenFiados() : String
+  + obtenerFiado() : String
+  + registrarAbono() : String
+  + anularAbono() : String
+}
+class DesktopFileOpener {
+  + abrir()
+}
+interface FileOpener {
+  + {abstract} abrir()
+}
+class InventoryController {
+  - contexto : AppContext
+  + obtenerProductos() : String
+  + buscarProductos() : String
+  + filtrarProductosPorCategoria() : String
+  + obtenerProductosVencidos() : String
+  + obtenerProductosPorVencer() : String
+  + guardarProducto() : String
+  + obtenerProductosDeshabilitados() : String
+  + cambiarEstadoProducto() : String
+  + obtenerEstadisticas() : String
+}
 class JavaBridge {
   - perfiles : ProfileController
   - inventario : InventoryController
   - catalogo : CatalogController
   - transacciones : TransactionController
   - respaldos : BackupController
+  - almacenamiento : StorageController
   - etiquetas : LabelController
   - informes : ReportController
-  - asistente : AssistantController
-  - escaneo : ScanController
-  - notificador : ViewNotifier
-  - transicion : ScreenTransition
-  + transicionPantalla(x : double, y : double, ancho : double, alto : double, milisegundos : int) : String
-  + obtenerInforme(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
-  + exportarInformeExcel(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
+  - ... (7 más)
+  + transicionPantalla() : String
+  + obtenerInforme() : String
+  + exportarInformeExcel() : String
   + asistenteEstado() : String
-  + asistenteConfigurar(clave : String, modelo : String) : String
-  + asistenteEnviar(mensaje : String) : String
-  .. 45 métodos más que delegan ..
+  + asistenteConfigurar() : String
+  + asistenteEnviar() : String
+  + asistenteProbar() : String
+  + asistenteProbarClave() : String
+  + asistenteConfirmar() : String
+  + ... (80 más)
+}
+class LabelController {
+  - contexto : AppContext
+  - abridor : FileOpener
+  + obtenerEtiquetaQR() : String
+  + guardarEtiquetaQR() : String
+  + generarHojaEtiquetas() : String
 }
 class ProfileController {
   - contexto : AppContext
@@ -53,148 +177,129 @@ class ProfileController {
   + obtenerSugerencias() : String
   + requiereControlVencimiento() : boolean
   + obtenerTiposNegocio() : String
-  + crearPerfil(jsonPerfil : String) : String
-  + editarPerfil(jsonPerfil : String) : String
-  + eliminarPerfil(id : String) : String
-  + seleccionarPerfil(id : String) : String
-}
-class InventoryController {
-  - contexto : AppContext
-  + obtenerProductos() : String
-  + buscarProductos(texto : String) : String
-  + filtrarProductosPorCategoria(categoria : String) : String
-  + obtenerProductosVencidos() : String
-  + obtenerProductosPorVencer(dias : int) : String
-  + guardarProducto(jsonProducto : String) : String
-  + eliminarProducto(id : String) : String
-  + obtenerEstadisticas(incluirVencimientos : boolean) : String
-}
-class CatalogController {
-  - contexto : AppContext
-  + obtenerCategorias() : String
-  + guardarCategoria(jsonCategoria : String) : String
-  + eliminarCategoria(id : String) : String
-  + obtenerProveedores() : String
-  + guardarProveedor(jsonProveedor : String) : String
-  + eliminarProveedor(id : String) : String
-}
-class TransactionController {
-  - contexto : AppContext
-  + obtenerEntradas() : String
-  + registrarEntrada(jsonEntrada : String) : String
-  + obtenerSalidas() : String
-  + registrarSalida(jsonSalida : String) : String
-  + obtenerVentas() : String
-  + crearVenta(jsonVenta : String) : String
-}
-class BackupController {
-  - contexto : AppContext
-  - notificador : ViewNotifier
-  + listarRespaldos() : String
-  + crearRespaldo() : String
-  + restaurarRespaldo(nombre : String) : String
-  + eliminarRespaldo(nombre : String) : String
-  + obtenerCarpetaRespaldos() : String
-}
-class LabelController {
-  - contexto : AppContext
-  - abridor : FileOpener
-  + obtenerEtiquetaQR(productoId : String) : String
-  + guardarEtiquetaQR(productoId : String) : String
-  + generarHojaEtiquetas() : String
+  + crearPerfil() : String
+  + editarPerfil() : String
+  + deshabilitarPerfil() : String
+  + habilitarPerfil() : String
+  + ... (3 más)
 }
 class ReportController {
   - contexto : AppContext
   - abridor : FileOpener
-  + obtenerInforme(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
-  + exportarInformeExcel(desde : String, hasta : String, anteriorDesde : String, anteriorHasta : String) : String
-}
-class AssistantController {
-  - contexto : AppContext
-  - notificador : ViewNotifier
-  - hiloDeDatos : Executor
-  - ajustes : AssistantSettingsService
-  - segundoPlano : ExecutorService
-  - asistente : AssistantService
-  - perfilDeLaConversacion : String
-  + asistenteEstado() : String
-  + asistenteConfigurar(clave : String, modelo : String) : String
-  + asistenteEnviar(mensaje : String) : String
-  + asistenteProbar() : String
-  + asistenteConfirmar(propuestaId : String) : String
-  + asistenteDescartar(propuestaId : String) : String
-  + asistenteReiniciar() : String
+  + obtenerInforme() : String
+  + exportarInformeExcel() : String
 }
 class ScanController {
   - contexto : AppContext
-  - fabricaCamara : Supplier<Camera>
+  - camaras : CameraProvider
+  - camaraElegida : String
   - vista : ViewNotifier
+  - celular : PhoneLink
   - sesionActiva : AtomicBoolean
   - hiloActual : Thread
+  + prepararCelular() : String
+  + celularConectado() : boolean
   + iniciarEscaneoQR() : String
+  + iniciarEscaneoQRCon() : String
+  + listarCamaras() : String
   + detenerEscaneoQR() : String
   + estaEscaneando() : boolean
 }
-class BridgeResponse {
-  + json(objeto : Object) : String {static}
-  + error(mensaje : String) : String {static}
-  + ejecutar(accion : Supplier<String>) : String {static}
-  + ejecutarOk(accion : Runnable) : String {static}
-  + literalJs(texto : String) : String {static}
+interface ScreenTransition {
+  + {abstract} desvanecerZona()
+}
+class SessionController {
+  - contexto : AppContext
+  + estadoSesion() : String
+  + iniciarSesion() : String
+  + crearPrimerDueno() : String
+  + cerrarSesion() : String
+  + cambiarMiClave() : String
+  + listarUsuarios() : String
+  + guardarUsuario() : String
+  + cambiarEstadoUsuario() : String
+  + restablecerClaveUsuario() : String
+  + ... (1 más)
+}
+class SseNotifier {
+  - conexiones : List<OutputStream>
+  + agregar()
+  + quitar()
+  + conectadas() : int
+  + ejecutarScript()
+  + latido()
+  + {static} formatear() : String
+}
+class StorageController {
+  - contexto : AppContext
+  - notificador : ViewNotifier
+  + revisarCambios() : String
+  + obtenerAlmacenamiento() : String
+  + probarAlmacenamiento() : String
+  + guardarAlmacenamiento() : String
+  + conectarBaseExistente() : String
+}
+class TransactionController {
+  - contexto : AppContext
+  + obtenerEntradas() : String
+  + registrarEntrada() : String
+  + obtenerSalidas() : String
+  + registrarSalida() : String
+  + obtenerVentas() : String
+  + crearVenta() : String
+  + obtenerVentasAnuladas() : String
+  + obtenerEntradasAnuladas() : String
+  + obtenerSalidasAnuladas() : String
+  + ... (4 más)
 }
 interface ViewNotifier {
-  + ejecutarScript(script : String)
+  + {abstract} ejecutarScript()
 }
 class WebViewNotifier {
   - motor : WebEngine
-  + ejecutarScript(script : String)
-}
-interface FileOpener {
-  + abrir(ruta : Path)
-}
-class DesktopFileOpener {
-  + abrir(ruta : Path)
+  + ejecutarScript()
 }
 }
-package dispositivo {
-interface Camera {
-  + abrir()
-  + capturar() : BufferedImage
-  + cerrar()
-}
-class WebcamCamera {
-  - webcam : Webcam
-  + abrir()
-  + capturar() : BufferedImage
-  + cerrar()
-}
-}
-
-interface ScreenTransition
-class SseNotifier
-JavaBridge *-- ProfileController
-JavaBridge *-- InventoryController
-JavaBridge *-- CatalogController
-JavaBridge *-- TransactionController
-JavaBridge *-- BackupController
-JavaBridge *-- LabelController
-JavaBridge *-- ReportController
-JavaBridge *-- AssistantController
-JavaBridge *-- ScanController
-JavaBridge o-- ViewNotifier
-JavaBridge o-- ScreenTransition : transicion
-ViewNotifier <|.. WebViewNotifier
-ViewNotifier <|.. SseNotifier
+AccessPolicy --> AppContext
+AccessPolicy --> AuditTrail
+AssistantController --> AppContext
+AssistantController --> ViewNotifier
+AuditTrail --> AppContext
+BackupController --> AppContext
+BackupController --> ViewNotifier
+BridgeInvoker --> AccessPolicy
+CatalogController --> AppContext
+CostController --> AppContext
+CreditController --> AppContext
 FileOpener <|.. DesktopFileOpener
-Camera <|.. WebcamCamera
-ScanController o-- Camera : fabricaCamara
-ScanController o-- ViewNotifier
-LabelController o-- FileOpener
-ReportController o-- FileOpener
-ProfileController o-- ViewNotifier
-BackupController o-- ViewNotifier
-AssistantController o-- ViewNotifier
-JavaBridge ..> AppContext
-note bottom of SseNotifier : Detalle en el diagrama de ventanas
-
+InventoryController --> AppContext
+JavaBridge --> AssistantController
+JavaBridge --> BackupController
+JavaBridge --> CatalogController
+JavaBridge --> CostController
+JavaBridge --> CreditController
+JavaBridge --> InventoryController
+JavaBridge --> LabelController
+JavaBridge --> ProfileController
+JavaBridge --> ReportController
+JavaBridge --> ScanController
+JavaBridge --> ScreenTransition
+JavaBridge --> SessionController
+JavaBridge --> StorageController
+JavaBridge --> TransactionController
+JavaBridge --> ViewNotifier
+LabelController --> AppContext
+LabelController --> FileOpener
+ProfileController --> AppContext
+ProfileController --> ViewNotifier
+ReportController --> AppContext
+ReportController --> FileOpener
+ScanController --> AppContext
+ScanController --> ViewNotifier
+SessionController --> AppContext
+StorageController --> AppContext
+StorageController --> ViewNotifier
+TransactionController --> AppContext
+ViewNotifier <|.. SseNotifier
+ViewNotifier <|.. WebViewNotifier
 @enduml

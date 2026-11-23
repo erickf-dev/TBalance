@@ -9,16 +9,18 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 
 ## 1. Arquitectura y capas
 
-TBalance usa una arquitectura en tres capas más una capa transversal:
+TBalance está organizado en tres capas, más una de utilidades que usan todas:
 
-| Capa | Paquetes | Depende de |
-|---|---|---|
-| Presentación | `resources/html`, `view`, `bridge` | Lógica de negocio (`service`, `model`), `dispositivo`, `util`, `exception` y la raíz (`AppContext`) |
-| Lógica de negocio | `service`, `model` | Acceso a datos (`repository`, `ia`), `util`, `exception` |
-| Acceso a datos | `repository`, `ia`, `dispositivo` | `model`, `util`, `exception` |
-| Transversal | `util`, `exception` | — |
+| Capa | Paquetes | Qué hace | Usa a |
+|---|---|---|---|
+| Presentación | `resources/html`, `view`, `bridge` | Muestra las pantallas y recibe lo que hace el usuario. | Lógica de negocio |
+| Lógica de negocio | `service`, `model` | Aplica las reglas del negocio. | Acceso a datos |
+| Acceso a datos | `repository`, `ia`, `dispositivo` | Guarda y lee los datos, habla con el asistente y usa la cámara. | — |
+| Transversal | `util`, `exception` | Fechas, textos, códigos QR, cifrado de contraseñas y errores. | — |
 
-`AppContext` (Singleton) es la raíz de composición: crea los repositorios concretos, los pasa por constructor a los servicios y reemplaza los servicios del perfil activo cuando el usuario cambia de perfil o restaura una copia.
+`AppContext` arma todo al arrancar: elige el almacenamiento (archivos, PostgreSQL u Oracle), crea los repositorios y los servicios y los cambia cuando se abre otro negocio, se restaura una copia o se cambia de base de datos.
+
+Recorrido de una venta: la página llama a `javaBridge.crearVenta(...)` → `AccessPolicy` revisa que la persona tenga sesión y permiso de vender → `TransactionController` pone quién vendió → `SaleService` revisa el stock y el medio de pago y descuenta → `SaleJdbcRepository` guarda en `VENTA` y `DETALLE_VENTA` → `AuditTrail` anota la venta en el historial.
 
 ## 2. Diagrama de paquetes final
 
@@ -26,249 +28,431 @@ TBalance usa una arquitectura en tres capas más una capa transversal:
 
 ## 3. Diagrama de clases final y descripción de cada clase
 
-Las seis vistas del diagrama de clases final (95 clases):
+El diagrama de clases final tiene 154 clases y está dividido en siete partes:
 
 ![Modelo](diagramas/clases-modelo.png)
 
-![Persistencia](diagramas/clases-persistencia.png)
+![Persistencia con archivos](diagramas/clases-persistencia.png)
+
+![Persistencia con base de datos](diagramas/clases-persistencia-bd.png)
 
 ![Servicios](diagramas/clases-servicios.png)
 
 ![Presentación](diagramas/clases-presentacion.png)
 
-![Ventanas](diagramas/clases-ventanas.png)
+![Ventanas, cámaras y utilidades](diagramas/clases-ventanas.png)
 
 ![Informes y asistente](diagramas/clases-informes-asistente.png)
 
-La descripción de cada clase (tipo, responsabilidad, atributos y métodos) está en la [Fase 2, sección Descripción de cada clase](FASE2_Arquitectura_y_Diseno.md#descripción-de-cada-clase); se generó a partir del código final de la versión v3.4.0.
+La descripción de cada clase (tipo, responsabilidad, atributos y métodos) está en la [Fase 2, Descripción de cada clase](FASE2_Arquitectura_y_Diseno.md#descripción-de-cada-clase). Se generó a partir del código final de la versión v3.5.0.
 
 ## 4. Modelo de datos
 
 ### 4.1 Modelo entidad-relación
 
-El proyecto guarda los datos en archivos JSON (no hay base de datos relacional todavía). El diagrama muestra las entidades guardadas y cómo se relacionan por sus identificadores:
+Las tablas son las mismas en PostgreSQL y en Oracle. Los scripts `src/main/resources/sql/*/01_tablas.sql` y `02_disparadores.sql` crean la versión 1 del esquema; los cambios posteriores están en `cambios/` y TBalance los aplica solo al conectarse, una vez cada uno, anotándolos en `ESQUEMA_VERSION` (v2: borrado lógico, fecha de llegada, proveedor por tipo de producto y copias en la base; v3: vistas para informes; v4: usuarios y roles; v5: historial y cédula en los fiados; v6: abonos; v7: varios computadores). Así una base que ya tenía datos se actualiza sin perderlos.
 
 ![Modelo entidad-relación](diagramas/mer.png)
 
-- Un **perfil** tiene sus propios productos, categorías, proveedores, entradas, salidas y ventas (cada perfil tiene su carpeta `perfiles/<ID>/`).
-- Un **producto** pertenece a una categoría (`categoriaId`) y puede tener un proveedor (`proveedorId`).
-- Cada **entrada** y **salida** se refiere a un producto (`productoId`); la entrada puede indicar el proveedor.
-- Una **venta** tiene uno o más **ítems** y cada ítem se refiere a un producto. La venta guarda su método de pago (`metodoPago`, uno de `PaymentMethod`) y el comprobante si es digital; cada ítem guarda el costo del producto en ese momento (`costoUnitario`), con el que se calcula la utilidad real de los informes.
+- Un **perfil** (negocio) tiene sus propias categorías, proveedores, productos, entradas, salidas, ventas y ajustes. Por eso la llave de esas tablas es **(PERFIL_ID, ID)**: el producto "1001" de una ferretería y el "1001" de una droguería son distintos.
+- **Borrado lógico:** la aplicación no borra filas con historial. Negocios, categorías, proveedores y productos se **deshabilitan** (`ACTIVO = 0`) y se pueden volver a habilitar; ventas, entradas y salidas se **anulan** (`ESTADO = 'ANULADA'`, con `FECHA_ANULACION` y `MOTIVO_ANULACION`) y su efecto en el stock se revierte. Los `ON DELETE CASCADE` quedan solo para limpiar una base de pruebas (`99_borrar_todo.sql`).
+- Todo **producto** tiene una categoría (si no se elige, "Sin categoría") y puede tener un proveedor (llaves foráneas compuestas).
+- Un **proveedor** surte uno o más tipos de producto: la tabla **PROVEEDOR_CATEGORIA** relaciona proveedores y categorías (muchos a muchos).
+- En **ENTRADA** y **SALIDA**, `FECHA` es el día en que llegó o salió la mercancía (no puede ser futura) y `FECHA_REGISTRO` el momento en que se anotó.
+- Una **venta** tiene uno o más renglones en **DETALLE_VENTA** (llave foránea con `ON DELETE CASCADE`). Cada renglón guarda el nombre y el costo del producto al vender.
+- **ENTRADA**, **SALIDA** y **DETALLE_VENTA** guardan `PRODUCTO_ID` sin llave foránea a PRODUCTO: son historial y se conservan aunque el producto se elimine.
+- **HISTORIAL_PRECIO** la llena el disparador `TRG_PRODUCTO_HISTORIAL_PRECIO` (por ejemplo, cuando una entrada trae un costo nuevo).
+- **Historial (v5):** **AUDITORIA** anota quién hizo qué, cuándo y en qué negocio. No tiene llaves foráneas a propósito: guarda el nombre de la persona y del negocio como texto para que el registro se conserve tal cual aunque después cambien. **VENTA** suma `CLIENTE_DOCUMENTO`, la cédula de quien queda debiendo en una venta fiada.
+- **Varios computadores (v7):** **CAMBIO_VERSION** tiene una sola fila (`TODO`) con un contador que sube en cada transacción. Cada computador lo consulta para saber si otro guardó algo y debe volver a leer los datos.
+- **Fiados (v6):** **ABONO** guarda lo que paga cada cliente que compró fiado. Se relaciona con sus ventas fiadas por la cédula (`CLIENTE_DOCUMENTO`), sin llave foránea, porque un cliente no es una tabla aparte. Lo que debe se calcula: ventas fiadas vigentes menos abonos vigentes.
+- **Usuarios y roles (v4):** una persona (**USUARIO**) entra a uno o varios negocios con un rol en cada uno (**NEGOCIO_USUARIO**, muchos a muchos con PERFIL): dueño, administrador o cajero. Las ventas guardan quién las registró y las anulaciones quién las hizo, como texto, porque son historial.
+- **RESPALDO** guarda las copias de seguridad dentro de la base cuando se usa PostgreSQL u Oracle (el .zip completo en un BLOB / BYTEA). Con archivos JSON las copias siguen en la carpeta `respaldos`.
+- Vistas para informes (v3), que no cuentan lo anulado: `V_VENTAS_POR_DIA`, `V_UTILIDAD_POR_PRODUCTO`, `V_VALOR_INVENTARIO` (solo productos habilitados) y `V_COMPRAS_POR_MES`.
 
-Cuando se implemente la base de datos relacional (pendiente, ver [Fase 3](FASE3_Desarrollo.md#32-base-de-datos-relacional-y-dao)) estas entidades serán las tablas y los campos `...Id` las claves foráneas.
+En modo de archivos, cada tabla corresponde a un archivo JSON con los mismos campos: `perfiles.json` y, por negocio, `perfiles/<ID>/categorias.json`, `proveedores.json`, `productos.json`, `entradas.json`, `salidas.json`, `ventas.json` (con los ítems dentro de cada venta) y `abonos.json`. Las personas y el historial van en `usuarios.json` y `auditoria.json`.
 
 ### 4.2 Diccionario de datos
 
-Los campos son los atributos de las clases del modelo que Gson guarda en cada archivo (incluye los heredados de `IdentifiedEntity` y `InventoryMovement`). Las fechas se guardan como texto ISO (`yyyy-MM-dd` o `yyyy-MM-ddTHH:mm:ss`).
+#### `PERFIL` — Negocio (perfil). Cada negocio tiene sus propios datos.
 
-#### `perfiles.json` — Profile
+Clase Java: `Profile`. Llave primaria: (ID).
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre del negocio | Obligatorio |
-| `descripcion` | `String` | Descripción opcional | — |
-| `color` | `String` | Color identificador (hex) | — |
-| `tipoNegocio` | `String` | Clave del tipo de negocio (BusinessType) | — |
-| `fechaCreacion` | `String` | Fecha de creación | — |
-| `configuracion` | `Map<String, String>` | Ajustes clave-valor del perfil | — |
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK | Identificador del negocio |
+| `NOMBRE` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | No | — | Nombre del negocio |
+| `DESCRIPCION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Descripción opcional |
+| `COLOR` | `VARCHAR2(9 CHAR)` | `VARCHAR(9)` | Sí | — | Color de acento elegido (hex) |
+| `TIPO_NEGOCIO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | Sí | — | Clave de BusinessType (FERRETERIA, FARMACIA...) |
+| `FECHA_CREACION` | `DATE` | `DATE` | Sí | — | Fecha en que se creó |
+| `ACTIVO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 habilitado, 0 deshabilitado. Por defecto 1. (v2) |
 
-#### `configuracion-global.json` — GlobalConfig
+Restricciones CHECK: `ACTIVO IN (0, 1)`.
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `perfiles` | `List<Profile>` | Perfiles registrados | — |
-| `perfilActivoId` | `String` | ID del perfil activo | Referencia a Profile.id |
-| `version` | `String` | Versión del formato de configuración | — |
+#### `PERFIL_CONFIGURACION` — Ajustes clave-valor de cada negocio.
 
-#### `perfiles/<ID>/productos.json` — Product
+Clase Java: `Profile.configuracion`. Llave primaria: (PERFIL_ID, CLAVE).
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre del producto | Obligatorio |
-| `codigo` | `String` | Código interno o de barras | — |
-| `descripcion` | `String` | Descripción opcional | — |
-| `categoria` | `String` | Nombre de la categoría | — |
-| `categoriaId` | `String` | ID de la categoría | Referencia a Category.id |
-| `proveedorId` | `String` | ID del proveedor | Referencia a Supplier.id |
-| `precioCompra` | `double` | Precio de compra | ≥ 0 |
-| `precioVenta` | `double` | Precio de venta | ≥ 0 |
-| `stock` | `int` | Unidades disponibles | ≥ 0 |
-| `stockMin` | `int` | Límite para alerta de bajo stock | ≥ 0 |
-| `tipo` | `String` | Tipo de producto | — |
-| `requiereVencimiento` | `boolean` | Si controla fecha de vencimiento | — |
-| `fechaVencimiento` | `String` | Fecha de vencimiento (ISO) | Fecha ISO válida cuando se controla vencimiento |
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio |
+| `CLAVE` | `VARCHAR2(50 CHAR)` | `VARCHAR(50)` | No | PK | Nombre del ajuste (moneda, stockMin, mediosPago...) |
+| `VALOR` | `VARCHAR2(200 CHAR)` | `VARCHAR(200)` | Sí | — | Valor del ajuste |
 
-#### `perfiles/<ID>/categorias.json` — Category
+#### `CATEGORIA` — Categorías de productos de un negocio.
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre de la categoría | Obligatorio |
-| `descripcion` | `String` | Descripción opcional | — |
+Clase Java: `Category`. Llave primaria: (PERFIL_ID, ID).
 
-#### `perfiles/<ID>/proveedores.json` — Supplier
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador de la categoría |
+| `NOMBRE` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | No | — | Nombre |
+| `DESCRIPCION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Descripción opcional |
+| `ACTIVO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 habilitada, 0 deshabilitada. Por defecto 1. (v2) |
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `nombre` | `String` | Nombre del proveedor | Obligatorio |
-| `contacto` | `String` | Persona de contacto | — |
-| `telefono` | `String` | Teléfono | — |
-| `email` | `String` | Correo electrónico | — |
-| `direccion` | `String` | Dirección | — |
-| `categoria` | `String` | Rubro que abastece | — |
-| `activo` | `boolean` | Si el proveedor está activo | — |
+Restricciones CHECK: `ACTIVO IN (0, 1)`. La categoría `CAT-SIN` ("Sin categoría") la crea TBalance y no se puede deshabilitar.
 
-#### `perfiles/<ID>/entradas.json` — StockEntry
+#### `PROVEEDOR` — Proveedores de un negocio.
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `productoId` | `String` | Product afectado | Obligatorio; referencia a Product.id |
-| `cantidad` | `int` | Unidades del movimiento | > 0 |
-| `fecha` | `String` | Fecha y hora del registro | — |
-| `proveedorId` | `String` | Supplier de la mercancía | Referencia a Supplier.id |
-| `precioUnitario` | `double` | Precio de compra por unidad | — |
-| `observacion` | `String` | Nota opcional | — |
+Clase Java: `Supplier`. Llave primaria: (PERFIL_ID, ID).
 
-#### `perfiles/<ID>/salidas.json` — StockExit
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador del proveedor |
+| `NOMBRE` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | No | — | Nombre o razón social |
+| `CONTACTO` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Persona de contacto |
+| `TELEFONO` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | — | Teléfono |
+| `EMAIL` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Correo |
+| `DIRECCION` | `VARCHAR2(200 CHAR)` | `VARCHAR(200)` | Sí | — | Dirección |
+| `CATEGORIA` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombres de los tipos de producto que surte, como texto (el detalle está en PROVEEDOR_CATEGORIA) |
+| `ACTIVO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 habilitado, 0 deshabilitado. Por defecto 1. |
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `productoId` | `String` | Product afectado | Obligatorio; referencia a Product.id |
-| `cantidad` | `int` | Unidades del movimiento | > 0 |
-| `fecha` | `String` | Fecha y hora del registro | — |
-| `motivo` | `String` | Razón del retiro | — |
-| `tipo` | `String` | Tipo de salida | — |
+Restricciones CHECK: `ACTIVO IN (0, 1)`.
 
-#### `perfiles/<ID>/ventas.json` — Sale
+#### `PRODUCTO` — Productos del inventario de un negocio.
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `id` | `String` | Identificador único de la entidad | Clave |
-| `cliente` | `String` | Cliente | — |
-| `metodoPago` | `String` | Método de pago (nombre de un PaymentMethod) | Uno de PaymentMethod; Fiado exige cliente |
-| `observacion` | `String` | Nota opcional | — |
-| `referenciaPago` | `String` | Comprobante de un pago digital (opcional) | Solo en pagos digitales; opcional |
-| `fecha` | `String` | Fecha y hora de la venta | — |
-| `estado` | `String` | Estado (COMPLETADA) | — |
-| `items` | `List<SaleItem>` | Ítems de la venta | Al menos 1 ítem |
-| `total` | `double` | Total (se guarda en el JSON) | — |
+Clase Java: `Product`. Llave primaria: (PERFIL_ID, ID).
 
-#### `(dentro de cada venta, en `items`)` — SaleItem
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → CATEGORIA, PERFIL, PROVEEDOR | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador del producto |
+| `NOMBRE` | `VARCHAR2(150 CHAR)` | `VARCHAR(150)` | No | — | Nombre |
+| `CODIGO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Código de barras o interno |
+| `DESCRIPCION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Descripción opcional |
+| `CATEGORIA` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de la categoría (texto) |
+| `CATEGORIA_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | FK → CATEGORIA | Categoría (obligatoria en la aplicación; `CAT-SIN` si no se eligió) |
+| `PROVEEDOR_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | FK → PROVEEDOR | Proveedor (opcional) |
+| `PRECIO_COMPRA` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Costo por unidad. Por defecto 0. |
+| `PRECIO_VENTA` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Precio de venta por unidad. Por defecto 0. |
+| `STOCK` | `NUMBER(10)` | `INTEGER` | No | — | Unidades disponibles. Por defecto 0. |
+| `STOCK_MIN` | `NUMBER(10)` | `INTEGER` | No | — | Stock mínimo antes de avisar. Por defecto 0. |
+| `TIPO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Presentación o tipo |
+| `REQUIERE_VENCIMIENTO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 si se controla vencimiento. Por defecto 0. |
+| `FECHA_VENCIMIENTO` | `DATE` | `DATE` | Sí | — | Fecha de vencimiento |
+| `FECHA_MODIFICACION` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Último cambio (la llena TRG_PRODUCTO_VALIDAR) |
+| `ACTIVO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 habilitado, 0 deshabilitado. Por defecto 1. (v2) |
 
-| Campo | Tipo | Descripción | Regla / restricción |
-|---|---|---|---|
-| `productoId` | `String` | Product vendido | Obligatorio; referencia a Product.id |
-| `nombreProducto` | `String` | Nombre del producto al momento de la venta | — |
-| `cantidad` | `int` | Unidades vendidas | > 0 |
-| `precioUnitario` | `double` | Precio por unidad | ≥ 0 |
-| `subtotal` | `double` | Cantidad × precio (se guarda en el JSON) | — |
-| `costoUnitario` | `double` | Precio de compra del producto al momento de la venta | ≥ 0; 0 = sin costo (ventas anteriores a v3.4.0) |
+Restricciones CHECK: `REQUIERE_VENCIMIENTO IN (0, 1)`, `ACTIVO IN (0, 1)`.
 
+#### `ENTRADA` — Entradas de inventario (compras, reposiciones).
 
-Otros archivos que genera el programa (no son tablas de datos): copias de seguridad `~/.inventariopro/respaldos/TBalance_<fecha>_<hora>.zip`, etiquetas `~/.inventariopro/etiquetas/*.png`, informes `Documentos/TBalance/Informe de ventas - <negocio> - <desde> a <hasta>.xlsx`, la configuración del asistente `~/.inventariopro/asistente.json` (`clave`, `modelo`; solo en ese computador), su registro de errores `asistente.log` y el perfil de la ventana de Edge `~/.inventariopro/ventana/`.
+Clase Java: `StockEntry`. Llave primaria: (PERFIL_ID, ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador (ENT-...) |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto que entró (historial, sin FK) |
+| `CANTIDAD` | `NUMBER(10)` | `INTEGER` | No | — | Unidades |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Fecha de llegada de la mercancía (no puede ser futura) |
+| `PROVEEDOR_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | — | Proveedor que entregó |
+| `PRECIO_UNITARIO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Costo por unidad en esa entrada; si cambia, actualiza el costo del producto. Por defecto 0. |
+| `OBSERVACION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Nota |
+| `ESTADO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | — | COMPLETADA o ANULADA. Por defecto COMPLETADA. (v2) |
+| `FECHA_REGISTRO` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Momento en que se anotó en TBalance (v2) |
+| `FECHA_ANULACION` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Cuándo se anuló (v2) |
+| `MOTIVO_ANULACION` | `VARCHAR2(300 CHAR)` | `VARCHAR(300)` | Sí | — | Por qué se anuló (v2) |
+| `ANULADA_POR` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de quien anuló (v4) |
+
+Restricciones CHECK: `CANTIDAD > 0`, `ESTADO IN ('COMPLETADA', 'ANULADA')`.
+
+#### `SALIDA` — Salidas de inventario que no son ventas (daño, consumo...).
+
+Clase Java: `StockExit`. Llave primaria: (PERFIL_ID, ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador (SAL-...) |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto que salió (historial, sin FK) |
+| `CANTIDAD` | `NUMBER(10)` | `INTEGER` | No | — | Unidades |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Fecha en que salió la mercancía (no puede ser futura) |
+| `MOTIVO` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Motivo escrito por el usuario (obligatorio en la aplicación) |
+| `TIPO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Tipo de salida: DANADO, VENCIDO, CONSUMO_INTERNO, DEVOLUCION_PROVEEDOR, PERDIDA u OTRO |
+| `ESTADO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | — | COMPLETADA o ANULADA. Por defecto COMPLETADA. (v2) |
+| `FECHA_REGISTRO` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Momento en que se anotó en TBalance (v2) |
+| `FECHA_ANULACION` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Cuándo se anuló (v2) |
+| `MOTIVO_ANULACION` | `VARCHAR2(300 CHAR)` | `VARCHAR(300)` | Sí | — | Por qué se anuló (v2) |
+| `ANULADA_POR` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de quien anuló (v4) |
+
+Restricciones CHECK: `CANTIDAD > 0`, `ESTADO IN ('COMPLETADA', 'ANULADA')`.
+
+#### `VENTA` — Ventas de un negocio.
+
+Clase Java: `Sale`. Llave primaria: (PERFIL_ID, ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio dueño |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador (VTA-...) |
+| `CLIENTE` | `VARCHAR2(150 CHAR)` | `VARCHAR(150)` | Sí | — | Nombre del cliente |
+| `METODO_PAGO` | `VARCHAR2(40 CHAR)` | `VARCHAR(40)` | Sí | — | Efectivo, Nequi, Daviplata, Fiado... (PaymentMethod) |
+| `OBSERVACION` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Nota |
+| `REFERENCIA_PAGO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Comprobante del pago digital |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Fecha y hora |
+| `ESTADO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | Sí | — | COMPLETADA o ANULADA |
+| `TOTAL` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Suma de los subtotales. Por defecto 0. |
+| `FECHA_ANULACION` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Cuándo se anuló (v2) |
+| `MOTIVO_ANULACION` | `VARCHAR2(300 CHAR)` | `VARCHAR(300)` | Sí | — | Por qué se anuló (v2) |
+| `ANULADA_POR` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de quien anuló (v4) |
+| `USUARIO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | — | Quién vendió (sin llave foránea: es historial). El cajero solo anula sus propias ventas (v4) |
+| `VENDEDOR` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de quien vendió (v4) |
+| `FECHA_REGISTRO` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Momento exacto en que se registró; cuenta los 10 minutos del cajero (v4) |
+| `CLIENTE_DOCUMENTO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | Sí | — | Cédula del cliente; obligatoria si la venta es fiada (v5) |
+
+#### `DETALLE_VENTA` — Productos de cada venta.
+
+Clase Java: `SaleItem`. Llave primaria: (PERFIL_ID, VENTA_ID, LINEA).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → VENTA | Negocio dueño |
+| `VENTA_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK FK → VENTA | Venta |
+| `LINEA` | `NUMBER(4)` | `SMALLINT` | No | PK | Número de línea dentro de la venta |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto vendido (historial, sin FK) |
+| `NOMBRE_PRODUCTO` | `VARCHAR2(150 CHAR)` | `VARCHAR(150)` | Sí | — | Nombre del producto al vender |
+| `CANTIDAD` | `NUMBER(10)` | `INTEGER` | No | — | Unidades |
+| `PRECIO_UNITARIO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Precio por unidad. Por defecto 0. |
+| `SUBTOTAL` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Cantidad × precio. Por defecto 0. |
+| `COSTO_UNITARIO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Costo del producto al vender (para la utilidad). Por defecto 0. |
+
+Restricciones CHECK: `CANTIDAD > 0`.
+
+#### `HISTORIAL_PRECIO` — Cambios de precio de los productos. La llena el disparador TRG_PRODUCTO_HISTORIAL_PRECIO; TBalance no escribe en ella.
+
+Clase Java: `— (solo base de datos)`. Llave primaria: (ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `ID` | `NUMBER GENERATED ALWAYS AS IDENTITY` | `BIGINT GENERATED ALWAYS AS IDENTITY` | No | PK | Consecutivo automático (identidad) |
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | FK → PERFIL | Negocio |
+| `PRODUCTO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | — | Producto que cambió |
+| `PRECIO_COMPRA_ANTERIOR` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Costo antes del cambio |
+| `PRECIO_COMPRA_NUEVO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Costo después |
+| `PRECIO_VENTA_ANTERIOR` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Precio de venta antes |
+| `PRECIO_VENTA_NUEVO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | Sí | — | Precio de venta después |
+| `FECHA_CAMBIO` | `TIMESTAMP` | `TIMESTAMP` | No | — | Momento del cambio. Por defecto SYSTIMESTAMP. |
+| `USUARIO_BD` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Usuario de la base que hizo el cambio |
+
+#### `USUARIO` — Personas que usan TBalance. (v4)
+
+Clase Java: `User`. Llave primaria: (ID). Una persona puede entrar a varios negocios, por eso la tabla no tiene PERFIL_ID.
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | `USR-<marca de tiempo>` |
+| `NOMBRE` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | No | — | Nombre de la persona |
+| `USUARIO` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | UNIQUE | Nombre para iniciar sesión, en minúsculas |
+| `CLAVE` | `VARCHAR2(200 CHAR)` | `VARCHAR(200)` | No | — | Resumen PBKDF2-HMAC-SHA256 con sal (`pbkdf2_sha256$iteraciones$sal$resumen`); la contraseña nunca se guarda |
+| `ACTIVO` | `NUMBER(1)` | `SMALLINT` | No | — | 1 habilitada, 0 deshabilitada. Por defecto 1. |
+| `INTENTOS_FALLIDOS` | `NUMBER(3)` | `SMALLINT` | No | — | Contraseñas equivocadas seguidas. Por defecto 0. |
+| `BLOQUEADO_HASTA` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Tras 5 intentos fallidos no puede entrar hasta esta hora (5 minutos) |
+| `FECHA_CREACION` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Cuándo se creó |
+| `ULTIMO_INGRESO` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Último inicio de sesión |
+
+Restricciones CHECK: `ACTIVO IN (0, 1)`, `INTENTOS_FALLIDOS >= 0`.
+
+#### `AUDITORIA` — Historial de acciones: quién hizo qué y cuándo. (v5)
+
+Clase Java: `AuditEntry` (`AuditJdbcRepository`). Llave primaria: ID. Índices por FECHA y por (PERFIL_ID, FECHA).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `ID` | `VARCHAR2(40 CHAR)` | `VARCHAR(40)` | No | PK | Identificador (H-…) |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | No | — | Cuándo pasó |
+| `USUARIO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | — | Quién lo hizo (vacío en un ingreso fallido) |
+| `USUARIO` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de la persona en ese momento |
+| `ROL` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | Sí | — | Su rol en ese negocio |
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | Sí | — | Negocio (vacío si fue general: ingresos, copias de seguridad) |
+| `PERFIL` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre del negocio en ese momento |
+| `ACCION` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | No | — | Qué hizo, por ejemplo "Anuló una venta" |
+| `DETALLE` | `VARCHAR2(500 CHAR)` | `VARCHAR(500)` | Sí | — | Datos de la acción (nunca contraseñas) |
+
+#### `CAMBIO_VERSION` — Contador de cambios para varios computadores. (v7)
+
+No tiene clase Java propia: la usa `Database`. Llave primaria: CLAVE.
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `CLAVE` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK | Siempre `TODO` |
+| `VERSION` | `NUMBER(19)` | `BIGINT` | No | — | Sube en 1 con cada transacción. Por defecto 0. |
+
+#### `ABONO` — Abonos de los clientes que compraron fiado. (v6)
+
+Clase Java: `CreditPayment` (`CreditPaymentJdbcRepository`). Llave primaria: (PERFIL_ID, ID). Índice por (PERFIL_ID, CLIENTE_DOCUMENTO).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio |
+| `ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK | Identificador (ABO-...) |
+| `CLIENTE_DOCUMENTO` | `VARCHAR2(160 CHAR)` | `VARCHAR(160)` | No | — | Cédula del cliente (la misma de sus ventas fiadas) |
+| `CLIENTE` | `VARCHAR2(150 CHAR)` | `VARCHAR(150)` | Sí | — | Nombre del cliente |
+| `MONTO` | `NUMBER(14,2)` | `NUMERIC(14,2)` | No | — | Valor abonado (mayor que 0) |
+| `METODO_PAGO` | `VARCHAR2(40 CHAR)` | `VARCHAR(40)` | No | — | Cómo pagó el abono (nunca Fiado) |
+| `REFERENCIA_PAGO` | `VARCHAR2(60 CHAR)` | `VARCHAR(60)` | Sí | — | Comprobante o voucher |
+| `NOTA` | `VARCHAR2(300 CHAR)` | `VARCHAR(300)` | Sí | — | Nota opcional |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | No | — | Cuándo se recibió |
+| `USUARIO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | Sí | — | Quién lo recibió |
+| `REGISTRADO_POR` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Nombre de quien lo recibió |
+| `ESTADO` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | — | COMPLETADA o ANULADA. Por defecto COMPLETADA. |
+| `FECHA_ANULACION` | `TIMESTAMP` | `TIMESTAMP` | Sí | — | Cuándo se anuló |
+| `MOTIVO_ANULACION` | `VARCHAR2(300 CHAR)` | `VARCHAR(300)` | Sí | — | Por qué se anuló |
+| `ANULADA_POR` | `VARCHAR2(100 CHAR)` | `VARCHAR(100)` | Sí | — | Quién lo anuló |
+
+Restricciones CHECK: `MONTO > 0`, `ESTADO IN ('COMPLETADA', 'ANULADA')`.
+
+#### `NEGOCIO_USUARIO` — A qué negocios entra cada persona y con qué rol. (v4)
+
+Clase Java: `Acceso` (lista `User.accesos`). Llave primaria: (USUARIO_ID, PERFIL_ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `USUARIO_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK FK → USUARIO | Persona |
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PERFIL | Negocio |
+| `ROL` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | — | DUENO, ADMINISTRADOR o CAJERO |
+
+Restricciones CHECK: `ROL IN ('DUENO', 'ADMINISTRADOR', 'CAJERO')`.
+
+#### `PROVEEDOR_CATEGORIA` — Tipos de producto (categorías) que surte cada proveedor. (v2)
+
+Clase Java: `Supplier.categoriaIds`. Llave primaria: (PERFIL_ID, PROVEEDOR_ID, CATEGORIA_ID).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `PERFIL_ID` | `VARCHAR2(20 CHAR)` | `VARCHAR(20)` | No | PK FK → PROVEEDOR, CATEGORIA | Negocio |
+| `PROVEEDOR_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK FK → PROVEEDOR | Proveedor |
+| `CATEGORIA_ID` | `VARCHAR2(30 CHAR)` | `VARCHAR(30)` | No | PK FK → CATEGORIA | Tipo de producto que surte |
+
+#### `RESPALDO` — Copias de seguridad guardadas en la base. (v2)
+
+Clase Java: `Backup` (la escribe `DatabaseBackupRepository`). Llave primaria: (NOMBRE).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `NOMBRE` | `VARCHAR2(120 CHAR)` | `VARCHAR(120)` | No | PK | Nombre de la copia (`TBalance_<fecha>_<hora>.zip`) |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | No | — | Cuándo se hizo. Por defecto la hora actual. |
+| `TAMANO` | `NUMBER(12)` | `BIGINT` | No | — | Tamaño en bytes |
+| `CONTENIDO` | `BLOB` | `BYTEA` | No | — | El .zip con todos los datos |
+
+#### `ESQUEMA_VERSION` — Cambios del esquema ya aplicados. (v2)
+
+Clase Java: `— (la usa Database.actualizarEsquema)`. Llave primaria: (VERSION).
+
+| Columna | Oracle | PostgreSQL | Nulo | Llave | Descripción |
+|---|---|---|---|---|---|
+| `VERSION` | `NUMBER(4)` | `SMALLINT` | No | PK | Número de la versión aplicada (2, 3...) |
+| `FECHA` | `TIMESTAMP` | `TIMESTAMP` | No | — | Cuándo se aplicó |
+
+#### Vistas (v3)
+
+| Vista | Qué muestra |
+|---|---|
+| `V_VENTAS_POR_DIA` | Por negocio y día: número de ventas y total vendido |
+| `V_UTILIDAD_POR_PRODUCTO` | Por producto: unidades vendidas, lo vendido, el costo y la utilidad |
+| `V_VALOR_INVENTARIO` | Por negocio: productos habilitados, unidades, costo del inventario y valor a precio de venta |
+| `V_COMPRAS_POR_MES` | Por negocio y mes: entradas con costo y total comprado |
+
+Las vistas no cuentan ventas ni entradas anuladas.
+
+Otros archivos que genera el programa (no son tablas de datos): copias de seguridad `~/.inventariopro/respaldos/TBalance_<fecha>_<hora>.zip` (solo en modo de archivos; con base de datos van en la tabla RESPALDO), etiquetas `~/.inventariopro/etiquetas/*.png`, informes `Documentos/TBalance/Informe de ventas - <negocio> - <desde> a <hasta>.xlsx`, la configuración del asistente `~/.inventariopro/asistente.json` (`clave`, `modelo`; solo en ese computador), su registro de errores `asistente.log`, la configuración de la base de datos `~/.inventariopro/basedatos.json` (`motor`, `url`, `usuario`, `clave`; solo en ese computador) y el perfil de la ventana de Edge `~/.inventariopro/ventana/`.
+
 
 ## 5. Tabla consolidada de principios aplicados
 
-| Principio | Dónde | Justificación | Código |
+| Tipo | Principio o práctica | Dónde | Cómo se aplica |
 |---|---|---|---|
-| GRASP — Creador | `Sale.agregarItem(Product, int, double)` | La venta contiene sus `SaleItem`, por eso es quien los crea. El constructor con datos de `SaleItem` tiene visibilidad de paquete. | [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`Product`](../src/main/java/sistemainventario/model/Product.java) |
-| GRASP — Creador | `ProfileServicesFactory.crear(String)` | Tiene el dato para inicializarlos (la carpeta del perfil) y crea los repositorios y los cinco gestores del perfil. | [`ProfileServicesFactory`](../src/main/java/sistemainventario/service/ProfileServicesFactory.java) |
-| GRASP — Creador | `CategoryService.crearPredefinidas(BusinessType)` | Administra las categorías del perfil y crea las predefinidas del tipo de negocio. | [`CategoryService`](../src/main/java/sistemainventario/service/CategoryService.java), [`BusinessType`](../src/main/java/sistemainventario/model/BusinessType.java) |
-| GRASP — Creador | `AppContext (constructor)` | Raíz de composición: crea los repositorios y servicios globales y los conecta por constructor. | [`AppContext`](../src/main/java/sistemainventario/AppContext.java) |
-| GRASP — Creador | `ReportService.generar` | Tiene las ventas y los costos del período, por eso crea el `SalesReport` con todas sus partes. | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java) |
-| GRASP — Creador | `AssistantTools.proponer` | Las herramientas tienen los datos validados del cambio (productos, cantidades, precios), por eso crean el `AssistantProposal`. | [`AssistantTools`](../src/main/java/sistemainventario/service/AssistantTools.java) |
-| GRASP — Controlador | `JavaBridge` | Controlador fachada: es el único objeto que recibe los eventos de la interfaz (`window.javaBridge`) y delega cada uno. | [`JavaBridge`](../src/main/java/sistemainventario/bridge/JavaBridge.java) |
-| GRASP — Controlador | `ProfileController, InventoryController, CatalogController, TransactionController, BackupController, LabelController, ReportController, AssistantController, ScanController` | Controladores de caso de uso: cada uno atiende un grupo de operaciones y delega en los servicios. | [`ProfileController`](../src/main/java/sistemainventario/bridge/ProfileController.java), [`InventoryController`](../src/main/java/sistemainventario/bridge/InventoryController.java), [`CatalogController`](../src/main/java/sistemainventario/bridge/CatalogController.java), [`TransactionController`](../src/main/java/sistemainventario/bridge/TransactionController.java) |
-| GRASP — Experto en información | `Product.getUtilidadUnitaria, getMargen, getUtilidadEstimadaStock` | El producto tiene el precio de compra, el de venta y el stock; por eso calcula su propia utilidad. `InventoryService.getUtilidadEstimadaInventario` solo suma lo que cada producto responde. | [`Product`](../src/main/java/sistemainventario/model/Product.java) |
-| GRASP — Experto en información | `Product.disminuirStock, aumentarStock, verificarStockDisponible, getEstado, estaVencido, venceDentroDe` | El producto tiene el stock, el stock mínimo y la fecha de vencimiento; él decide su estado y si puede descontar unidades. | [`Product`](../src/main/java/sistemainventario/model/Product.java) |
-| GRASP — Experto en información | `Sale.calcularTotal, cantidadesPorProducto / SaleItem.getSubtotal` | La venta conoce sus ítems y cada ítem su cantidad y precio. | [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`SaleItem`](../src/main/java/sistemainventario/model/SaleItem.java) |
-| GRASP — Experto en información | `Product.contenidoEtiquetaQR, idDesdeEtiquetaQR` | El producto define el texto de su QR y, como conoce el formato, también lo interpreta. | [`Product`](../src/main/java/sistemainventario/model/Product.java) |
-| GRASP — Experto en información | `GlobalConfig.getPerfilActivo, BackupRepository.listar` | Cada clase responde con la información que ella misma tiene. | [`GlobalConfig`](../src/main/java/sistemainventario/model/GlobalConfig.java), [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java) |
-| GRASP — Experto en información | `SaleItem.utilidadCon, tieneCosto / Sale.normalizarPago` | El ítem guarda el costo con el que se vendió y calcula su utilidad; la venta valida su propio método de pago (un fiado necesita cliente). | [`SaleItem`](../src/main/java/sistemainventario/model/SaleItem.java), [`Sale`](../src/main/java/sistemainventario/model/Sale.java) |
-| GRASP — Experto en información | `PaymentMethod.desdeTexto, esDigital` | El enum conoce los nombres de cada método y cuáles admiten comprobante. | [`PaymentMethod`](../src/main/java/sistemainventario/model/PaymentMethod.java) |
-| GRASP — Bajo acoplamiento | `EntityService(Repository<T>), MovementService, SaleService` | Los servicios dependen de la interfaz `Repository<T>` y reciben sus dependencias por constructor. | [`EntityService`](../src/main/java/sistemainventario/service/EntityService.java), [`Repository`](../src/main/java/sistemainventario/repository/Repository.java), [`MovementService`](../src/main/java/sistemainventario/service/MovementService.java), [`SaleService`](../src/main/java/sistemainventario/service/SaleService.java) |
-| GRASP — Bajo acoplamiento | `ViewNotifier, Camera, FileOpener` | Los controladores no dependen de `WebEngine`, de la librería de la cámara ni de `java.awt.Desktop`. | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java) |
-| GRASP — Bajo acoplamiento | `QrGenerator, QrReader, WebcamCamera` | Solo estas clases importan ZXing o webcam-capture. | [`QrGenerator`](../src/main/java/sistemainventario/util/QrGenerator.java), [`QrReader`](../src/main/java/sistemainventario/util/QrReader.java), [`WebcamCamera`](../src/main/java/sistemainventario/dispositivo/WebcamCamera.java) |
-| GRASP — Bajo acoplamiento | `AssistantService(LanguageModel)` | El asistente depende de la interfaz `LanguageModel`, no de Gemini; solo `GeminiClient` conoce la API de Google. | [`AssistantService`](../src/main/java/sistemainventario/service/AssistantService.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) |
-| GRASP — Polimorfismo | `ViewNotifier: WebViewNotifier, SseNotifier` | Los controladores llaman `ejecutarScript` sin saber si la vista es el visor de JavaFX o la ventana de Edge. | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`WebViewNotifier`](../src/main/java/sistemainventario/bridge/WebViewNotifier.java), [`SseNotifier`](../src/main/java/sistemainventario/bridge/SseNotifier.java) |
-| GRASP — Variaciones protegidas | `LanguageModel, GeminiClient.buscarModeloDisponible` | El cambio de proveedor o de modelo queda dentro de `GeminiClient`; si Google retira el modelo, el cliente elige otro y el resto del sistema no cambia. | [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java), [`GeminiClient`](../src/main/java/sistemainventario/ia/GeminiClient.java) |
-| GRASP — Fabricación pura | `BridgeInvoker, LocalWebServer, ReportExcelWriter` | Clases que no son del dominio, creadas para conectar la ventana de Edge con Java y para escribir el Excel, y así no cargar esas tareas al dominio ni a los controladores. | [`BridgeInvoker`](../src/main/java/sistemainventario/bridge/BridgeInvoker.java), [`LocalWebServer`](../src/main/java/sistemainventario/view/LocalWebServer.java), [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
-| GRASP — Alta cohesión | `Controladores del paquete bridge` | Cada controlador atiende un único grupo de casos de uso (en P2 un solo `JavaBridge` hacía todo). |  |
-| GRASP — Alta cohesión | `JsonFileStore, ProfileDirectory, BridgeResponse, ZipArchiver` | Clases pequeñas con un solo propósito. | [`JsonFileStore`](../src/main/java/sistemainventario/repository/JsonFileStore.java), [`ProfileDirectory`](../src/main/java/sistemainventario/repository/ProfileDirectory.java), [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java), [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java) |
-| GRASP — Alta cohesión | `QrSaleScanner` | Solo coordina leer el QR, interpretar el texto y buscar el producto. | [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) |
-| GRASP — Alta cohesión | `ReportService / ReportExportService / ReportExcelWriter` | Calcular el informe, decidir dónde se guarda y escribir el archivo están en clases distintas. | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java), [`ReportExportService`](../src/main/java/sistemainventario/service/ReportExportService.java), [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
-| SOLID — SRP | `JsonFileStore / JsonRepository<T> / Gestor*` | Tres razones de cambio separadas: cómo se escribe en disco, cómo se maneja la colección en memoria y qué reglas de negocio aplican. | [`JsonFileStore`](../src/main/java/sistemainventario/repository/JsonFileStore.java), [`JsonRepository`](../src/main/java/sistemainventario/repository/JsonRepository.java) |
-| SOLID — SRP | `GlobalConfigService, ProfileDirectory` | Salieron de `ProfileService`: uno maneja `configuracion-global.json` y el otro las carpetas de los perfiles. | [`GlobalConfigService`](../src/main/java/sistemainventario/service/GlobalConfigService.java), [`ProfileDirectory`](../src/main/java/sistemainventario/repository/ProfileDirectory.java) |
-| SOLID — SRP | `ZipArchiver / BackupRepository / BackupService` | Comprimir, administrar la carpeta de copias y coordinar el caso de uso están separados. | [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java), [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java), [`BackupService`](../src/main/java/sistemainventario/service/BackupService.java) |
-| SOLID — SRP | `QrGenerator / LabelService / LabelRepository` | Generar el código, dibujar la etiqueta y guardar la imagen están separados. | [`QrGenerator`](../src/main/java/sistemainventario/util/QrGenerator.java), [`LabelService`](../src/main/java/sistemainventario/service/LabelService.java), [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java) |
-| SOLID — SRP | `BridgeResponse.ejecutar(Supplier<String>)` | Un solo lugar traduce las excepciones a `ERROR: …`. | [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java), [`Supplier`](../src/main/java/sistemainventario/model/Supplier.java) |
-| SOLID — SRP | `ReportService / ReportExportService / ReportExcelWriter` | Calcular, nombrar y guardar, y escribir el formato `.xlsx` son tres razones de cambio separadas. | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java), [`ReportExportService`](../src/main/java/sistemainventario/service/ReportExportService.java), [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
-| SOLID — SRP | `AssistantSettingsService / AssistantService / AssistantTools` | Configurar la clave, conversar con el modelo y ejecutar las funciones del inventario están separados. | [`AssistantSettingsService`](../src/main/java/sistemainventario/service/AssistantSettingsService.java), [`AssistantService`](../src/main/java/sistemainventario/service/AssistantService.java), [`AssistantTools`](../src/main/java/sistemainventario/service/AssistantTools.java) |
-| SOLID — OCP | `JsonRepository<T> y sus subclases` | Una entidad nueva se guarda creando una subclase corta, sin modificar la clase base. | [`JsonRepository`](../src/main/java/sistemainventario/repository/JsonRepository.java) |
-| SOLID — OCP | `EntityService<T>.guardar(T) (final)` | El algoritmo de guardar está cerrado; cada gestor lo extiende con `validar()` y `generarId()`. | [`EntityService`](../src/main/java/sistemainventario/service/EntityService.java) |
-| SOLID — OCP | `InventoryMovement.aplicarA(Product)` | `MovementService` trabaja con el tipo abstracto; un movimiento nuevo sería otra subclase. | [`InventoryMovement`](../src/main/java/sistemainventario/model/InventoryMovement.java), [`Product`](../src/main/java/sistemainventario/model/Product.java) |
-| SOLID — OCP | `Repository<T>` | Una implementación con base de datos relacional se podrá agregar sin cambiar los servicios. | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java) |
-| SOLID — OCP | `ViewNotifier` | La ventana de Edge se agregó con una implementación nueva (`SseNotifier`) sin modificar los controladores. | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java) |
-| SOLID — LSP | `StockEntry / StockExit` | Se pueden usar donde se espera `InventoryMovement`; ambas cumplen el contrato de `aplicarA`. | [`StockEntry`](../src/main/java/sistemainventario/model/StockEntry.java), [`StockExit`](../src/main/java/sistemainventario/model/StockExit.java) |
-| SOLID — LSP | `WebViewNotifier / SseNotifier` | Cualquiera de las dos funciona donde se espera un `ViewNotifier`. | [`WebViewNotifier`](../src/main/java/sistemainventario/bridge/WebViewNotifier.java), [`SseNotifier`](../src/main/java/sistemainventario/bridge/SseNotifier.java) |
-| SOLID — ISP | `Camera, ViewNotifier, FileOpener, LanguageModel, ScreenTransition` | Interfaces pequeñas: cada una tiene solo los métodos que su cliente necesita. | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) |
-| SOLID — DIP | `service → Repository<T>, LanguageModel; bridge → ViewNotifier, Camera, FileOpener, ScreenTransition` | Los módulos de alto nivel dependen de abstracciones; `AppContext`, `ProfileServicesFactory` y las ventanas eligen las implementaciones. | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java), [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java), [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) |
-| Código limpio — Nombres significativos | disminuirStock, cantidadesPorProducto, registrarCambioDeStock, resolverPerfilInicial |  | [`Product`](../src/main/java/sistemainventario/model/Product.java), [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`InventoryService`](../src/main/java/sistemainventario/service/InventoryService.java), [`ProfileService`](../src/main/java/sistemainventario/service/ProfileService.java) |
-| Código limpio — Métodos pequeños | SaleService.registrar delega en métodos privados para verificar y descontar el stock |  | [`SaleService`](../src/main/java/sistemainventario/service/SaleService.java) |
-| Código limpio — Sin código muerto | Se eliminaron Usuario, UsuarioRepository y GestorUsuarios (sin uso) y métodos sin uso de P2 |  | [`IdGenerator`](../src/main/java/sistemainventario/util/IdGenerator.java) |
-| Código limpio — Constantes | Sale.ESTADO_COMPLETADA, StockEntry.PREFIJO_ID, Profile.COLOR_POR_DEFECTO |  | [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`StockEntry`](../src/main/java/sistemainventario/model/StockEntry.java), [`Profile`](../src/main/java/sistemainventario/model/Profile.java) |
-| Código limpio — Excepciones propias | ValidationException y PersistenceException; traducción única en BridgeResponse |  | [`ValidationException`](../src/main/java/sistemainventario/exception/ValidationException.java), [`PersistenceException`](../src/main/java/sistemainventario/exception/PersistenceException.java), [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java) |
-| Código limpio — Validación de entradas | Nombres .zip y .png válidos; protección zip slip; QR ajeno o de producto borrado muestra un aviso; método de pago y fiado validados en la venta; argumentos del modelo validados antes de proponer un cambio |  | [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java), [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java), [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java), [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) |
-| Código limpio — Mensajes claros | Los errores del asistente se traducen a frases para el usuario (sin internet, clave inválida, límite gratuito, modelo retirado) |  | [`GeminiClient`](../src/main/java/sistemainventario/ia/GeminiClient.java), [`AssistantException`](../src/main/java/sistemainventario/exception/AssistantException.java) |
-| Código limpio — Javadoc y convenciones | Javadoc en clases y métodos públicos; PascalCase, camelCase y UPPER_SNAKE_CASE |  |  |
+| GRASP | Creador | [`Sale.agregarItem`](../src/main/java/sistemainventario/model/Sale.java) | La venta crea sus renglones (`SaleItem`). |
+| GRASP | Creador | [`ProfileServicesFactory`](../src/main/java/sistemainventario/service/ProfileServicesFactory.java) | Crea los servicios de cada negocio con los repositorios del almacenamiento en uso. |
+| GRASP | Controlador | [`JavaBridge`](../src/main/java/sistemainventario/bridge/JavaBridge.java) y controladores de `bridge` | Reciben lo que hace el usuario y llaman a los servicios. |
+| GRASP | Experto en información | [`Product`](../src/main/java/sistemainventario/model/Product.java) | Decide su estado (agotado, por vencer) y si alcanza el stock. |
+| GRASP | Experto en información | [`CustomerDebt`](../src/main/java/sistemainventario/model/CustomerDebt.java) | Calcula cuánto debe un cliente con lo fiado y lo abonado. |
+| GRASP | Bajo acoplamiento | [`Repository<T>`](../src/main/java/sistemainventario/repository/Repository.java) | Los servicios no saben si guardan en archivos o en base de datos. |
+| GRASP | Alta cohesión | [`AccessPolicy`](../src/main/java/sistemainventario/bridge/AccessPolicy.java), [`AuditTrail`](../src/main/java/sistemainventario/bridge/AuditTrail.java) | Uno solo revisa permisos; el otro solo anota el historial. |
+| SOLID | SRP | `Product` / `InventoryService` / `ProductRepository` | Reglas, caso de uso y guardado están en clases distintas. |
+| SOLID | SRP | `UserService` / `SessionService` / [`PasswordHasher`](../src/main/java/sistemainventario/util/PasswordHasher.java) | Usuarios, sesión y cifrado de contraseñas separados. |
+| SOLID | OCP | [`JdbcRepository<T>`](../src/main/java/sistemainventario/repository/JdbcRepository.java) | La base de datos se agregó con clases nuevas, sin cambiar los servicios. |
+| SOLID | OCP | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) | El celular como lector se agregó con `PhoneCamera`, sin cambiar la venta por QR. |
+| Código limpio | Nombres que dicen lo que hacen | `disminuirStock`, `registrarAbono`, `aceptaMedioPago` | Se entiende qué hace el método sin leerlo. |
+| Código limpio | Un solo lugar para los errores | [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java) | Convierte cualquier error en un mensaje para el usuario. |
+| Código limpio | Constantes en lugar de valores sueltos | `Sale.PREFIJO_ID`, `Rol.MINUTOS_ANULAR_PROPIA` | Los valores fijos tienen nombre. |
+| Código limpio | Javadoc | Todas las clases | Cada clase y método público explica qué hace. |
+
+La tabla completa está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
 
 ## 6. Reporte final de Git
 
-Historial hasta la etiqueta `v3.3.0`.
-
 ### 6.1 Commits por integrante
 
-| Integrante | Commits | PR aprobados y fusionados |
-|---|---|---|
-| Kevin Jhosep Mercado (@kjhosepmercadom) | 17 | 5 |
-| Reinaldo Padilla Pedroza (@rjpadillap) | 17 | 6 |
-| Dair José Quintero (@djosequintero) | 17 | 6 |
-| **Total** | **52** (+1 `Initial commit`) | **17** |
+| Integrante | Usuario GitHub | Commits | Pull Requests que aprobó y fusionó |
+|---|---|---|---|
+| Kevin Jhosep Mercado | @kjhosepmercadom | 27 | 7 |
+| Dair José Quintero | @djosequintero | 24 | 10 |
+| Reinaldo Padilla Pedroza | @rjpadillap | 23 | 8 |
+
+Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 
 ### 6.2 Versiones
 
-| Etiqueta | Fecha | Commits acumulados | Contenido |
-|---|---|---|---|
-| `v3.0.0-avance1` | 2026-10-27 | 22 | Reestructuración en capas con GRASP y SOLID (avance 1) |
-| `v3.1.0` | 2026-10-27 | 32 | Copias de seguridad |
-| `v3.2.0` | 2026-10-28 | 43 | Etiquetas QR y venta por QR |
-| `v3.3.0` | 2026-11-10 | 52 | Utilidad por producto, nombres de clases en inglés, interfaz rediseñada y documentación por fases |
+| Etiqueta | Contenido |
+|---|---|
+| `v3.0.0-avance1` | Código de Programación II organizado en capas, con repositorios, servicios y controladores. |
+| `v3.1.0` | Copias de seguridad. |
+| `v3.2.0` | Etiquetas QR y venta por QR con la cámara. |
+| `v3.3.0` | Nombres de clases en inglés, precio de compra y ganancia por producto, documentación por fases. |
+| `v3.4.0` | Medios de pago, informes con Excel y PDF, asistente con IA, ventana de Edge y diseño nuevo. |
+| `v3.5.0` | PostgreSQL y Oracle (también en la nube, desde varios computadores), borrado lógico, copias en la base, usuarios con roles, historial, fiados con abonos, cobro por cuenta con QR de Bre-B, celular como lector QR e interfaz en vidrio. |
 
 ### 6.3 Ramas creadas y fusionadas
 
-| Rama | Autor | PR | Fusionada en |
-|---|---|---|---|
-| `feature/dair-modelo-dominio` | Dair Quintero | #1 | `dev` |
-| `feature/reinaldo-persistencia-json` | Reinaldo Padilla | #2 | `dev` |
-| `feature/kevin-servicios-bridge` | Kevin Mercado | #3 | `dev` |
-| `dev` | Kevin Mercado (integración) | #4 | `main` |
-| `feature/reinaldo-backup-storage` | Reinaldo Padilla | #5 | `dev` |
-| `feature/kevin-backup-service` | Kevin Mercado | #6 | `dev` |
-| `feature/dair-backup-ui` | Dair Quintero | #7 | `dev` |
-| `feature/reinaldo-architecture-docs` | Reinaldo Padilla | #8 | `dev` |
-| `dev` | Kevin Mercado (integración) | #9 | `main` |
-| `feature/reinaldo-qr-reader-camera` | Reinaldo Padilla | #10 | `dev` |
-| `feature/kevin-qr-sale-service` | Kevin Mercado | #11 | `dev` |
-| `feature/dair-qr-sale-ui` | Dair Quintero | #12 | `dev` |
-| `dev` | Kevin Mercado (integración) | #13 | `main` |
-| `feature/kevin-english-names-profit` | Kevin Mercado | #14 | `dev` |
-| `feature/dair-profit-ui-redesign` | Dair Quintero | #15 | `dev` |
-| `feature/reinaldo-docs-v3.3.0` | Reinaldo Padilla | #16 | `dev` |
-| `dev` | Kevin Mercado (integración) | #17 | `main` |
+| PR | Rama | Destino | Fecha | Aprobó y fusionó |
+|---|---|---|---|---|
+| #1 | `feature/dair-modelo-dominio` | `dev` | 2026-10-27 | @rjpadillap |
+| #2 | `feature/reinaldo-persistencia-json` | `dev` | 2026-10-27 | @kjhosepmercadom |
+| #3 | `feature/kevin-servicios-bridge` | `dev` | 2026-10-27 | @rjpadillap |
+| #4 | `dev` | `main` | 2026-10-27 | @rjpadillap |
+| #5 | `feature/reinaldo-backup-storage` | `dev` | 2026-10-27 | @kjhosepmercadom |
+| #6 | `feature/kevin-backup-service` | `dev` | 2026-10-27 | @djosequintero |
+| #7 | `feature/dair-backup-ui` | `dev` | 2026-10-27 | @rjpadillap |
+| #8 | `feature/reinaldo-architecture-docs` | `dev` | 2026-10-27 | @kjhosepmercadom |
+| #9 | `dev` | `main` | 2026-10-27 | @djosequintero |
+| #10 | `feature/reinaldo-qr-reader-camera` | `dev` | 2026-10-28 | @kjhosepmercadom |
+| #11 | `feature/kevin-qr-sale-service` | `dev` | 2026-10-28 | @djosequintero |
+| #12 | `feature/dair-qr-sale-ui` | `dev` | 2026-10-28 | @rjpadillap |
+| #13 | `dev` | `main` | 2026-10-28 | @djosequintero |
+| #14 | `feature/kevin-english-names-profit` | `dev` | 2026-11-10 | @djosequintero |
+| #15 | `feature/dair-profit-ui-redesign` | `dev` | 2026-11-10 | @rjpadillap |
+| #16 | `feature/reinaldo-docs-v3.3.0` | `dev` | 2026-11-10 | @kjhosepmercadom |
+| #17 | `dev` | `main` | 2026-11-10 | @djosequintero |
+| #18 | `feature/kevin-payments-reports-assistant` | `dev` | 2026-11-16 | @djosequintero |
+| #19 | `feature/dair-edge-window-new-ui` | `dev` | 2026-11-16 | @rjpadillap |
+| #20 | `feature/reinaldo-docs-v3.4.0` | `dev` | 2026-11-16 | @kjhosepmercadom |
+| #21 | `dev` | `main` | 2026-11-16 | @djosequintero |
+| #22 | `feature/kevin-database-history-credit` | `dev` | 2026-11-22 | @djosequintero |
+| #23 | `feature/dair-glass-ui-phone-reader` | `dev` | 2026-11-22 | @rjpadillap |
+| #24 | `feature/reinaldo-roles-docs-v3.5.0` | `dev` | 2026-11-22 | @kjhosepmercadom |
+| #25 | `dev` | `main` | 2026-11-22 | @djosequintero |
 
-Se crearon y fusionaron **13 ramas `feature/*`** (borradas después de fusionarse) y la rama `dev` se fusionó en `main` en cada versión (4 veces). El detalle de cada commit está en la [Fase 3](FASE3_Desarrollo.md#62-evidencia-de-commits).
+Todas las ramas `feature/*` se fusionaron en `dev` con un Pull Request aprobado por otro integrante y luego se borraron; `dev` se fusionó en `main` en cada versión.
