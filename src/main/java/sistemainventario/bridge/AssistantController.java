@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import sistemainventario.AppContext;
 import sistemainventario.exception.AssistantException;
+import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Profile;
 import sistemainventario.service.AssistantProposal;
 import sistemainventario.service.AssistantService;
@@ -14,6 +15,7 @@ import sistemainventario.util.JsonUtil;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 /**
  * Casos de uso del asistente: configurarlo, conversar y confirmar o descartar
@@ -116,22 +118,44 @@ public class AssistantController {
     public String asistenteProbar() {
         return BridgeResponse.ejecutar(() -> {
             ajustes.requerir();
-            segundoPlano.submit(() -> {
-                JsonObject r = new JsonObject();
-                try {
-                    AssistantSettingsService.ConnectionTest prueba = ajustes.probarConexion(this::avisarModelo);
-                    r.addProperty("ok", true);
-                    r.addProperty("modelo", prueba.modelo());
-                    r.addProperty("mensaje", prueba.mensaje());
-                } catch (Throwable e) {
-                    AssistantLog.registrar("Prueba fallida: " + e);
-                    r.addProperty("ok", false);
-                    r.addProperty("mensaje", e instanceof AssistantException ? e.getMessage()
-                            : e.getClass().getSimpleName() + ": " + e.getMessage());
-                }
-                notificador.ejecutarScript("onAsistentePrueba(" + BridgeResponse.literalJs(r.toString()) + ")");
-            });
+            probarEnSegundoPlano(() -> ajustes.probarConexion(this::avisarModelo));
             return BridgeResponse.OK;
+        });
+    }
+
+    /**
+     * Prueba la clave escrita en la pantalla sin guardarla; el resultado llega con
+     * {@code onAsistentePrueba(...)} igual que {@link #asistenteProbar()}.
+     *
+     * @param clave  clave pegada por el usuario
+     * @param modelo modelo elegido
+     * @return {@code "OK"} o {@code "ERROR: ..."}
+     */
+    public String asistenteProbarClave(String clave, String modelo) {
+        return BridgeResponse.ejecutar(() -> {
+            if (clave == null || clave.isBlank()) {
+                throw new ValidationException("Pegue la clave de API");
+            }
+            probarEnSegundoPlano(() -> ajustes.probarClave(clave, modelo));
+            return BridgeResponse.OK;
+        });
+    }
+
+    private void probarEnSegundoPlano(Supplier<AssistantSettingsService.ConnectionTest> prueba) {
+        segundoPlano.submit(() -> {
+            JsonObject r = new JsonObject();
+            try {
+                AssistantSettingsService.ConnectionTest resultado = prueba.get();
+                r.addProperty("ok", true);
+                r.addProperty("modelo", resultado.modelo());
+                r.addProperty("mensaje", resultado.mensaje());
+            } catch (Throwable e) {
+                AssistantLog.registrar("Prueba fallida: " + e);
+                r.addProperty("ok", false);
+                r.addProperty("mensaje", e instanceof AssistantException ? e.getMessage()
+                        : e.getClass().getSimpleName() + ": " + e.getMessage());
+            }
+            notificador.ejecutarScript("onAsistentePrueba(" + BridgeResponse.literalJs(r.toString()) + ")");
         });
     }
 
@@ -156,12 +180,15 @@ public class AssistantController {
 
     /** Crea el asistente con la clave guardada; empieza de cero si cambió el perfil activo. */
     private AssistantService asistente() {
-        String perfilActual = contexto.getGestorPerfiles().getPerfilActivo().map(Profile::getId).orElse("");
+        // la conversación es de una persona en un negocio: si cambia cualquiera de los dos, empieza de cero
+        String perfilActual = contexto.getGestorPerfiles().getPerfilActivo().map(Profile::getId).orElse("")
+                + "/" + contexto.getSesion().actual().map(u -> u.getId()).orElse("");
         if (asistente == null || !perfilActual.equals(perfilDeLaConversacion)) {
             asistente = new AssistantService(ajustes.crearModelo(this::avisarModelo),
                     contexto::requerirServiciosActivos,
                     () -> contexto.getGestorPerfiles().getPerfilActivo().orElse(null),
-                    hiloDeDatos);
+                    hiloDeDatos,
+                    () -> contexto.rolActual().map(r -> r.getPermisos()).orElse(java.util.EnumSet.noneOf(sistemainventario.model.Permiso.class)));
             perfilDeLaConversacion = perfilActual;
         }
         return asistente;
