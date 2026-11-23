@@ -14,89 +14,44 @@ skinparam package {
   BorderColor #1e4a35
   FontColor #14281d
 }
-skinparam note {
-  BackgroundColor #fdf8ea
-  BorderColor #d4a72c
-}
 hide empty members
 
-title Diagrama de clases — paquete model (dominio)
+title Diagrama de clases — modelo del dominio (model, exception) — TBalance v3.5.0
+
+package exception {
+class PersistenceException {
+}
+class ValidationException {
+}
+}
 package model {
-abstract class IdentifiedEntity {
-  - id : String
-  + tieneId() : boolean
-  + getEtiqueta() : String
-  + equals(otro : Object) : boolean
-  + hashCode() : int
+class Acceso {
+  - perfilId : String
+  - rol : String
 }
-class Product {
-  - nombre : String
-  - codigo : String
-  - descripcion : String
-  - categoria : String
-  - categoriaId : String
-  - proveedorId : String
-  - precioCompra : double
-  - precioVenta : double
-  - stock : int
-  - stockMin : int
-  - tipo : String
-  - requiereVencimiento : boolean
-  - fechaVencimiento : String
-  + validar(hoy : LocalDate)
-  + getEstado() : String
-  + estaAgotado() : boolean
-  + estaBajoStock() : boolean
-  + tieneStockPara(cantidad : int) : boolean
-  + aumentarStock(cantidad : int)
-  + disminuirStock(cantidad : int)
-  + verificarStockDisponible(cantidad : int)
-  + tienePrecioCompra() : boolean
-  + getUtilidadUnitaria() : double
-  + getMargen() : double
-  + getUtilidadEstimadaStock() : double
-  + getFechaVencimientoComoFecha() : Optional<LocalDate>
-  + estaVencido(hoy : LocalDate) : boolean
-  + venceDentroDe(dias : int, hoy : LocalDate) : boolean
-  + coincideCon(texto : String) : boolean
-  + perteneceACategoria(nombreCategoria : String) : boolean
-  + contenidoEtiquetaQR() : String
-  + idDesdeEtiquetaQR(contenido : String) : Optional<String> {static}
-  + getEtiqueta() : String
+interface Anulable {
+  - VIGENTE : String
+  - ANULADA : String
+  + {abstract} getFechaAnulacion() : String
+  + {abstract} getMotivoAnulacion() : String
+  + {abstract} anular()
+  + {abstract} getAnuladaPor() : String
+  + {abstract} setAnuladaPor()
 }
-class Category {
-  - nombre : String
-  - descripcion : String
-  + validar()
-  + getEtiqueta() : String
+class AuditEntry {
+  - fecha : String
+  - usuarioId : String
+  - usuario : String
+  - rol : String
+  - perfilId : String
+  - perfil : String
+  - accion : String
+  - detalle : String
 }
-class Supplier {
+class Backup {
   - nombre : String
-  - contacto : String
-  - telefono : String
-  - email : String
-  - direccion : String
-  - categoria : String
-  - activo : boolean
-  + validar()
-  + coincideCon(texto : String) : boolean
-  + getEtiqueta() : String
-  + toString() : String
-}
-class Profile {
-  - nombre : String
-  - descripcion : String
-  - color : String
-  - tipoNegocio : String
-  - fechaCreacion : String
-  - configuracion : Map<String, String>
-  + validar()
-  + actualizarDatos(nuevoNombre : String, nuevaDescripcion : String, nuevoColor : String)
-  + getPerfilNegocio() : BusinessType
-  + requiereControlVencimiento() : boolean
-  + getConfig(clave : String, defecto : String) : String
-  + setConfig(clave : String, valor : String)
-  + getEtiqueta() : String
+  - fecha : String
+  - tamanoBytes : long
 }
 enum BusinessType {
   BOUTIQUE
@@ -110,11 +65,62 @@ enum BusinessType {
   - categoriasPredefinidas : List<String>
   - requiereVencimiento : boolean
   - sugerencias : Suggestions
-  + desdeClave(clave : String) : BusinessType {static}
-  + getEtiqueta() : String
+  + {static} desdeClave() : BusinessType
   + tieneCategorias() : boolean
   + requiereControlVencimiento() : boolean
   + describir() : Map<String, Object>
+}
+class Category {
+  - nombre : String
+  - descripcion : String
+  - activo : Boolean
+  + validar()
+  + getEtiqueta() : String
+}
+class CreditPayment {
+  - cliente : String
+  - clienteDocumento : String
+  - monto : double
+  - metodoPago : String
+  - referenciaPago : String
+  - nota : String
+  - fecha : String
+  - usuarioId : String
+  - ... (5 más)
+  + validar()
+  + isAnulada() : boolean
+  + anular()
+  + setAnulacion()
+}
+class CustomerDebt {
+  - clave : String
+  - cliente : String
+  - documento : String
+  - totalFiado : double
+  - totalAbonado : double
+  - ultimaFecha : String
+  - saldo : double
+  - ventas : List<Sale>
+  - ... (1 más)
+  + agregarVenta()
+  + agregarAbono()
+  + estaAlDia() : boolean
+}
+enum DatabaseEngine {
+  JSON
+  POSTGRESQL
+  ORACLE
+  - etiqueta : String
+  - urlPorDefecto : String
+  + esRelacional() : boolean
+  + {static} desde() : DatabaseEngine
+}
+class DatabaseSettings <<record>> {
+  + usaBaseDeDatos() : boolean
+}
+interface Deshabilitable {
+  + {abstract} isActivo() : boolean
+  + {abstract} setActivo()
 }
 class GlobalConfig {
   - perfiles : List<Profile>
@@ -124,60 +130,30 @@ class GlobalConfig {
   + tienePerfiles() : boolean
   + tienePerfilActivo() : boolean
 }
+abstract class IdentifiedEntity {
+  - id : String
+  + tieneId() : boolean
+  + getEtiqueta() : String
+  + equals() : boolean
+  + hashCode() : int
+}
 abstract class InventoryMovement {
   - productoId : String
   - cantidad : int
   - fecha : String
-  + aplicarA(producto : Product) {abstract}
-  + getPrefijoId() : String {abstract}
-  + validar()
-  + registrar(nuevoId : String, fechaRegistro : String)
-}
-class StockEntry {
-  - proveedorId : String
-  - precioUnitario : double
-  - observacion : String
-  + aplicarA(producto : Product)
-  + getPrefijoId() : String
-}
-class StockExit {
-  - motivo : String
-  - tipo : String
-  + aplicarA(producto : Product)
-  + getPrefijoId() : String
-}
-class Sale {
-  - cliente : String
-  - metodoPago : String
-  - observacion : String
-  - referenciaPago : String
-  - fecha : String
+  - fechaRegistro : String
   - estado : String
-  - items : List<SaleItem>
-  - total : double
-  + agregarItem(producto : Product, cantidad : int, precioUnitario : double) : SaleItem
+  - fechaAnulacion : String
+  - motivoAnulacion : String
+  - anuladaPor : String
+  + {abstract} aplicarA()
+  + {abstract} getPrefijoId() : String
   + validar()
-  + completar(nuevoId : String, fechaRegistro : String)
-  + calcularTotal() : double
-  + recalcularTotal()
-  + getTotalUnidades() : int
-  + cantidadesPorProducto() : Map<String, Integer>
-  + estaCompletada() : boolean
-  + normalizarPago()
-  + getEstado() : String
-}
-class SaleItem {
-  - productoId : String
-  - nombreProducto : String
-  - cantidad : int
-  - precioUnitario : double
-  - subtotal : double
-  - costoUnitario : double
-  + validar()
-  + tieneCosto() : boolean
-  + utilidadCon(costo : double) : double
-  + getSubtotal() : double
-  ~ sincronizarSubtotal()
+  + validarFecha()
+  + registrar()
+  + isAnulada() : boolean
+  + anular()
+  + setAnulacion()
 }
 enum PaymentMethod {
   EFECTIVO
@@ -190,47 +166,174 @@ enum PaymentMethod {
   FIADO
   - etiqueta : String
   - digital : boolean
-  + getEtiqueta() : String
   + esDigital() : boolean
-  + desdeTexto(texto : String) : Optional<PaymentMethod> {static}
+  + {static} desdeTexto() : Optional<PaymentMethod>
 }
-class Backup {
+enum Permiso {
+  VENDER
+  VER_GANANCIA
+  EDITAR_CATALOGO
+  MOVIMIENTOS
+  ANULAR
+  DESHABILITAR
+  INFORMES
+  COSTOS
+  ...
+}
+class Product {
   - nombre : String
+  - codigo : String
+  - descripcion : String
+  - categoria : String
+  - categoriaId : String
+  - proveedorId : String
+  - precioCompra : double
+  - precioVenta : double
+  - ... (6 más)
+  + validar()
+  + getEstado() : String
+  + estaAgotado() : boolean
+  + estaBajoStock() : boolean
+  + tieneStockPara() : boolean
+  + aumentarStock()
+  + disminuirStock()
+  + verificarStockDisponible()
+  + tienePrecioCompra() : boolean
+  + ... (12 más)
+}
+class Profile {
+  - nombre : String
+  - descripcion : String
+  - color : String
+  - tipoNegocio : String
+  - fechaCreacion : String
+  - configuracion : Map<String, String>
+  - activo : Boolean
+  + validar()
+  + actualizarDatos()
+  + getPerfilNegocio() : BusinessType
+  + requiereControlVencimiento() : boolean
+  + getConfig() : String
+  + setConfig()
+  + copiarAjustesDePago()
+  + getMediosPago() : Set<String>
+  + setMediosPago()
+  + ... (2 más)
+}
+class QrLabel <<record>> {
+  + {static} texto() : String
+  + {static} leer() : Optional<QrLabel>
+  + {static} pareceDeTBalance() : boolean
+  + esDeOtroNegocio() : boolean
+}
+enum Rol {
+  DUENO
+  ADMINISTRADOR
+  CAJERO
+  - etiqueta : String
+  - permisos : Set<Permiso>
+  + puede() : boolean
+  + puedeAsignar() : boolean
+  + {static} desde() : Rol
+}
+class Sale {
+  - cliente : String
+  - clienteDocumento : String
+  - metodoPago : String
+  - observacion : String
+  - referenciaPago : String
   - fecha : String
-  - tamanoBytes : long
+  - estado : String
+  - fechaAnulacion : String
+  - ... (7 más)
+  + agregarItem() : SaleItem
+  + validar()
+  + completar()
+  + calcularTotal() : double
+  + recalcularTotal()
+  + getTotalUnidades() : int
+  + cantidadesPorProducto() : Map<String, Integer>
+  + estaCompletada() : boolean
+  + normalizarPago()
+  + ... (3 más)
 }
-class AssistantSettings <<record>> {
+class SaleItem {
+  - productoId : String
+  - nombreProducto : String
+  - cantidad : int
+  - precioUnitario : double
+  - subtotal : double
+  - costoUnitario : double
+  + validar()
+  + tieneCosto() : boolean
+  + utilidadCon() : double
+  + sincronizarSubtotal()
+}
+class StockEntry {
+  - proveedorId : String
+  - precioUnitario : double
+  - observacion : String
+  + aplicarA()
+  + getPrefijoId() : String
+}
+class StockExit {
+  - motivo : String
+  - tipo : String
+  + aplicarA()
+  + getPrefijoId() : String
+}
+class Supplier {
+  - nombre : String
+  - contacto : String
+  - telefono : String
+  - email : String
+  - direccion : String
+  - categoria : String
+  - categoriaIds : List<String>
+  - activo : boolean
+  + validar()
+  + coincideCon() : boolean
+  + getEtiqueta() : String
+  + toString() : String
+}
+class User {
+  - nombre : String
+  - usuario : String
   - clave : String
-  - modelo : String
+  - activo : Boolean
+  - intentosFallidos : int
+  - bloqueadoHasta : String
+  - fechaCreacion : String
+  - ultimoIngreso : String
+  - ... (1 más)
+  + rolEn() : Optional<Rol>
+  + darAcceso()
+  + esDuenoDeAlguno() : boolean
 }
 }
-package exception {
-class ValidationException {
-}
-class PersistenceException {
-}
-class AssistantException {
-}
-}
-
-class RuntimeException
-IdentifiedEntity <|-- Product
+Anulable <|.. CreditPayment
+Anulable <|.. InventoryMovement
+Anulable <|.. Sale
+CustomerDebt o-- CreditPayment
+CustomerDebt o-- Sale
+Deshabilitable <|.. Category
+Deshabilitable <|.. Product
+Deshabilitable <|.. Profile
+Deshabilitable <|.. Supplier
+Deshabilitable <|.. User
+GlobalConfig o-- Profile
+IdentifiedEntity <|-- AuditEntry
 IdentifiedEntity <|-- Category
-IdentifiedEntity <|-- Supplier
+IdentifiedEntity <|-- CreditPayment
+IdentifiedEntity <|-- InventoryMovement
+IdentifiedEntity <|-- Product
 IdentifiedEntity <|-- Profile
 IdentifiedEntity <|-- Sale
-IdentifiedEntity <|-- InventoryMovement
+IdentifiedEntity <|-- Supplier
+IdentifiedEntity <|-- User
 InventoryMovement <|-- StockEntry
 InventoryMovement <|-- StockExit
-Sale "1" *-- "1..*" SaleItem : items
-GlobalConfig "1" o-- "*" Profile : perfiles
-Profile ..> BusinessType : tipoNegocio
-InventoryMovement ..> Product : aplicarA()
-Sale ..> Product : agregarItem()
-Sale ..> PaymentMethod : normalizarPago()
-RuntimeException <|-- ValidationException
-RuntimeException <|-- PersistenceException
-RuntimeException <|-- AssistantException
-note bottom of Product : Getters y setters omitidos
-
+Rol o-- Permiso
+Sale *-- SaleItem
+User *-- Acceso
 @enduml

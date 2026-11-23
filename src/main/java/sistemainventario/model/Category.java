@@ -7,10 +7,13 @@ import sistemainventario.util.TextUtil;
  * Agrupación lógica de productos dentro de un perfil (por ejemplo
  * "Medicamentos" o "Herramientas").
  */
-public class Category extends IdentifiedEntity {
+public class Category extends IdentifiedEntity implements Deshabilitable {
 
     private String nombre;
     private String descripcion;
+
+    /** {@code null} en los datos de versiones anteriores, que cuentan como habilitados. */
+    private Boolean activo;
 
     /** Constructor vacío requerido por Gson. */
     public Category() {
@@ -53,5 +56,15 @@ public class Category extends IdentifiedEntity {
 
     public void setDescripcion(String descripcion) {
         this.descripcion = descripcion;
+    }
+
+    @Override
+    public boolean isActivo() {
+        return !Boolean.FALSE.equals(activo);
+    }
+
+    @Override
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

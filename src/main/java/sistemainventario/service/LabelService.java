@@ -58,31 +58,34 @@ public class LabelService {
 
     /**
      * @param producto producto a etiquetar
+     * @param perfilId negocio dueño del producto (va dentro del QR)
      * @return la etiqueta como imagen Base64 para mostrarla en la vista
      */
-    public String vistaPrevia(Product producto) {
-        return etiquetas.aDataUri(dibujarEtiqueta(producto));
+    public String vistaPrevia(Product producto, String perfilId) {
+        return etiquetas.aDataUri(dibujarEtiqueta(producto, perfilId));
     }
 
     /**
      * Guarda la etiqueta de un producto como imagen PNG.
      *
      * @param producto producto a etiquetar
+     * @param perfilId negocio dueño del producto (va dentro del QR)
      * @return ruta del archivo creado
      */
-    public Path guardarEtiqueta(Product producto) {
+    public Path guardarEtiqueta(Product producto, String perfilId) {
         String nombre = "etiqueta_" + limpiar(producto.getId()) + "_" + marcaDeTiempo() + ".png";
-        return etiquetas.guardar(nombre, dibujarEtiqueta(producto));
+        return etiquetas.guardar(nombre, dibujarEtiqueta(producto, perfilId));
     }
 
     /**
      * Genera hojas tamaño carta con 18 etiquetas cada una, listas para imprimir.
      *
      * @param productos productos a etiquetar
+     * @param perfilId  negocio dueño de los productos (va dentro de cada QR)
      * @return rutas de las hojas creadas (una por cada 18 productos)
      * @throws ValidationException si no hay productos
      */
-    public List<Path> guardarHojas(List<Product> productos) {
+    public List<Path> guardarHojas(List<Product> productos, String perfilId) {
         if (productos == null || productos.isEmpty()) {
             throw new ValidationException("No hay productos para generar etiquetas");
         }
@@ -91,7 +94,7 @@ public class LabelService {
         List<Path> hojas = new ArrayList<>();
         for (int inicio = 0, numero = 1; inicio < productos.size(); inicio += porHoja, numero++) {
             List<Product> grupo = productos.subList(inicio, Math.min(inicio + porHoja, productos.size()));
-            hojas.add(etiquetas.guardar("etiquetas_" + marca + "_hoja" + numero + ".png", dibujarHoja(grupo)));
+            hojas.add(etiquetas.guardar("etiquetas_" + marca + "_hoja" + numero + ".png", dibujarHoja(grupo, perfilId)));
         }
         return hojas;
     }
@@ -106,21 +109,22 @@ public class LabelService {
      * categoría a la derecha.
      *
      * @param producto producto a etiquetar
+     * @param perfilId negocio dueño del producto (va dentro del QR)
      * @return imagen de la etiqueta
      */
-    public BufferedImage dibujarEtiqueta(Product producto) {
+    public BufferedImage dibujarEtiqueta(Product producto, String perfilId) {
         BufferedImage imagen = new BufferedImage(ANCHO_ETIQUETA, ALTO_ETIQUETA, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = imagen.createGraphics();
         try {
             prepararLienzo(g, ANCHO_ETIQUETA, ALTO_ETIQUETA);
-            dibujarEn(g, producto, 0, 0);
+            dibujarEn(g, producto, perfilId, 0, 0);
         } finally {
             g.dispose();
         }
         return imagen;
     }
 
-    private BufferedImage dibujarHoja(List<Product> productos) {
+    private BufferedImage dibujarHoja(List<Product> productos, String perfilId) {
         BufferedImage hoja = new BufferedImage(ANCHO_HOJA, ALTO_HOJA, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = hoja.createGraphics();
         try {
@@ -130,7 +134,7 @@ public class LabelService {
             for (int i = 0; i < productos.size(); i++) {
                 int x = MARGEN_HOJA + (i % COLUMNAS) * (ANCHO_ETIQUETA + espacioX);
                 int y = MARGEN_HOJA + (i / COLUMNAS) * (ALTO_ETIQUETA + espacioY);
-                dibujarEn(g, productos.get(i), x, y);
+                dibujarEn(g, productos.get(i), perfilId, x, y);
             }
         } finally {
             g.dispose();
@@ -145,13 +149,13 @@ public class LabelService {
         g.fillRect(0, 0, ancho, alto);
     }
 
-    private void dibujarEn(Graphics2D g, Product producto, int x, int y) {
+    private void dibujarEn(Graphics2D g, Product producto, String perfilId, int x, int y) {
         g.setColor(COLOR_BORDE);
         g.setStroke(new BasicStroke(2f));
         g.drawRoundRect(x + 1, y + 1, ANCHO_ETIQUETA - 3, ALTO_ETIQUETA - 3, 18, 18);
 
         int margenQr = (ALTO_ETIQUETA - TAMANO_QR) / 2;
-        g.drawImage(generadorQR.generar(producto.contenidoEtiquetaQR(), TAMANO_QR), x + margenQr, y + margenQr, null);
+        g.drawImage(generadorQR.generar(producto.contenidoEtiquetaQR(perfilId), TAMANO_QR), x + margenQr, y + margenQr, null);
 
         int textoX = x + margenQr + TAMANO_QR + 12;
         int anchoTexto = x + ANCHO_ETIQUETA - textoX - 14;

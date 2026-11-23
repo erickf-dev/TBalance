@@ -62,4 +62,11 @@ public interface Repository<T extends IdentifiedEntity> {
 
     /** @return el siguiente ID numérico disponible (mayor ID + 1) */
     String siguienteIdNumerico();
+
+    /**
+     * Vuelve a leer los datos si otro equipo los cambió. Con archivos no hace nada
+     * (solo un equipo los usa).
+     */
+    default void refrescar() {
+    }
 }

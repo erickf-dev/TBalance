@@ -21,7 +21,20 @@ public final class JsonUtil {
             .serializeNulls()
             .create();
 
+    /** Sin espacios ni saltos de línea: para lo que viaja a la pantalla (pesa casi la mitad). */
+    private static final Gson GSON_COMPACTO = new GsonBuilder()
+            .serializeNulls()
+            .create();
+
     private JsonUtil() {
+    }
+
+    /**
+     * @param objeto objeto a serializar
+     * @return representación JSON compacta (sin formato)
+     */
+    public static String toJsonCompacto(Object objeto) {
+        return GSON_COMPACTO.toJson(objeto);
     }
 
     /**

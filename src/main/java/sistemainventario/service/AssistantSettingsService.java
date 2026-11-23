@@ -80,8 +80,28 @@ public class AssistantSettingsService {
      * @throws sistemainventario.exception.AssistantException si no hubo conexión o Google rechazó la clave
      */
     public ConnectionTest probarConexion(Consumer<String> alCambiarModelo) {
-        AssistantSettings configuracion = requerir();
-        GeminiClient cliente = crearCliente(configuracion, alCambiarModelo);
+        return probar(requerir(), crearCliente(requerir(), alCambiarModelo));
+    }
+
+    /**
+     * Prueba una clave escrita en la pantalla, sin guardarla.
+     *
+     * @param clave  clave de API
+     * @param modelo modelo (vacío para el de por defecto)
+     * @return el resultado, con el modelo que respondió
+     * @throws ValidationException si la clave está vacía
+     * @throws sistemainventario.exception.AssistantException si no hubo conexión o Google rechazó la clave
+     */
+    public ConnectionTest probarClave(String clave, String modelo) {
+        if (clave == null || clave.isBlank()) {
+            throw new ValidationException("Pegue la clave de API");
+        }
+        AssistantSettings configuracion = new AssistantSettings(clave.trim(),
+                modelo == null || modelo.isBlank() ? GeminiClient.MODELO_POR_DEFECTO : modelo.trim());
+        return probar(configuracion, new GeminiClient(configuracion.clave(), configuracion.modelo()));
+    }
+
+    private static ConnectionTest probar(AssistantSettings configuracion, GeminiClient cliente) {
         String texto = cliente.generar("Responde solo con la palabra: listo",
                 List.of(GeminiClient.textoComoContenido("user", "Prueba de conexión")), null).texto();
         boolean cambio = !cliente.modelo().equals(configuracion.modelo());

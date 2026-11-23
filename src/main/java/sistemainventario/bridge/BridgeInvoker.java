@@ -12,6 +12,7 @@ import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Ejecuta un método público de {@link JavaBridge} a partir de su nombre y de sus
@@ -28,6 +29,7 @@ import java.util.Map;
 public class BridgeInvoker {
 
     private final Object puente;
+    private final AccessPolicy politica;
     private final Gson gson = new Gson();
     /** Métodos públicos del puente agrupados por nombre (puede haber sobrecargas). */
     private final Map<String, List<Method>> metodos = new HashMap<>();
@@ -36,7 +38,16 @@ public class BridgeInvoker {
      * @param puente objeto cuyos métodos públicos se exponen a la página
      */
     public BridgeInvoker(Object puente) {
+        this(puente, null);
+    }
+
+    /**
+     * @param puente   objeto cuyos métodos públicos se exponen a la página
+     * @param politica revisa la sesión y el permiso de cada llamada ({@code null}: sin revisar)
+     */
+    public BridgeInvoker(Object puente, AccessPolicy politica) {
         this.puente = puente;
+        this.politica = politica;
         for (Method m : puente.getClass().getDeclaredMethods()) {
             if (Modifier.isPublic(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())) {
                 metodos.computeIfAbsent(m.getName(), k -> new java.util.ArrayList<>()).add(m);
@@ -50,6 +61,9 @@ public class BridgeInvoker {
      * @return objeto JSON {@code {"ok":true,"v":resultado}} o {@code {"ok":false,"error":"..."}}
      */
     public String invocar(String nombre, String argumentosJson) {
+        if (LOTE.equals(nombre)) {
+            return invocarLote(argumentosJson);
+        }
         JsonObject respuesta = new JsonObject();
         try {
             JsonArray argumentos = argumentosJson == null || argumentosJson.isBlank()
@@ -60,7 +74,21 @@ public class BridgeInvoker {
             for (int i = 0; i < tipos.length; i++) {
                 valores[i] = convertir(argumentos.get(i), tipos[i]);
             }
+            AuditTrail.Momento momento = politica == null ? null : politica.antesDeLlamar();
+            Optional<String> rechazo = politica == null ? Optional.empty() : politica.revisar(nombre);
+            if (rechazo.isPresent()) {
+                politica.anotar(nombre, argumentos, null, rechazo.get(), momento);
+                // mismo formato que los errores de los controladores: la página ya los muestra
+                respuesta.addProperty("ok", true);
+                respuesta.addProperty("v", "ERROR: " + rechazo.get());
+                respuesta.addProperty("sinPermiso", true);
+                return gson.toJson(respuesta);
+            }
             Object resultado = metodo.invoke(puente, valores);
+            if (politica != null) {
+                politica.anotar(nombre, argumentos, resultado, null, momento);
+                resultado = politica.filtrar(nombre, resultado);
+            }
             respuesta.addProperty("ok", true);
             respuesta.add("v", resultado == null ? null : gson.toJsonTree(resultado));
         } catch (InvocationTargetException e) {
@@ -71,6 +99,43 @@ public class BridgeInvoker {
             respuesta.addProperty("ok", false);
             respuesta.addProperty("error", String.valueOf(e.getMessage()));
         }
+        return gson.toJson(respuesta);
+    }
+
+    /** Nombre especial para pedir varias lecturas en un solo viaje. */
+    public static final String LOTE = "__lote";
+
+    /**
+     * Ejecuta varias llamadas seguidas y devuelve sus respuestas en el mismo
+     * orden. Cada una pasa por la misma revisión de permisos que si llegara
+     * sola; así la pantalla recarga todo con un viaje en lugar de veinte.
+     *
+     * @param argumentosJson {@code [["obtenerProductos", []], ["obtenerVentas", []], ...]}
+     * @return arreglo JSON con la respuesta de cada llamada
+     */
+    private String invocarLote(String argumentosJson) {
+        JsonArray salida = new JsonArray();
+        JsonArray llamadas;
+        try {
+            JsonArray args = JsonParser.parseString(argumentosJson).getAsJsonArray();
+            llamadas = args.size() == 1 && args.get(0).isJsonArray() && args.get(0).getAsJsonArray().size() > 0
+                    && args.get(0).getAsJsonArray().get(0).isJsonArray() ? args.get(0).getAsJsonArray() : args;
+        } catch (RuntimeException e) {
+            JsonObject error = new JsonObject();
+            error.addProperty("ok", false);
+            error.addProperty("error", "Lote mal formado");
+            return gson.toJson(error);
+        }
+        for (JsonElement llamada : llamadas) {
+            JsonArray partes = llamada.getAsJsonArray();
+            String metodo = partes.get(0).getAsString();
+            String argumentos = partes.size() > 1 ? partes.get(1).toString() : "[]";
+            salida.add(LOTE.equals(metodo) ? JsonParser.parseString("{\"ok\":false,\"error\":\"Lote dentro de lote\"}")
+                    : JsonParser.parseString(invocar(metodo, argumentos)));
+        }
+        JsonObject respuesta = new JsonObject();
+        respuesta.addProperty("ok", true);
+        respuesta.add("v", salida);
         return gson.toJson(respuesta);
     }
 

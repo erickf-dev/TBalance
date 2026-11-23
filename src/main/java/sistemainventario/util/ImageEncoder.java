@@ -43,4 +43,18 @@ public final class ImageEncoder {
         }
         return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(salida.toByteArray());
     }
+
+    /**
+     * @param imagen imagen a convertir (por ejemplo, un código QR)
+     * @return la imagen como {@code data:image/png;base64,...}
+     */
+    public static String aPngDataUri(BufferedImage imagen) {
+        try {
+            java.io.ByteArrayOutputStream salida = new java.io.ByteArrayOutputStream();
+            javax.imageio.ImageIO.write(imagen, "png", salida);
+            return "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(salida.toByteArray());
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("No se pudo convertir la imagen", e);
+        }
+    }
 }

@@ -1,10 +1,13 @@
 package sistemainventario.service;
 
+import sistemainventario.exception.ValidationException;
+import sistemainventario.model.Category;
 import sistemainventario.model.Product;
 import sistemainventario.repository.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
@@ -20,13 +23,58 @@ import java.util.stream.Collectors;
  */
 public class InventoryService extends EntityService<Product> {
 
+    private CategoryService categorias;
+
     public InventoryService(Repository<Product> repositorio) {
         super(repositorio);
+    }
+
+    /**
+     * Conecta las categorías del mismo negocio: la categoría del producto es
+     * obligatoria y debe existir.
+     *
+     * @param categorias servicio de categorías del negocio
+     */
+    public void usarCategorias(CategoryService categorias) {
+        this.categorias = categorias;
+        categorias.usarProductos(this::listarTodos);
     }
 
     @Override
     protected void validar(Product producto) {
         producto.validar(LocalDate.now());
+        if (categorias != null) {
+            categorias.resolverCategoria(producto);
+        }
+    }
+
+    /**
+     * Deja cada producto con una categoría válida: si tenía solo el nombre,
+     * le pone el ID de esa categoría; si no tenía ninguna, lo pasa a
+     * "Sin categoría". Se hace una vez al abrir el negocio, para los datos de
+     * versiones en que la categoría era opcional.
+     *
+     * @return cuántos productos se corrigieron
+     */
+    public int normalizarCategorias() {
+        if (categorias == null) {
+            return 0;
+        }
+        int corregidos = 0;
+        for (Product producto : repositorio.listarTodos()) {
+            String idAntes = producto.getCategoriaId();
+            String nombreAntes = producto.getCategoria();
+            Optional<Category> actual = Optional.ofNullable(idAntes).flatMap(categorias::buscarPorId)
+                    .or(() -> categorias.buscarPorNombre(nombreAntes));
+            Category categoria = actual.orElseGet(categorias::sinCategoria);
+            if (!categoria.getId().equals(idAntes) || !categoria.getNombre().equals(nombreAntes)) {
+                producto.setCategoriaId(categoria.getId());
+                producto.setCategoria(categoria.getNombre());
+                repositorio.actualizar(producto);
+                corregidos++;
+            }
+        }
+        return corregidos;
     }
 
     @Override
@@ -37,6 +85,19 @@ public class InventoryService extends EntityService<Product> {
     @Override
     protected String nombreEntidad() {
         return "Producto";
+    }
+
+    /**
+     * @param id ID del producto
+     * @return el producto, si está habilitado
+     * @throws ValidationException si no existe o está deshabilitado
+     */
+    public Product obtenerHabilitado(String id) {
+        Product producto = obtener(id);
+        if (!producto.isActivo()) {
+            throw new ValidationException("El producto " + producto.getNombre() + " está deshabilitado");
+        }
+        return producto;
     }
 
     /**
@@ -78,7 +139,7 @@ public class InventoryService extends EntityService<Product> {
      * @return suma de {@link Product#getUtilidadEstimadaStock()}
      */
     public double getUtilidadEstimadaInventario() {
-        return repositorio.listarTodos().stream()
+        return listarTodos().stream()
                 .filter(Product::tienePrecioCompra)
                 .mapToDouble(Product::getUtilidadEstimadaStock)
                 .sum();

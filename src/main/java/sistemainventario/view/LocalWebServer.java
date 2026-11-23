@@ -75,6 +75,9 @@ public class LocalWebServer {
      * @throws IOException si no se pudo abrir el puerto
      */
     public String iniciar() throws IOException {
+        // Sin esto, cada respuesta pequeña espera ~40 ms (algoritmo de Nagle + ACK
+        // retrasado del sistema operativo) y una venta tarda medio segundo en verse.
+        System.setProperty("sun.net.httpserver.nodelay", "true");
         servidor = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         servidor.createContext("/bridge/", this::atenderPuente);
         servidor.createContext("/eventos", this::atenderEventos);

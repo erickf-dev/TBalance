@@ -50,20 +50,32 @@ public class ProfileDirectory {
     }
 
     /**
+     * Elimina las carpetas de todos los perfiles.
+     *
+     * @throws PersistenceException si algún archivo no se puede borrar
+     */
+    public void eliminarTodas() {
+        borrarCarpeta(directorioBase.resolve(CARPETA_PERFILES), "las carpetas de los perfiles");
+    }
+
+    /**
      * Elimina la carpeta del perfil y todos sus archivos.
      *
      * @param perfilId ID del perfil
      * @throws PersistenceException si algún archivo no se puede borrar
      */
     public void eliminar(String perfilId) {
-        Path carpeta = resolver(perfilId);
+        borrarCarpeta(resolver(perfilId), "la carpeta del perfil " + perfilId);
+    }
+
+    private static void borrarCarpeta(Path carpeta, String descripcion) {
         if (!Files.exists(carpeta)) {
             return;
         }
         try (Stream<Path> rutas = Files.walk(carpeta)) {
             rutas.sorted(Comparator.reverseOrder()).forEach(ProfileDirectory::borrar);
         } catch (IOException e) {
-            throw new PersistenceException("No se pudo eliminar la carpeta del perfil " + perfilId, e);
+            throw new PersistenceException("No se pudo eliminar " + descripcion, e);
         }
     }
 

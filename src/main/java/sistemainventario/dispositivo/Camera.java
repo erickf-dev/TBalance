@@ -24,4 +24,15 @@ public interface Camera {
 
     /** Apaga la cámara; no falla si ya estaba apagada. */
     void cerrar();
+
+    /**
+     * Avisa en la cámara lo que pasó con la última lectura. La webcam no hace
+     * nada; el celular vibra y muestra el mensaje.
+     *
+     * @param mensaje  texto para el usuario
+     * @param correcto {@code true} si el producto se agregó a la venta
+     */
+    default void avisar(String mensaje, boolean correcto) {
+        // por defecto, sin aviso en la cámara
+    }
 }

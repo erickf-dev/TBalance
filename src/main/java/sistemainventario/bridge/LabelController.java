@@ -30,8 +30,8 @@ public class LabelController {
         return BridgeResponse.ejecutar(() -> {
             Product producto = producto(productoId);
             Map<String, Object> respuesta = new LinkedHashMap<>();
-            respuesta.put("imagen", etiquetas().vistaPrevia(producto));
-            respuesta.put("contenido", producto.contenidoEtiquetaQR());
+            respuesta.put("imagen", etiquetas().vistaPrevia(producto, contexto.getPerfilActivoId()));
+            respuesta.put("contenido", producto.contenidoEtiquetaQR(contexto.getPerfilActivoId()));
             return BridgeResponse.json(respuesta);
         });
     }
@@ -44,7 +44,7 @@ public class LabelController {
      */
     public String guardarEtiquetaQR(String productoId) {
         return BridgeResponse.ejecutar(() -> {
-            Path archivo = etiquetas().guardarEtiqueta(producto(productoId));
+            Path archivo = etiquetas().guardarEtiqueta(producto(productoId), contexto.getPerfilActivoId());
             abridor.abrir(archivo);
             return BridgeResponse.json(Map.of("ruta", archivo.toAbsolutePath().toString()));
         });
@@ -59,7 +59,7 @@ public class LabelController {
     public String generarHojaEtiquetas() {
         return BridgeResponse.ejecutar(() -> {
             List<Product> productos = contexto.requerirServiciosActivos().inventario().listarTodos();
-            List<Path> hojas = etiquetas().guardarHojas(productos);
+            List<Path> hojas = etiquetas().guardarHojas(productos, contexto.getPerfilActivoId());
             abridor.abrir(etiquetas().getCarpeta());
             Map<String, Object> respuesta = new LinkedHashMap<>();
             respuesta.put("hojas", hojas.size());
