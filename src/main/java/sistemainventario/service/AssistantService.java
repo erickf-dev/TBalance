@@ -1,5 +1,6 @@
 package sistemainventario.service;
 
+import sistemainventario.model.Permiso;
 import sistemainventario.exception.AssistantException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -40,6 +41,7 @@ public class AssistantService {
     private final Supplier<ProfileServices> servicios;
     private final Supplier<Profile> perfil;
     private final Executor hiloDeDatos;
+    private final Supplier<java.util.Set<Permiso>> permisos;
     private final List<JsonObject> historial = new ArrayList<>();
     /** Se consultan desde dos hilos (la conversación y la confirmación), por eso son colecciones seguras. */
     private final Map<String, AssistantProposal> pendientes = new ConcurrentHashMap<>();
@@ -53,10 +55,23 @@ public class AssistantService {
      */
     public AssistantService(LanguageModel modelo, Supplier<ProfileServices> servicios,
                             Supplier<Profile> perfil, Executor hiloDeDatos) {
+        this(modelo, servicios, perfil, hiloDeDatos, () -> java.util.EnumSet.allOf(Permiso.class));
+    }
+
+    /**
+     * @param modelo      modelo de lenguaje
+     * @param servicios   servicios del negocio abierto
+     * @param perfil      negocio abierto
+     * @param hiloDeDatos hilo donde se tocan los datos
+     * @param permisos    permisos del rol de quien conversa
+     */
+    public AssistantService(LanguageModel modelo, Supplier<ProfileServices> servicios,
+                            Supplier<Profile> perfil, Executor hiloDeDatos, Supplier<java.util.Set<Permiso>> permisos) {
         this.modelo = modelo;
         this.servicios = servicios;
         this.perfil = perfil;
         this.hiloDeDatos = hiloDeDatos;
+        this.permisos = permisos;
     }
 
     /**
@@ -84,7 +99,7 @@ public class AssistantService {
         }
         historial.add(GeminiClient.textoComoContenido("user", texto));
         List<AssistantProposal> nuevas = new ArrayList<>();
-        JsonArray funciones = AssistantTools.declaraciones();
+        JsonArray funciones = AssistantTools.declaraciones(permisos.get());
         for (int paso = 0; paso < MAXIMO_PASOS; paso++) {
             LanguageModel.ModelReply respuesta = modelo.generar(instrucciones(), historial, funciones);
             historial.add(respuesta.contenido());
@@ -108,7 +123,7 @@ public class AssistantService {
                 AssistantTools herramientas = new AssistantTools(servicios.get(), propuesta -> {
                     pendientes.put(propuesta.getId(), propuesta);
                     nuevas.add(propuesta);
-                });
+                }, permisos.get());
                 resultado[0] = herramientas.ejecutar(llamada.nombre(), llamada.argumentos());
             });
             JsonObject respuesta = new JsonObject();
@@ -137,6 +152,9 @@ public class AssistantService {
         AssistantProposal propuesta = pendientes.remove(id);
         if (propuesta == null) {
             throw new ValidationException("Ese cambio ya se confirmó o se descartó");
+        }
+        if (!permisos.get().contains(AssistantTools.permisoParaConfirmar(propuesta.getTipo()))) {
+            throw new ValidationException("Su rol no permite confirmar este cambio");
         }
         propuesta.ejecutar();
         notas.add("El usuario confirmó y quedó registrado: " + propuesta.getTitulo() + ".");
@@ -190,6 +208,41 @@ public class AssistantService {
                 + "dicen que llegó el pedido, propone la entrada con esas cantidades.\n"
                 + "5. Precios en pesos colombianos sin decimales, por ejemplo $12.500.\n"
                 + "6. Respuestas cortas. Usa listas con guiones cuando haya varios productos. Puedes usar **negrita** para cifras clave.\n"
-                + "7. Si piden algo que no es del negocio, responde amablemente que solo ayudas con la tienda.";
+                + "7. Si piden algo que no es del negocio, responde amablemente que solo ayudas con la tienda."
+                + "\n8. " + loQuePuedeHacer(permisos.get());
+    }
+
+    /**
+     * Regla con lo que el rol de quien conversa puede y no puede hacer, para que el asistente
+     * no ofrezca lo que después Java va a rechazar.
+     */
+    static String loQuePuedeHacer(java.util.Set<Permiso> permisos) {
+        java.util.List<String> puede = new java.util.ArrayList<>();
+        java.util.List<String> noPuede = new java.util.ArrayList<>();
+        (permisos.contains(Permiso.VENDER) ? puede : noPuede).add("registrar ventas");
+        (permisos.contains(Permiso.MOVIMIENTOS) ? puede : noPuede).add("registrar entradas o salidas de mercancía");
+        (permisos.contains(Permiso.EDITAR_CATALOGO) ? puede : noPuede).add("cambiar precios o crear productos");
+        (permisos.contains(Permiso.VER_GANANCIA) ? puede : noPuede).add("ver costos, precios de compra y ganancias");
+        StringBuilder regla = new StringBuilder("Permisos de quien conversa: puede consultar productos, existencias, "
+                + (permisos.contains(Permiso.EDITAR_CATALOGO) ? "proveedores" : "qué falta de cada proveedor o marca")
+                + ", vencimientos y ventas");
+        if (!puede.isEmpty()) {
+            regla.append(", y además ").append(String.join(", ", puede));
+        }
+        regla.append('.');
+        if (!noPuede.isEmpty()) {
+            regla.append(" NO puede ").append(String.join(", ni ", noPuede)).append(". Si pide algo de eso, no lo ofrezcas, ")
+                    .append("no prepares tarjetas para eso y no digas que puede: explícale con amabilidad que su rol no lo ")
+                    .append("permite y que se lo pida al administrador o al dueño. Si pregunta qué puede hacer, respóndele ")
+                    .append("con esta misma lista.");
+        }
+        if (!permisos.contains(Permiso.EDITAR_CATALOGO)) {
+            regla.append(" Tampoco ve la lista de proveedores ni sus teléfonos.");
+        }
+        if (!permisos.contains(Permiso.MOVIMIENTOS)) {
+            regla.append(" Si llega un proveedor, dile qué falta de esa marca y cuánto pedir para que se lo diga, y ")
+                    .append("recuérdale que el pedido lo confirma y lo registra el administrador o el dueño.");
+        }
+        return regla.toString();
     }
 }

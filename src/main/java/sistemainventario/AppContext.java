@@ -2,12 +2,14 @@ package sistemainventario;
 
 import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Backup;
+import sistemainventario.model.DatabaseSettings;
 import sistemainventario.repository.ZipArchiver;
 import sistemainventario.repository.GlobalConfigRepository;
 import sistemainventario.repository.ProfileDirectory;
 import sistemainventario.repository.LabelRepository;
 import sistemainventario.repository.JsonFileStore;
-import sistemainventario.repository.ProfileRepository;
+import sistemainventario.repository.DatabaseSettingsRepository;
+import sistemainventario.repository.StorageProvider;
 import sistemainventario.repository.BackupRepository;
 import sistemainventario.repository.AssistantConfigRepository;
 import sistemainventario.repository.ReportExcelWriter;
@@ -19,18 +21,28 @@ import sistemainventario.service.BackupService;
 import sistemainventario.service.ProfileServices;
 import sistemainventario.service.AssistantSettingsService;
 import sistemainventario.service.ReportExportService;
+import sistemainventario.service.DataTransferService;
+import sistemainventario.service.FileSnapshot;
+import sistemainventario.service.StorageService;
+import sistemainventario.service.SessionService;
+import sistemainventario.service.UserService;
+import sistemainventario.model.Profile;
+import sistemainventario.model.Rol;
+import sistemainventario.model.User;
 import sistemainventario.util.QrGenerator;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Optional;
 
 /**
  * Contexto de la aplicación (Singleton) y raíz de composición.
  *
  * <p>Es el único lugar donde se conectan las implementaciones concretas
- * (repositorios JSON) con los servicios. Mantiene los servicios del perfil
- * activo y los reemplaza al cambiar de perfil.</p>
+ * (repositorios JSON o JDBC, según {@link StorageService}) con los servicios.
+ * Mantiene los servicios del perfil activo y los reemplaza al cambiar de perfil
+ * o de almacenamiento.</p>
  *
  * <p>Cambios respecto a P2: los campos dejaron de ser públicos y mutables
  * (encapsulamiento) y ya no se crean repositorios duplicados para el mismo
@@ -45,29 +57,40 @@ public final class AppContext {
     private static final String CARPETA_RESPALDOS = "respaldos";
     private static final String CARPETA_ETIQUETAS = "etiquetas";
     private static final String ARCHIVO_ASISTENTE = "asistente.json";
+    private static final String ARCHIVO_BASE_DATOS = "basedatos.json";
 
     private static AppContext instancia;
 
     private final Path directorioDatos;
     private final BackupService gestorRespaldo;
+    private final BackupRepository respaldosEnCarpeta;
     private final LabelService gestorEtiquetas;
     private final AssistantSettingsService ajustesAsistente;
     private final ReportExportService exportadorInformes;
+    private final StorageService almacenamiento;
+    private StorageProvider almacenActual;
+    private String avisoAlmacenamiento;
     private ProfileService gestorPerfiles;
     private ProfileServices serviciosActivos;
+    private UserService usuarios;
+    private sistemainventario.service.AuditService auditoria;
+    private final SessionService sesion = new SessionService();
 
     private AppContext(Path directorioDatos) {
         this.directorioDatos = directorioDatos;
         JsonFileStore.crearDirectorio(directorioDatos);
         Path carpetaRespaldos = directorioDatos.resolveSibling(CARPETA_RESPALDOS);
-        this.gestorRespaldo = new BackupService(directorioDatos,
-                new BackupRepository(carpetaRespaldos), new ZipArchiver());
+        this.respaldosEnCarpeta = new BackupRepository(carpetaRespaldos);
+        this.gestorRespaldo = new BackupService(respaldosEnCarpeta, new FileSnapshot(directorioDatos), new ZipArchiver());
         this.gestorEtiquetas = new LabelService(new QrGenerator(),
                 new LabelRepository(directorioDatos.resolveSibling(CARPETA_ETIQUETAS)));
         this.ajustesAsistente = new AssistantSettingsService(
                 new AssistantConfigRepository(directorioDatos.resolveSibling(ARCHIVO_ASISTENTE)));
         this.exportadorInformes = new ReportExportService(new ReportExcelWriter(),
                 ReportExportService.carpetaPorDefecto(Path.of(System.getProperty("user.home"))));
+        this.almacenamiento = new StorageService(
+                new DatabaseSettingsRepository(directorioDatos.resolveSibling(ARCHIVO_BASE_DATOS)),
+                directorioDatos, new DataTransferService());
         recargar();
     }
 
@@ -77,23 +100,188 @@ public final class AppContext {
      */
     public void recargar() {
         JsonFileStore.crearDirectorio(directorioDatos);
-        ProfileDirectory directorios = new ProfileDirectory(directorioDatos);
+        if (almacenActual != null) {
+            almacenActual.close();
+        }
+        StorageService.Apertura apertura = almacenamiento.abrir();
+        this.almacenActual = apertura.almacen();
+        this.avisoAlmacenamiento = apertura.aviso();
+        gestorRespaldo.usar(apertura.respaldos() != null ? apertura.respaldos() : respaldosEnCarpeta, apertura.copias());
         this.gestorPerfiles = new ProfileService(
-                new ProfileRepository(directorioDatos),
+                almacenActual.perfiles(),
                 new GlobalConfigService(new GlobalConfigRepository(directorioDatos)),
-                directorios,
-                new ProfileServicesFactory(directorios));
+                new ProfileDirectory(directorioDatos),
+                new ProfileServicesFactory(almacenActual));
+        gestorPerfiles.sincronizarConfiguracion();
+        gestorPerfiles.normalizarCategorias();
+        this.usuarios = new UserService(almacenActual.usuarios());
+        this.auditoria = new sistemainventario.service.AuditService(almacenActual.auditoria());
         this.serviciosActivos = gestorPerfiles.resolverPerfilInicial()
                 .map(gestorPerfiles::crearServicios)
                 .orElse(null);
+        // Después de cambiar de almacenamiento o restaurar una copia, la sesión sigue
+        // solo si la persona existe y está habilitada en los datos nuevos.
+        sesion.actual().ifPresent(persona -> {
+            Optional<User> nueva;
+            try {
+                nueva = Optional.of(usuarios.obtener(persona.getId())).filter(User::isActivo);
+            } catch (ValidationException e) {
+                nueva = Optional.empty();
+            }
+            if (nueva.isPresent()) {
+                sesion.refrescar(nueva.get());
+                asegurarPerfilPermitido();
+            } else {
+                sesion.cerrar();
+            }
+        });
+    }
+
+    // ---- sesión y permisos ---------------------------------------------------
+
+    /** @return personas que usan TBalance */
+    public UserService getUsuarios() {
+        return usuarios;
+    }
+
+    /** @return la sesión de este computador */
+    /** @return historial de acciones (quién hizo qué) */
+    public sistemainventario.service.AuditService getAuditoria() {
+        return auditoria;
+    }
+
+    public SessionService getSesion() {
+        return sesion;
     }
 
     /**
-     * Restaura una copia de seguridad y recarga todos los datos en memoria.
-     *
-     * @param nombre archivo .zip a restaurar
-     * @return la copia automática del estado anterior
+     * @param usuario nombre de usuario
+     * @param clave   contraseña
+     * @return la persona que entró
      */
+    public User iniciarSesion(String usuario, String clave) {
+        User persona = usuarios.iniciarSesion(usuario, clave);
+        sesion.abrir(persona);
+        asegurarPerfilPermitido();
+        return persona;
+    }
+
+    /**
+     * Primera vez: crea la cuenta del dueño con acceso a los negocios que ya hay
+     * y abre su sesión.
+     *
+     * @param nombre  nombre de la persona
+     * @param usuario nombre de usuario
+     * @param clave   contraseña
+     * @return la cuenta creada
+     */
+    public User crearPrimerDueno(String nombre, String usuario, String clave) {
+        List<String> negocios = gestorPerfiles.listarTodos().stream().map(Profile::getId).toList();
+        User dueno = usuarios.crearPrimerDueno(nombre, usuario, clave, negocios);
+        sesion.abrir(dueno);
+        asegurarPerfilPermitido();
+        return dueno;
+    }
+
+    /** Cierra la sesión; los servicios del negocio quedan sin cargar hasta que alguien entre. */
+    public void cerrarSesion() {
+        sesion.cerrar();
+    }
+
+    /** @return negocios habilitados a los que entra la persona con sesión abierta */
+    public List<Profile> perfilesPermitidos() {
+        Optional<User> persona = sesion.actual();
+        if (persona.isEmpty()) {
+            return List.of();
+        }
+        return gestorPerfiles.listarTodos().stream().filter(p -> persona.get().rolEn(p.getId()).isPresent()).toList();
+    }
+
+    /** @return rol en el negocio abierto, si hay sesión y negocio */
+    public Optional<Rol> rolActual() {
+        return getPerfilActivoId() == null ? Optional.empty() : sesion.rolEn(getPerfilActivoId());
+    }
+
+    /**
+     * @return {@code true} si la persona puede crear negocios: es dueño de alguno,
+     *         o es la primera cuenta y todavía no hay negocios
+     */
+    public boolean puedeCrearNegocios() {
+        return sesion.actual().map(u -> u.esDuenoDeAlguno() || u.getAccesos().isEmpty()).orElse(false);
+    }
+
+    /**
+     * @param perfilId negocio
+     * @return {@code true} si la persona con sesión es dueño de ese negocio
+     */
+    public boolean esDuenoDe(String perfilId) {
+        return sesion.rolEn(perfilId).orElse(null) == Rol.DUENO;
+    }
+
+    /**
+     * Da acceso de dueño a quien acaba de crear un negocio.
+     *
+     * @param perfilId negocio nuevo
+     */
+    public void registrarNegocioCreado(String perfilId) {
+        sesion.actual().ifPresent(persona -> {
+            usuarios.hacerDueno(persona, perfilId);
+            sesion.refrescar(usuarios.obtener(persona.getId()));
+        });
+    }
+
+    /**
+     * Deja abierto un negocio al que la persona sí tiene acceso (o ninguno).
+     */
+    private void asegurarPerfilPermitido() {
+        String actual = getPerfilActivoId();
+        if (actual != null && sesion.rolEn(actual).isPresent()) {
+            return;
+        }
+        String elegido = perfilesPermitidos().stream().filter(Profile::isActivo).map(Profile::getId).findFirst().orElse(null);
+        activarPerfil(elegido);
+    }
+
+    /**
+     * Cambia dónde se guardan los datos. Si se pasa de una base de datos a
+     * archivos, primero se copian los datos de la base a los archivos.
+     *
+     * @param nueva motor, URL, usuario y clave
+     * @return mensaje para el usuario
+     */
+    public String cambiarAlmacenamiento(DatabaseSettings nueva) {
+        boolean veniaDeBase = almacenamiento.leer().usaBaseDeDatos() && avisoAlmacenamiento == null;
+        if (veniaDeBase && !nueva.usaBaseDeDatos()) {
+            gestorRespaldo.crear();
+            almacenamiento.exportarAArchivos(almacenActual);
+        }
+        almacenamiento.guardar(nueva);
+        recargar();
+        String mensaje = "Ahora los datos se guardan en " + almacenActual.nombre() + ".";
+        return avisoAlmacenamiento == null ? mensaje : mensaje + " " + avisoAlmacenamiento;
+    }
+
+    /** @return configuración de la base de datos de este computador */
+    public DatabaseSettings getAjustesBaseDeDatos() {
+        return almacenamiento.leer();
+    }
+
+    /** @return servicio que prueba y guarda la configuración de la base */
+    public StorageService getAlmacenamiento() {
+        return almacenamiento;
+    }
+
+    /** @return nombre del almacenamiento en uso ("Archivos JSON", "PostgreSQL", "Oracle") */
+    public String getAlmacenEnUso() {
+        return almacenActual.nombre();
+    }
+
+    /** @return aviso pendiente sobre el almacenamiento (migración o error de conexión), o {@code null} */
+    public String getAvisoAlmacenamiento() {
+        return avisoAlmacenamiento;
+    }
+
+
     public Backup restaurarRespaldo(String nombre) {
         Backup copiaPrevia = gestorRespaldo.restaurar(nombre);
         recargar();
@@ -150,19 +338,55 @@ public final class AppContext {
      * @param perfilId ID del perfil, o vacío para no dejar ninguno activo
      */
     public void activarPerfil(String perfilId) {
+        if (perfilId != null && sesion.actual().isPresent() && sesion.rolEn(perfilId).isEmpty()) {
+            throw new ValidationException("No tiene acceso a ese negocio");
+        }
         serviciosActivos = gestorPerfiles.seleccionar(perfilId).orElse(null);
     }
 
     /**
-     * Elimina un perfil y libera sus servicios si era el activo.
+     * Deshabilita un negocio; si era el activo, quedan cargados los servicios del
+     * negocio que lo reemplaza.
      *
-     * @param perfilId ID del perfil a eliminar
+     * @param perfilId negocio a deshabilitar
      */
-    public void eliminarPerfil(String perfilId) {
-        gestorPerfiles.eliminar(perfilId);
-        if (gestorPerfiles.getPerfilActivo().isEmpty()) {
-            serviciosActivos = null;
-        }
+    public void deshabilitarPerfil(String perfilId) {
+        gestorPerfiles.deshabilitar(perfilId);
+        this.serviciosActivos = gestorPerfiles.getPerfilActivo()
+                .map(p -> gestorPerfiles.crearServicios(p.getId())).orElse(null);
+        asegurarPerfilPermitido();
+    }
+
+    /**
+     * @param perfilId negocio a volver a habilitar
+     */
+    public void habilitarPerfil(String perfilId) {
+        gestorPerfiles.habilitar(perfilId);
+    }
+
+    /**
+     * Con base de datos, pregunta si otro equipo guardó cambios.
+     *
+     * @return número que aumenta cada vez que otro equipo hizo cambios (0 con archivos)
+     */
+    public long revisarCambiosDeOtrosEquipos() {
+        return almacenActual instanceof sistemainventario.repository.DatabaseStorageProvider bd
+                ? bd.getBaseDeDatos().revisarCambios(true) : 0;
+    }
+
+    /** @return imágenes del QR de cobro de cada negocio ({@code ~/.inventariopro/qr-cobro}) */
+    public sistemainventario.repository.PaymentQrRepository getQrCobro() {
+        return new sistemainventario.repository.PaymentQrRepository(directorioDatos.resolveSibling("qr-cobro"));
+    }
+
+    /** @return carpeta del certificado para conectar el celular ({@code ~/.inventariopro/celular}) */
+    public Path getCarpetaCelular() {
+        return directorioDatos.resolveSibling("celular");
+    }
+
+    /** @return ID del negocio abierto, o {@code null} si no hay ninguno */
+    public String getPerfilActivoId() {
+        return gestorPerfiles.getPerfilActivo().map(p -> p.getId()).orElse(null);
     }
 
     /** @return {@code true} si todavía no existe ningún perfil */

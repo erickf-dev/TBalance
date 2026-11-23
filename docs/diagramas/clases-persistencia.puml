@@ -14,111 +14,126 @@ skinparam package {
   BorderColor #1e4a35
   FontColor #14281d
 }
-skinparam note {
-  BackgroundColor #fdf8ea
-  BorderColor #d4a72c
-}
 hide empty members
 
-title Diagrama de clases — paquete repository (acceso a datos)
+title Diagrama de clases — acceso a datos con archivos JSON (repository) — TBalance v3.5.0
+
 package repository {
-interface Repository<T extends IdentifiedEntity> {
-  + listarTodos() : List<T>
-  + buscarPorId(id : String) : Optional<T>
-  + existe(id : String) : boolean
-  + filtrar(condicion : Predicate<T>) : List<T>
-  + agregar(entidad : T)
-  + actualizar(entidad : T) : boolean
-  + eliminar(id : String) : boolean
-  + siguienteIdNumerico() : String
+class AuditRepository {
 }
-abstract class JsonRepository<T extends IdentifiedEntity> {
-  - almacen : JsonFileStore
-  - tipo : Class<T>
-  - cache : List<T>
-  + listarTodos() : List<T>
-  + buscarPorId(id : String) : Optional<T>
-  + existe(id : String) : boolean
-  + filtrar(condicion : Predicate<T>) : List<T>
-  + agregar(entidad : T)
-  + actualizar(entidad : T) : boolean
-  + eliminar(id : String) : boolean
-  + siguienteIdNumerico() : String
-}
-class JsonFileStore {
-  - archivo : Path
+class BackupRepository {
+  - carpeta : Path
+  + listar() : List<Backup>
+  + rutaExistente() : Path
+  + rutaNueva() : Path
+  + describir() : Backup
+  + eliminar()
   + existe() : boolean
-  + leer() : Optional<String>
-  + escribir(contenido : String)
-  + crearDirectorio(directorio : Path) {static}
+  + guardar() : Backup
+  + leer()
+  + ubicacion() : String
+  + ... (1 más)
 }
-class ProductRepository {
+interface BackupStore {
+  + {abstract} listar() : List<Backup>
+  + {abstract} existe() : boolean
+  + {abstract} guardar() : Backup
+  + {abstract} leer()
+  + {abstract} eliminar()
+  + {abstract} ubicacion() : String
+  + {abstract} carpeta() : Path
 }
 class CategoryRepository {
 }
-class SupplierRepository {
-}
-class StockEntryRepository {
-}
-class StockExitRepository {
-}
-class SaleRepository {
-}
-class ProfileRepository {
+class CreditPaymentRepository {
 }
 class GlobalConfigRepository {
   - almacen : JsonFileStore
   + existe() : boolean
   + cargar() : GlobalConfig
-  + guardar(configuracion : GlobalConfig)
+  + guardar()
 }
-class ProfileDirectory {
-  - directorioBase : Path
-  + resolver(perfilId : String) : Path
-  + crear(perfilId : String) : Path
-  + eliminar(perfilId : String)
+class JsonFileStore {
+  - archivo : Path
+  + existe() : boolean
+  + leer() : Optional<String>
+  + escribir()
+  + {static} crearDirectorio()
 }
-class ZipArchiver {
-  + comprimir(carpeta : Path, destino : Path)
-  + extraer(archivoZip : Path, carpeta : Path) : int
-}
-class BackupRepository {
-  - carpeta : Path
-  + listar() : List<Backup>
-  + rutaExistente(nombre : String) : Path
-  + rutaNueva(nombre : String) : Path
-  + describir(ruta : Path) : Backup
-  + eliminar(nombre : String)
+abstract class JsonRepository {
+  - almacen : JsonFileStore
+  - tipo : Class<T>
+  - cache : List<T>
+  + listarTodos() : List<T>
+  + buscarPorId() : Optional<T>
+  + existe() : boolean
+  + filtrar() : List<T>
+  + agregar()
+  + actualizar() : boolean
+  + eliminar() : boolean
+  + siguienteIdNumerico() : String
+  + getArchivo() : Path
 }
 class LabelRepository {
   - carpeta : Path
-  + guardar(nombre : String, imagen : BufferedImage) : Path
-  + aDataUri(imagen : BufferedImage) : String
+  + guardar() : Path
+  + aDataUri() : String
 }
-class AssistantConfigRepository {
-  - archivo : Path
-  + leer() : Optional<AssistantSettings>
-  + guardar(config : AssistantSettings)
-  + borrar()
+class PaymentQrRepository {
+  - carpeta : Path
+  + guardar()
+  + leerComoDataUrl() : Optional<String>
+  + eliminar()
 }
-class ReportExcelWriter {
-  + escribir(informe : SalesReport, negocio : String, destino : Path)
+class ProductRepository {
+}
+class ProfileDirectory {
+  - directorioBase : Path
+  + resolver() : Path
+  + crear() : Path
+  + eliminarTodas()
+  + eliminar()
+}
+class ProfileRepository {
+}
+interface Repository {
+  + {abstract} listarTodos() : List<T>
+  + {abstract} buscarPorId() : Optional<T>
+  + {abstract} existe() : boolean
+  + {abstract} filtrar() : List<T>
+  + {abstract} agregar()
+  + {abstract} actualizar() : boolean
+  + {abstract} eliminar() : boolean
+  + {abstract} siguienteIdNumerico() : String
+  + refrescar()
+}
+class SaleRepository {
+}
+class StockEntryRepository {
+}
+class StockExitRepository {
+}
+class SupplierRepository {
+}
+class UserRepository {
+}
+class ZipArchiver {
+  + comprimir()
+  + extraer() : int
 }
 }
-
-Repository <|.. JsonRepository
-JsonRepository "1" *-- "1" JsonFileStore : almacen
-GlobalConfigRepository "1" *-- "1" JsonFileStore : almacen
-JsonRepository <|-- ProductRepository
+BackupStore <|.. BackupRepository
+GlobalConfigRepository --> JsonFileStore
+JsonRepository --> JsonFileStore
+JsonRepository <|-- AuditRepository
 JsonRepository <|-- CategoryRepository
-JsonRepository <|-- SupplierRepository
+JsonRepository <|-- CreditPaymentRepository
+JsonRepository <|-- ProductRepository
+JsonRepository <|-- ProfileRepository
+JsonRepository <|-- SaleRepository
 JsonRepository <|-- StockEntryRepository
 JsonRepository <|-- StockExitRepository
-JsonRepository <|-- SaleRepository
-JsonRepository <|-- ProfileRepository
-class AssistantSettings <<record>>
-class SalesReport <<record>>
-AssistantConfigRepository ..> AssistantSettings : leer() / guardar()
-ReportExcelWriter ..> SalesReport : escribir()
-
+JsonRepository <|-- SupplierRepository
+JsonRepository <|-- UserRepository
+Repository <|.. JsonRepository
 @enduml

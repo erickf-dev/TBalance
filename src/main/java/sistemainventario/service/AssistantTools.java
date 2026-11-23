@@ -1,5 +1,6 @@
 package sistemainventario.service;
 
+import sistemainventario.model.Permiso;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -40,6 +41,7 @@ public class AssistantTools {
     private static final String OBSERVACION = "Registrado con el asistente";
 
     private final ProfileServices servicios;
+    private final java.util.Set<Permiso> permisos;
     private final Consumer<AssistantProposal> alProponer;
     private int contador;
 
@@ -48,14 +50,72 @@ public class AssistantTools {
      * @param alProponer recibe cada cambio propuesto para mostrarlo al usuario
      */
     public AssistantTools(ProfileServices servicios, Consumer<AssistantProposal> alProponer) {
+        this(servicios, alProponer, java.util.EnumSet.allOf(Permiso.class));
+    }
+
+    /**
+     * @param servicios  servicios del negocio abierto
+     * @param alProponer recibe cada cambio propuesto para que el usuario lo confirme
+     * @param permisos   lo que puede hacer el rol de quien pregunta (el cajero no ve
+     *                   costos ni propone entradas o cambios de precio)
+     */
+    public AssistantTools(ProfileServices servicios, Consumer<AssistantProposal> alProponer, java.util.Set<Permiso> permisos) {
         this.servicios = servicios;
         this.alProponer = alProponer;
+        this.permisos = java.util.EnumSet.copyOf(permisos.isEmpty() ? java.util.EnumSet.noneOf(Permiso.class) : permisos);
+    }
+
+    /**
+     * Permiso que pide cada función. La lista de proveedores (con teléfonos) es de quien maneja el catálogo;
+     * "qué falta de un proveedor" queda para todos, porque el cajero atiende al proveedor cuando llega.
+     */
+    private static final java.util.Map<String, Permiso> PERMISO_FUNCION = java.util.Map.of(
+            "listar_proveedores", Permiso.EDITAR_CATALOGO,
+            "consultar_fiados", Permiso.VENDER,
+            "proponer_venta", Permiso.VENDER,
+            "proponer_entrada", Permiso.MOVIMIENTOS,
+            "proponer_salida", Permiso.MOVIMIENTOS,
+            "proponer_cambio_precio", Permiso.EDITAR_CATALOGO,
+            "proponer_producto_nuevo", Permiso.EDITAR_CATALOGO);
+
+    /**
+     * @param tipo tipo de una propuesta ({@code venta}, {@code entrada}...)
+     * @return permiso que se necesita para confirmarla
+     */
+    public static Permiso permisoParaConfirmar(String tipo) {
+        return switch (String.valueOf(tipo)) {
+            case "venta" -> Permiso.VENDER;
+            case "entrada", "salida" -> Permiso.MOVIMIENTOS;
+            default -> Permiso.EDITAR_CATALOGO;
+        };
     }
 
     // ── Declaraciones para el modelo ────────────────────────────────────
 
-    /** @return las funciones disponibles, en el formato de declaraciones de Gemini */
+    /** @return todas las funciones, en el formato de declaraciones de Gemini */
     public static JsonArray declaraciones() {
+        return declaraciones(java.util.EnumSet.allOf(Permiso.class));
+    }
+
+    /**
+     * El modelo solo conoce las funciones que el rol puede usar: así no ofrece, por ejemplo,
+     * registrar mercancía a un cajero (y Java igual lo rechazaría al confirmar).
+     *
+     * @param permisos lo que puede hacer quien conversa
+     * @return las funciones permitidas, en el formato de declaraciones de Gemini
+     */
+    public static JsonArray declaraciones(java.util.Set<Permiso> permisos) {
+        JsonArray permitidas = new JsonArray();
+        for (com.google.gson.JsonElement f : todasLasDeclaraciones()) {
+            Permiso pedido = PERMISO_FUNCION.get(f.getAsJsonObject().get("name").getAsString());
+            if (pedido == null || permisos.contains(pedido)) {
+                permitidas.add(f);
+            }
+        }
+        return permitidas;
+    }
+
+    private static JsonArray todasLasDeclaraciones() {
         JsonArray lista = new JsonArray();
         lista.add(funcion("buscar_productos",
                 "Busca productos por nombre, marca o código y devuelve stock, mínimo, precios, categoría y proveedor. "
@@ -69,17 +129,26 @@ public class AssistantTools {
         lista.add(funcion("listar_proveedores", "Lista los proveedores registrados y cuántos productos tiene cada uno.",
                 objeto()));
         lista.add(funcion("resumen_ventas",
-                "Ventas, número de ventas, ticket promedio, utilidad, comparación con el período anterior y "
-                        + "productos más vendidos.",
+                "Ventas, número de ventas, ticket promedio, utilidad, comparación con el período anterior, "
+                        + "TODOS los productos vendidos (productos_vendidos) y, si el período es de uno o dos días, "
+                        + "cada venta con su hora y sus productos (detalle_ventas). Para preguntas como 'qué vendí "
+                        + "hoy en la noche' use detalle_ventas y filtre por la hora. Al listar lo vendido, nombre "
+                        + "todos los productos de productos_vendidos, no solo los más vendidos.",
                 objeto().prop("periodo", enumeracion("Período", "hoy", "ayer", "semana", "mes", "anio"))
                         .prop("desde", texto("Fecha inicial yyyy-MM-dd (solo si no usa periodo)"))
                         .prop("hasta", texto("Fecha final yyyy-MM-dd (solo si no usa periodo)"))));
+        lista.add(funcion("consultar_fiados",
+                "Quién le debe al negocio por ventas fiadas: lo que se le fió, lo que ha abonado y lo que debe "
+                        + "cada cliente, y el total por cobrar. Se puede buscar un cliente por nombre o cédula. "
+                        + "Los abonos se registran en la sección Fiados.",
+                objeto().prop("cliente", texto("Nombre o cédula del cliente; vacío para todos"))));
         lista.add(funcion("productos_por_vencer", "Productos vencidos o que vencen dentro de los próximos días.",
                 objeto().prop("dias", entero("Días hacia adelante; por defecto 15"))));
         lista.add(funcion("proponer_venta",
                 "Prepara una venta para que el usuario la confirme. No la registra todavía.",
-                objeto().prop("items", items(true)).prop("metodo_pago", texto("Efectivo, Nequi, Daviplata, Bre-B, Transferencia Bancolombia, Tarjeta débito, Tarjeta crédito o Fiado (fiado exige cliente)"))
-                        .prop("cliente", texto("Nombre del cliente, opcional")).requerido("items")));
+                objeto().prop("items", items(true)).prop("metodo_pago", texto("Efectivo, Nequi, Daviplata, Bre-B, Transferencia Bancolombia, Tarjeta débito, Tarjeta crédito o Fiado (fiado exige nombre y cédula del cliente)"))
+                        .prop("cliente", texto("Nombre del cliente; obligatorio si es fiado"))
+                        .prop("cedula", texto("Cédula del cliente; obligatoria si es fiado")).requerido("items")));
         lista.add(funcion("proponer_entrada",
                 "Prepara la entrada de mercancía (llegó un pedido) para que el usuario la confirme. Si se indica "
                         + "costo, también actualiza el precio de compra del producto.",
@@ -110,12 +179,36 @@ public class AssistantTools {
      * @return resultado en JSON para devolverle al modelo
      */
     public JsonObject ejecutar(String nombre, JsonObject argumentos) {
+        Permiso pedido = PERMISO_FUNCION.get(nombre);
+        if (pedido != null && !permisos.contains(pedido)) {
+            return error("El rol de esta persona no permite esto. Explíquele que debe pedírselo al administrador o al dueño.");
+        }
+        JsonObject resultado = ejecutarSinFiltro(nombre, argumentos);
+        if (!permisos.contains(Permiso.VER_GANANCIA)) {
+            quitarCostos(resultado);
+        }
+        return resultado;
+    }
+
+    /** El cajero no ve cuánto costó la mercancía ni la ganancia. */
+    private static void quitarCostos(com.google.gson.JsonElement elemento) {
+        if (elemento instanceof JsonObject objeto) {
+            objeto.remove("precio_compra");
+            objeto.remove("utilidad");
+            objeto.entrySet().forEach(e -> quitarCostos(e.getValue()));
+        } else if (elemento instanceof JsonArray lista) {
+            lista.forEach(AssistantTools::quitarCostos);
+        }
+    }
+
+    private JsonObject ejecutarSinFiltro(String nombre, JsonObject argumentos) {
         try {
             switch (nombre) {
                 case "buscar_productos": return buscarProductos(cadena(argumentos, "texto"));
                 case "productos_por_reponer": return porReponer(cadena(argumentos, "proveedor"), booleano(argumentos, "todos"));
                 case "listar_proveedores": return listarProveedores();
                 case "resumen_ventas": return resumenVentas(argumentos);
+                case "consultar_fiados": return consultarFiados(cadena(argumentos, "cliente"));
                 case "productos_por_vencer": return porVencer(argumentos.has("dias") ? argumentos.get("dias").getAsInt() : 15);
                 case "proponer_venta": return proponerVenta(argumentos);
                 case "proponer_entrada": return proponerEntrada(argumentos);
@@ -192,6 +285,36 @@ public class AssistantTools {
         return r;
     }
 
+    private JsonObject consultarFiados(String cliente) {
+        String buscado = cliente == null ? "" : cliente.trim().toLowerCase();
+        JsonArray lista = new JsonArray();
+        double total = 0;
+        for (sistemainventario.model.CustomerDebt c : servicios.fiados().listarCuentas()) {
+            String nombre = c.getCliente() == null ? "" : c.getCliente();
+            boolean coincide = buscado.isEmpty() || nombre.toLowerCase().contains(buscado)
+                    || (c.getDocumento() != null && c.getDocumento().contains(buscado));
+            if (!coincide || (buscado.isEmpty() && c.estaAlDia())) {
+                continue;
+            }
+            JsonObject fila = new JsonObject();
+            fila.addProperty("cliente", nombre);
+            fila.addProperty("cedula", c.getDocumento());
+            fila.addProperty("fiado", c.getTotalFiado());
+            fila.addProperty("abonado", c.getTotalAbonado());
+            fila.addProperty("debe", c.getSaldo());
+            fila.addProperty("ultimo_movimiento", c.getUltimaFecha());
+            lista.add(fila);
+            total += c.getSaldo();
+        }
+        JsonObject r = new JsonObject();
+        r.add("clientes", lista);
+        r.addProperty("total_por_cobrar", total);
+        return r;
+    }
+
+    private static final int MAXIMO_PRODUCTOS_VENDIDOS = 80;
+    private static final int MAXIMO_VENTAS_DETALLE = 40;
+
     private JsonObject resumenVentas(JsonObject a) {
         LocalDate hoy = LocalDate.now();
         String periodo = cadena(a, "periodo");
@@ -223,7 +346,66 @@ public class AssistantTools {
             top.add(f);
         });
         r.add("mas_vendidos", top);
+        // Todo lo vendido, no solo los cinco primeros: si no, el asistente dice que se vendieron
+        // cinco productos cuando fueron más.
+        JsonArray vendidos = new JsonArray();
+        informe.productos().stream().limit(MAXIMO_PRODUCTOS_VENDIDOS).forEach(p -> {
+            JsonObject f = new JsonObject();
+            f.addProperty("producto", p.nombre());
+            f.addProperty("unidades", p.unidades());
+            f.addProperty("ventas", Math.round(p.ventas()));
+            vendidos.add(f);
+        });
+        r.addProperty("total_productos_distintos", informe.productos().size());
+        r.add("productos_vendidos", vendidos);
+        if (!hasta.isAfter(desde.plusDays(1))) {
+            r.add("detalle_ventas", detalleVentas(desde, hasta));
+        }
         return r;
+    }
+
+    /**
+     * La venta guarda solo el día; la hora sale de su ID ({@code VTA-<milisegundos>}),
+     * igual que en el cuaderno de ventas de la pantalla.
+     */
+    private static Optional<String> horaDeVenta(Sale venta) {
+        if (venta.getFecha() != null && venta.getFecha().length() >= 16) {
+            return Optional.of(venta.getFecha().substring(11, 16));
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{13})").matcher(String.valueOf(venta.getId()));
+        if (!m.find()) {
+            return Optional.empty();
+        }
+        return Optional.of(java.time.Instant.ofEpochMilli(Long.parseLong(m.group(1)))
+                .atZone(java.time.ZoneId.systemDefault()).toLocalTime()
+                .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+    }
+
+    /** Cada venta del período con su hora, total, método de pago y productos (las más recientes primero). */
+    private JsonArray detalleVentas(LocalDate desde, LocalDate hasta) {
+        JsonArray lista = new JsonArray();
+        servicios.ventas().listarTodas().stream()
+                .filter(v -> v.getFecha() != null && v.getFecha().length() >= 10)
+                .filter(v -> {
+                    LocalDate dia = LocalDate.parse(v.getFecha().substring(0, 10));
+                    return !dia.isBefore(desde) && !dia.isAfter(hasta);
+                })
+                .limit(MAXIMO_VENTAS_DETALLE)
+                .forEach(v -> {
+                    JsonObject f = new JsonObject();
+                    f.addProperty("fecha", v.getFecha().substring(0, 10));
+                    horaDeVenta(v).ifPresent(hora -> f.addProperty("hora", hora));
+                    f.addProperty("total", Math.round(v.getTotal()));
+                    f.addProperty("metodo_pago", v.getMetodoPago());
+                    if (v.getCliente() != null && !v.getCliente().isBlank()) {
+                        f.addProperty("cliente", v.getCliente());
+                    }
+                    JsonArray items = new JsonArray();
+                    v.getItems().forEach(i -> items.add(i.getCantidad() + " " + i.getNombreProducto()));
+                    f.add("productos", items);
+                    lista.add(f);
+                });
+        return lista;
     }
 
     private JsonObject porVencer(int dias) {
@@ -268,16 +450,21 @@ public class AssistantTools {
             return errorConDetalle("No se preparó la venta.", errores);
         }
         String metodo = PaymentMethod.desdeTexto(cadena(a, "metodo_pago")).orElse(PaymentMethod.EFECTIVO).getEtiqueta();
-        String cliente = cadena(a, "cliente").isBlank() ? "Cliente de mostrador" : cadena(a, "cliente");
-        if ("Fiado".equals(metodo) && cadena(a, "cliente").isBlank()) {
-            return error("Para fiar se necesita el nombre del cliente. Pregúntelo.");
+        String cliente = cadena(a, "cliente").isBlank() ? "Consumidor final" : cadena(a, "cliente");
+        String cedula = cadena(a, "cedula").replaceAll("[\\s.]", "");
+        if (!servicios.ventas().aceptaMedioPago(metodo)) {
+            return error("Este negocio no recibe pagos con " + metodo + ". Pregunte al cliente con qué otro medio paga.");
+        }
+        if ("Fiado".equals(metodo) && (cadena(a, "cliente").isBlank() || cedula.isBlank())) {
+            return error("Para fiar se necesitan el nombre y la cédula del cliente. Pregúntelos.");
         }
         double total = lineas.stream().mapToDouble(LineaVenta::subtotal).sum();
         List<String> detalle = new ArrayList<>();
         lineas.forEach(l -> detalle.add(l.cantidad() + " × " + l.nombre() + " — " + dinero(l.subtotal())));
-        detalle.add("Pago: " + metodo + " · Cliente: " + cliente);
+        detalle.add("Pago: " + metodo + " · Cliente: " + cliente + (cedula.isBlank() ? "" : " (C.C. " + cedula + ")"));
         return proponer("venta", "Registrar venta", detalle, total, () -> {
             Sale venta = new Sale(null, cliente, metodo, OBSERVACION, null);
+            venta.setClienteDocumento(cedula.isBlank() ? null : cedula);
             for (LineaVenta l : lineas) {
                 venta.agregarItem(servicios.inventario().obtener(l.productoId()), l.cantidad(), l.precio());
             }
@@ -392,19 +579,18 @@ public class AssistantTools {
         int stock = entero(a, "stock", 0);
         int minimo = entero(a, "stock_minimo", 5);
         String categoria = cadena(a, "categoria");
-        Optional<Category> cat = servicios.categorias().listarTodos().stream()
-                .filter(c -> normalizar(c.getNombre()).equals(normalizar(categoria))).findFirst();
+        Category cat = servicios.categorias().listarTodos().stream()
+                .filter(c -> normalizar(c.getNombre()).equals(normalizar(categoria))).findFirst()
+                .orElseGet(() -> servicios.categorias().sinCategoria());
         Optional<Supplier> proveedor = cadena(a, "proveedor").isBlank() ? Optional.empty() : resolverProveedor(cadena(a, "proveedor"));
         List<String> detalle = new ArrayList<>(List.of(
                 "Precio de venta: " + dinero(venta) + (compra > 0 ? " · costo " + dinero(compra) : " · sin costo"),
                 "Stock inicial: " + stock + " · mínimo: " + minimo));
-        if (!categoria.isBlank()) {
-            detalle.add("Categoría: " + cat.map(Category::getNombre).orElse(categoria));
-        }
+        detalle.add("Categoría: " + cat.getNombre()
+                + (categoria.isBlank() || cat.getNombre().equalsIgnoreCase(categoria) ? "" : " (no existe " + categoria + ")"));
         proveedor.ifPresent(s -> detalle.add("Proveedor: " + s.getNombre()));
         return proponer("producto", "Crear producto " + nombre, detalle, null, () -> servicios.inventario().guardar(
-                new Product(null, nombre, "", cat.map(Category::getNombre).orElse(categoria.isBlank() ? null : categoria),
-                        cat.map(Category::getId).orElse(null), proveedor.map(Supplier::getId).orElse(null),
+                new Product(null, nombre, "", cat.getNombre(), cat.getId(), proveedor.map(Supplier::getId).orElse(null),
                         compra, venta, stock, minimo, null)));
     }
 

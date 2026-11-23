@@ -11,25 +11,26 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 
 ### 1.1 Encapsulamiento
 
-Todos los atributos de las clases son `private` (o `protected` en `EntityService.repositorio`, para sus subclases). El acceso se hace con getters y setters o con métodos que aplican reglas; por ejemplo, el stock de un producto se cambia con `aumentarStock(int)` y `disminuirStock(int)`, que validan la cantidad, en lugar de `setStock(getStock() - n)`.
+Todos los atributos son `private` (o `protected` cuando una subclase los necesita, como el repositorio de `EntityService`). Los datos se cambian con métodos que revisan las reglas; por ejemplo, el stock de un producto se cambia con `aumentarStock(int)` y `disminuirStock(int)`, que no dejan cantidades negativas, y no con `setStock(getStock() - n)`.
 
 ### 1.2 Constructores
 
-Las entidades del modelo tienen un constructor sin parámetros porque Gson lo usa para leer el JSON. Los servicios y controladores reciben sus dependencias en el constructor. Ejemplos:
+Las clases del modelo tienen un constructor vacío, que usa la librería Gson para leer los datos, y otro con los datos principales. Los servicios y controladores reciben en el constructor los objetos que necesitan. Ejemplos:
 
 | Clase | Constructores |
 |---|---|
 | `Product` | `Product()`<br>`Product(String id, String nombre, String descripcion, String categoria, String categoriaId, String proveedorId, double precioCompra, double precioVenta, int stock, int stockMin, String tipo)` |
 | `Sale` | `Sale()`<br>`Sale(String id, String cliente, String metodoPago, String observacion, String fecha)` |
-| `SaleItem` | `SaleItem()`<br>`(paquete) SaleItem(String productoId, String nombreProducto, int cantidad, double precioUnitario)` |
+| `CreditPayment` | `CreditPayment()`<br>`CreditPayment(String clienteDocumento, double monto, String metodoPago)` |
 | `SaleService` | `SaleService(InventoryService inventario, Repository<Sale> ventas)` |
-| `ScanController` | `ScanController(AppContext contexto, Supplier<Camera> fabricaCamara, ViewNotifier vista)` |
+| `CreditService` | `CreditService(SaleService ventas, Repository<CreditPayment> abonos)` |
+| `ProductJdbcRepository` | `ProductJdbcRepository(Database bd, String perfilId)` |
 
-El constructor con datos de `SaleItem` es de paquete para que solo `Sale.agregarItem` cree ítems. El de `AppContext` es privado porque es un Singleton (`AppContext.get()`).
+El constructor con datos de `SaleItem` solo se puede usar dentro del paquete `model`, para que solo la venta cree sus renglones. El de `AppContext` es privado: hay una sola instancia y se obtiene con `AppContext.get()`.
 
 ### 1.3 Getters y setters
 
-Las entidades del modelo exponen sus atributos con getters y setters (listados en la [descripción de cada clase](FASE2_Arquitectura_y_Diseno.md#descripción-de-cada-clase)). Los setters de listas guardan una copia de la lista recibida (`Sale.setItems`, `GlobalConfig.setPerfiles`) para que no se comparta con otro objeto.
+Las clases del modelo tienen getters y setters para sus atributos (están en la [descripción de cada clase](FASE2_Arquitectura_y_Diseno.md#descripción-de-cada-clase)). Los que reciben listas guardan una copia, para que dos objetos no compartan la misma lista.
 
 ## 2. Herencia y polimorfismo
 
@@ -37,24 +38,16 @@ Las entidades del modelo exponen sus atributos con getters y setters (listados e
 
 ```
 IdentifiedEntity (abstracta)
-├── Product
-├── Category
-├── Supplier
-├── Profile
-├── Sale
-└── InventoryMovement (abstracta)
+├── Product, Category, Supplier, Profile, User      (implementan Deshabilitable)
+├── Sale, CreditPayment                              (implementan Anulable)
+├── AuditEntry
+└── InventoryMovement (abstracta, implementa Anulable)
     ├── StockEntry
     └── StockExit
 
 Repository<T> (interfaz)
-└── JsonRepository<T> (abstracta)
-    ├── ProductRepository
-    ├── CategoryRepository
-    ├── SupplierRepository
-    ├── StockEntryRepository
-    ├── StockExitRepository
-    ├── SaleRepository
-    └── ProfileRepository
+├── JsonRepository<T> (abstracta) → 10 repositorios de archivos
+└── JdbcRepository<T> (abstracta) → 10 repositorios de base de datos
 
 EntityService<T> (abstracta)
 ├── InventoryService
@@ -64,136 +57,177 @@ EntityService<T> (abstracta)
 
 ### 2.2 Métodos sobrescritos
 
-El proyecto tiene **37 métodos con `@Override`**:
+El proyecto tiene **191 métodos con `@Override`** en 46 clases. Los principales:
 
 | Clase | Métodos sobrescritos |
 |---|---|
-| `Main` | `start()` |
-| `Category` | `getEtiqueta()` |
-| `IdentifiedEntity` | `equals()`, `hashCode()` |
-| `Product` | `getEtiqueta()` |
-| `Profile` | `getEtiqueta()` |
 | `StockEntry` | `aplicarA()`, `getPrefijoId()` |
 | `StockExit` | `aplicarA()`, `getPrefijoId()` |
-| `Supplier` | `getEtiqueta()`, `toString()` |
+| `IdentifiedEntity` | `equals()`, `hashCode()` |
 | `JsonRepository` | `listarTodos()`, `buscarPorId()`, `existe()`, `filtrar()`, `agregar()`, `actualizar()`, `eliminar()`, `siguienteIdNumerico()` |
-| `GeminiClient` | `generar()` |
-| `CategoryService` | `validar()`, `generarId()`, `nombreEntidad()` |
+| `JdbcRepository` | `refrescar()`, `listarTodos()`, `buscarPorId()`, `existe()`, `filtrar()`, `agregar()`, `actualizar()`, `eliminar()` … |
+| `ProductJdbcRepository` | `tabla()`, `columnas()`, `valores()`, `leer()` |
+| `SaleJdbcRepository` | `tabla()`, `columnas()`, `valores()`, `leer()`, `completar()`, `guardarHijos()` |
+| `CreditPaymentJdbcRepository` | `tabla()`, `columnas()`, `valores()`, `leer()` |
+| `CategoryService` | `validarDeshabilitar()`, `validar()`, `generarId()`, `nombreEntidad()` |
 | `InventoryService` | `validar()`, `generarId()`, `nombreEntidad()` |
 | `SupplierService` | `validar()`, `generarId()`, `nombreEntidad()` |
-| `DesktopFileOpener` | `abrir()` |
+| `Sale` | `isAnulada()`, `getFechaAnulacion()`, `getMotivoAnulacion()`, `anular()`, `getAnuladaPor()`, `setAnuladaPor()` |
+| `CreditPayment` | `isAnulada()`, `anular()`, `getFechaAnulacion()`, `getMotivoAnulacion()`, `getAnuladaPor()`, `setAnuladaPor()` |
+| `Product` | `getEtiqueta()`, `isActivo()`, `setActivo()` |
+| `WebcamCamera` | `abrir()`, `capturar()`, `cerrar()` |
+| `PhoneCamera` | `abrir()`, `capturar()`, `cerrar()`, `avisar()` |
+| `GeminiClient` | `generar()` |
 | `SseNotifier` | `ejecutarScript()` |
 | `WebViewNotifier` | `ejecutarScript()` |
-| `SnapshotTransition` | `desvanecerZona()` |
-| `WebcamCamera` | `abrir()`, `capturar()`, `cerrar()` |
+| `JsonStorageProvider` | `nombre()`, `perfiles()`, `usuarios()`, `auditoria()`, `productos()`, `categorias()`, `proveedores()`, `entradas()` … |
+| `DatabaseStorageProvider` | `nombre()`, `perfiles()`, `usuarios()`, `auditoria()`, `productos()`, `categorias()`, `proveedores()`, `entradas()` … |
+| `PostgresDialect` | `motor()`, `carpetaScripts()`, `nombreDriver()`, `tablaExiste()`, `separarSentencias()`, `mensajeDeDisparador()` |
+| `OracleDialect` | `motor()`, `carpetaScripts()`, `nombreDriver()`, `tablaExiste()`, `separarSentencias()`, `mensajeDeDisparador()` |
+| `FileSnapshot` | `prepararCarpeta()`, `liberarCarpeta()`, `restaurarDesde()` |
+| `DatabaseSnapshot` | `prepararCarpeta()`, `liberarCarpeta()`, `restaurarDesde()` |
+| `Main` | `start()` |
 
-Ejemplo de polimorfismo: `MovementService` valida y aplica cualquier `InventoryMovement` llamando a `aplicarA(producto)`; si es una `StockEntry` el stock sube y si es una `StockExit` baja, sin que el servicio pregunte el tipo.
+Ejemplo de polimorfismo: `MovementService` registra cualquier `InventoryMovement` llamando a `aplicarA(producto)`. Si es una entrada, el stock sube; si es una salida, baja. El servicio no pregunta de qué tipo es. Lo mismo pasa con `Repository<T>`: `SaleService` llama a `agregar(venta)` y, según el almacenamiento elegido, la venta se guarda en un archivo o en la base de datos.
 
 ### 2.3 Interfaces
 
-`Repository<T>`, `Camera`, `ViewNotifier`, `FileOpener`, `LanguageModel` y `ScreenTransition` (detalle en la [Fase 2](FASE2_Arquitectura_y_Diseno.md#42-interfaces)).
+El proyecto tiene 13 interfaces: `Repository<T>`, `StorageProvider`, `SqlDialect`, `BackupStore`, `DataSnapshot`, `Deshabilitable`, `Anulable`, `Camera`, `CameraProvider`, `ViewNotifier`, `FileOpener`, `LanguageModel` y `ScreenTransition`. Están explicadas en la [Fase 2](FASE2_Arquitectura_y_Diseno.md#42-interfaces).
 
 ### 2.4 Colecciones
 
-| Colección | Usos (`new`) | Clases | Para qué se usa |
-|---|---|---|---|
-| `ArrayList` | 42 | `AssistantService`, `AssistantTools`, `BrowserWindow`, `GeminiClient`, `GlobalConfig`, `JsonRepository`, `JsonUtil`, `LabelService`, `ReportExcelWriter`, `ReportService`, `Sale`, `SaleService`, `SecureConnection`, `ZipArchiver` | Caché de cada repositorio y las copias que devuelve, ítems de una venta, lista de perfiles, hojas de etiquetas, historial del asistente, filas del informe. |
-| `LinkedHashMap` | 11 | `BusinessType`, `InventoryController`, `LabelController`, `Profile`, `ReportService`, `Sale`, `ScanController` | Mapas que conservan el orden: estadísticas del dashboard, configuración de cada perfil, unidades por producto de una venta, grupos de la serie y métodos de pago del informe, respuestas a la vista. |
-| `HashMap` | 2 | `BridgeInvoker`, `ReportService` | Búsquedas por clave donde el orden no importa: acumulado por producto del informe (luego se ordena) y métodos del bridge por nombre. |
-| `ConcurrentHashMap` | 1 | `AssistantService` | Propuestas del asistente por confirmar: se leen desde el hilo del asistente y desde el de la interfaz. |
-| `CopyOnWriteArrayList` | 2 | `AssistantService`, `SseNotifier` | Conexiones abiertas de la ventana de Edge y avisos del asistente, usados desde varios hilos. |
-| `EnumMap` | 2 | `QrGenerator`, `QrReader` | Opciones de ZXing para leer (`QrReader`) y para generar (`QrGenerator`) códigos QR. |
+| Colección | Veces que se crea | Para qué se usa |
+|---|---|---|
+| `ArrayList` | 75 | Listas: la copia en memoria de cada repositorio, los renglones de una venta, los abonos y ventas de un cliente, filas de informes. |
+| `LinkedHashMap` | 23 | Mapas que conservan el orden: la configuración de cada negocio, las cuentas de Fiados, los datos que se envían a la pantalla. |
+| `HashMap` | 2 | Búsquedas por nombre donde el orden no importa (métodos del puente, acumulados del informe). |
+| `EnumSet` | 11 | Conjuntos de permisos de cada rol y medios de pago activos. |
+| `EnumMap` | 2 | Opciones de la librería de códigos QR. |
+| `ConcurrentHashMap` | 1 | Propuestas del asistente por confirmar (las usan dos hilos). |
+| `CopyOnWriteArrayList` | 2 | Conexiones abiertas de la ventana de Edge (las usan varios hilos). |
 
-Las listas se declaran con la interfaz `List<T>` y los mapas con `Map<K, V>`. Se usa `LinkedHashMap` cuando el orden de inserción importa al convertir a JSON, `HashMap` cuando no, y colecciones concurrentes cuando dos hilos usan la misma colección.
+Las listas se declaran como `List<T>` y los mapas como `Map<K, V>`. Se usa `LinkedHashMap` cuando importa el orden (por ejemplo, las cuentas de los clientes en Fiados), `HashMap` cuando no, `EnumSet` para los permisos de cada rol y colecciones seguras para varios hilos donde el asistente y la pantalla usan los mismos datos.
 
-## 3. Persistencia
+## 3. Persistencia con base de datos relacional y DAO
 
-### 3.1 Implementación actual: archivos JSON con el patrón Repository
+TBalance guarda los datos en **PostgreSQL** o en **Oracle** (18c Express Edition o superior), o en archivos JSON. Se elige en **Copias de seguridad → Dónde se guardan los datos**: motor, dirección de conexión, usuario y contraseña, con los botones *Probar conexión* y *Guardar y usar*. Estos datos quedan en `~/.inventariopro/basedatos.json`, solo en ese computador.
 
-| Elemento | Implementación |
+Se usó el patrón **DAO** (objeto de acceso a datos): cada tabla tiene una clase que sabe leerla y guardarla, y el resto del programa solo conoce la interfaz `Repository<T>`.
+
+| Pieza | Clase | Qué hace |
+|---|---|---|
+| Interfaz del DAO | `Repository<T>` | Listar, buscar por ID, agregar, actualizar y eliminar. Los servicios solo conocen esta interfaz. |
+| DAO genérico | `JdbcRepository<T>` | Arma las consultas `SELECT`, `INSERT` y `UPDATE` con `PreparedStatement`. Cada cambio va en una transacción: si falla, no queda nada a medias. |
+| DAO por tabla | `ProductJdbcRepository`, `SaleJdbcRepository`, `CreditPaymentJdbcRepository` y 7 más | Cada una dice su tabla, sus columnas y cómo convertir una fila en objeto. `SaleJdbcRepository` guarda la venta y sus productos juntos. |
+| Conexión | `Database` | Abre la conexión, ejecuta los scripts y convierte los errores de la base en mensajes para el usuario. |
+| PostgreSQL u Oracle | `SqlDialect`, `PostgresDialect`, `OracleDialect` | Lo poco que cambia entre los dos motores. |
+| Elegir almacenamiento | `StorageProvider`, `JsonStorageProvider`, `DatabaseStorageProvider` | Entregan los repositorios de archivos o de base de datos. |
+| Copiar los datos | `StorageService`, `DataTransferService` | La primera vez crean las tablas y copian los negocios que había en archivos. |
+
+Los scripts están en `src/main/resources/sql/oracle` y `src/main/resources/sql/postgresql`. TBalance ejecuta `01` y `02` la primera vez, y después cada cambio de `cambios/` una sola vez, en orden, anotándolo en la tabla `ESQUEMA_VERSION`. Así una base que ya tenía datos se actualiza sin perderlos.
+
+| Script | Qué hace |
 |---|---|
-| Contrato | `Repository<T extends IdentifiedEntity>`: listar, buscar por ID, filtrar, agregar, actualizar, eliminar y siguiente ID. |
-| Implementación | `JsonRepository<T>`: mantiene una caché `List<T>` y la guarda completa en el archivo en cada cambio. |
-| Escritura en disco | `JsonFileStore`: lee y escribe con UTF-8; escribe en un `.tmp` y luego reemplaza el archivo. |
-| Conversión | `JsonUtil` (Gson). |
-| Ubicación | `~/.inventariopro/data/configuracion-global.json`, `perfiles.json` y `perfiles/<ID>/` con `productos.json`, `categorias.json`, `proveedores.json`, `entradas.json`, `salidas.json` y `ventas.json`. La configuración del asistente va aparte en `~/.inventariopro/asistente.json` (`AssistantConfigRepository`) y los informes de Excel en `Documentos/TBalance` (`ReportExcelWriter`). |
-| Compatibilidad | Los campos nuevos de v3.4.0 (`referenciaPago` en la venta y `costoUnitario` en cada ítem) son opcionales: las ventas guardadas antes se leen igual y en los informes usan el costo actual del producto. |
-| Errores | `PersistenceException`. |
+| `00_crear_usuario.sql` (Oracle) / `00_crear_base.sql` (PostgreSQL) | Crea el usuario y la base `tbalance`. |
+| `01_tablas.sql` | Crea las tablas con sus llaves primarias, foráneas y restricciones. |
+| `02_disparadores.sql` | Dos disparadores: uno valida el producto (no deja stock ni precios negativos) y otro guarda el historial de precios. |
+| `03_probar_disparadores.sql` | Prueba los disparadores y deshace los cambios. |
+| `cambios/v2_borrado_logico.sql` | Columnas para deshabilitar y anular, y tablas `PROVEEDOR_CATEGORIA`, `RESPALDO` y `ESQUEMA_VERSION`. |
+| `cambios/v3_vistas_informes.sql` | Cuatro vistas para informes (ventas por día, ganancia por producto, valor del inventario y compras por mes). |
+| `cambios/v4_usuarios.sql` | Tablas `USUARIO` y `NEGOCIO_USUARIO`, y quién vendió o anuló cada movimiento. |
+| `cambios/v5_historial.sql` | Tabla `AUDITORIA` (historial) y la cédula del cliente en las ventas fiadas. |
+| `cambios/v6_abonos.sql` | Tabla `ABONO` (abonos de los fiados). |
+| `cambios/v7_varios_equipos.sql` | Tabla `CAMBIO_VERSION`: un contador que sube con cada cambio, para que los demás computadores sepan que deben actualizarse. |
+| `00_crear_usuario_nube.sql` (Oracle) | Crea el usuario `TBALANCE` en Oracle Autonomous Database (nube). |
+| `99_borrar_todo.sql` | Borra todas las tablas (solo para empezar de cero). |
 
-El diccionario de los datos guardados está en la [Fase 4](FASE4_Documentacion_Tecnica.md#4-modelo-de-datos).
+Los cambios v2 a v7 **solo agregan** tablas, columnas o vistas: no cambian ni borran lo anterior, así las consultas que ya existían siguen funcionando.
 
-### 3.2 Base de datos relacional y DAO
+**Borrado lógico.** Desde el programa no se borra nada que tenga historial. Negocios, categorías, proveedores, productos y usuarios se *deshabilitan* y se pueden volver a habilitar. Ventas, entradas, salidas y abonos se *anulan* con un motivo, el stock o el saldo se corrige y quedan en la lista de anulados.
 
-**Estado: pendiente.** El proyecto todavía no usa una base de datos relacional. Los servicios dependen solo de la interfaz `Repository<T>`, por lo que la clase DAO con base de datos se agregará como otra implementación de esa interfaz y se conectará en `ProfileServicesFactory`, sin cambiar los servicios ni la interfaz.
+**Historial.** Cada acción que pasa por el puente (`BridgeInvoker`) se revisa en `AccessPolicy` (¿tiene sesión y permiso?) y luego `AuditTrail` la anota en `AUDITORIA` con la persona, el rol, el negocio y la hora. Nunca se anota una contraseña.
+
+**Fiados.** Lo que debe un cliente no se guarda: se calcula sumando sus ventas fiadas vigentes y restando sus abonos vigentes (`CreditService`). Así, si se anula una venta o un abono, la deuda se corrige sola.
+
+**Varios computadores (nube).** La base puede estar en la nube ([guía](GUIA_NUBE.md)) y la usan varios computadores a la vez. Cada repositorio JDBC guarda una copia en memoria para responder rápido; para que no quede vieja, cada vez que un computador guarda algo, `Database` sube el contador de `CAMBIO_VERSION` en la misma transacción. Los demás preguntan ese contador (una consulta corta, como mucho cada 1,5 segundos) y, si cambió, `JdbcRepository` vuelve a leer sus datos. La pantalla hace la misma pregunta cada 5 segundos y se actualiza sola. Antes de vender o sacar mercancía, `SaleService` y `MovementService` piden el dato fresco (`refrescar()`), y el disparador de la tabla `PRODUCTO` no deja el stock en negativo.
+
+Los drivers de las bases de datos están en el `pom.xml`: `org.postgresql:postgresql` y `com.oracle.database.jdbc:ojdbc11`.
 
 ## 4. Interfaz gráfica
 
 ### 4.1 Tecnología
 
-La interfaz no se construyó con formularios Swing de NetBeans. Se desarrolló en **IntelliJ IDEA** como una página web incluida en el proyecto (`src/main/resources/html/SistemaInventario.html`, con Tailwind CSS y JavaScript). Al arrancar, `DesktopBrowserApp` levanta un servidor local (`LocalWebServer`, solo en `127.0.0.1` y con clave por sesión) y `BrowserWindow` abre la página en **Microsoft Edge en modo aplicación**: una ventana propia, sin barra de direcciones, que dibuja con la tarjeta gráfica y por eso las animaciones son fluidas. Si no hay Edge ni Chrome, `WebViewMain` muestra la misma página en una ventana **JavaFX 21** con un `WebView`. La hoja `css/tbalance.css` se carga después de Tailwind y agrega el diseño propio de TBalance (modo oscuro y claro, fuente Outfit, animaciones) sin recompilar Tailwind; encima, `css/tbalance-vistas.css` deja el diseño plano y `js/tbalance-vistas.js` arma la pantalla Hoy, el cuaderno de caja de Ventas, las frases de Productos e Informes y aplica el color de acento del tipo de negocio del perfil activo.
+La interfaz no se hizo con formularios de NetBeans: es una página web dentro del proyecto (`src/main/resources/html`, con HTML, CSS y JavaScript), desarrollada en IntelliJ IDEA. Al arrancar, TBalance abre esa página en una ventana de **Microsoft Edge** (sin barra de direcciones, como un programa normal); si no hay Edge, la muestra en una ventana de **JavaFX 21**. La página habla con Java por medio del objeto `javaBridge`.
 
 ### 4.2 Componentes
 
-| Componente | Cantidad / ubicación |
+| Componente | Cantidad |
 |---|---|
-| Ventana | Edge en modo aplicación (`BrowserWindow`, 1366 × 860) o, de respaldo, JavaFX (`WebViewMain`, 1300 × 800, mínimo 1000 × 650) |
-| Secciones | 10: Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Informes, Mis negocios, Copias de seguridad, más el panel del asistente |
-| Botones (`<button>`) | 127 |
-| Campos de texto (`<input>`) | 33 |
-| Listas desplegables (`<select>`) | 11 |
-| Áreas de texto (`<textarea>`) | 2 |
-| Tablas (`<table>`) | 8 |
-| Ventanas modales | Formularios de perfil, producto, categoría, proveedor, entrada, salida, venta (con método de pago), venta por QR y etiqueta QR |
+| Secciones | 15: Inicio de sesión, Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Fiados, Informes, Costos, Mis negocios, Usuarios, Historial y Copias de seguridad |
+| Ventanas emergentes (modales) | 14 (producto, categoría, proveedor, entrada, salida, venta, venta por QR, etiqueta QR, cuenta de un cliente, negocio, confirmaciones…) |
+| Botones | 157 |
+| Campos de texto | 81 |
+| Listas desplegables | 18 |
+| Tablas | 10 |
+| Panel del asistente | 1 (se abre con el botón "Pregúntale a TBalance" o `Ctrl+K`) |
 
 ### 4.3 Manejo de eventos
 
-| Sentido | Mecanismo | Ejemplo |
+| Sentido | Cómo funciona | Ejemplo |
 |---|---|---|
-| Vista → Java | Atributos `onclick` (121), `onchange` (8) y `oninput` (6) llaman funciones JavaScript que invocan `window.javaBridge.<método>()`. En Edge, `javaBridge` envía cada llamada al servidor local (`POST /bridge/<método>`) y `BridgeInvoker` la ejecuta en el `JavaBridge`; en JavaFX es el objeto Java registrado en la página. | Guardar producto → `javaBridge.guardarProducto(json)` → `InventoryController` → `InventoryService.guardar` |
-| Java → Vista | `ViewNotifier.ejecutarScript` ejecuta una función JavaScript: en Edge, `SseNotifier` la envía por una conexión de eventos (`GET /eventos`); en JavaFX, `WebViewNotifier` la ejecuta con `Platform.runLater`. | `onPerfilesActualizados()`, `onPerfilSeleccionado(id)`, `cargarEstadoDesdeJava()`, `showToast(...)` |
-| Asistente → Vista | `AssistantController` responde enseguida y consulta el modelo en otro hilo; al terminar avisa con `onAsistenteRespuesta`, `onAsistentePrueba` u `onAsistenteModelo`. | La interfaz sigue respondiendo mientras el modelo piensa. |
-| Cámara → Vista | `ScanController` llama desde su hilo a las funciones `tbCamaraLista`, `tbCuadroCamara`, `tbProductoEscaneado`, `tbAvisoEscaneo`, `tbErrorCamara` y `tbCamaraDetenida`. | Cada producto leído se agrega al carrito de Venta por QR. |
+| Pantalla → Java | Los botones y campos usan `onclick` (147), `onchange` (18) y `oninput` (7). La función de JavaScript llama a `javaBridge.<método>()`, que llega al `JavaBridge` en Java. | Registrar abono → `javaBridge.registrarAbono(json)` → `CreditController` → `CreditService.registrarAbono` |
+| Java → Pantalla | Java ejecuta una función de la página para avisar un cambio. | `cargarEstadoDesdeJava()` después de restaurar una copia; `onAsistenteRespuesta(...)` cuando el asistente contesta. |
 
-Cada método del bridge devuelve `OK`, un JSON o `ERROR: mensaje` (`BridgeResponse`), y la vista muestra el error como notificación.
+Cada método del puente devuelve `OK`, los datos en JSON o `ERROR: mensaje`, y la página muestra el error como un aviso.
 
 ### 4.4 Separación en tres capas
 
-| Capa | Qué hace en un evento |
+| Capa | Qué hace cuando el usuario registra un abono |
 |---|---|
-| Presentación (`html`, `view`, `bridge`) | Captura el evento, convierte el JSON y llama al servicio. No tiene reglas de negocio. |
-| Lógica de negocio (`service`, `model`) | Valida y aplica las reglas (stock, vencimiento, totales, método de pago, informes, propuestas del asistente). |
-| Acceso a datos (`repository`, `ia`, `dispositivo`) | Guarda y lee los archivos; escribe el Excel; habla con el modelo de lenguaje; maneja la cámara. |
+| Presentación (`html`, `bridge`) | La página lee el valor y el medio de pago; `CreditController` pone quién lo recibió (tomado de la sesión) y llama al servicio. |
+| Lógica de negocio (`service`, `model`) | `CreditPayment.validar()` revisa los datos y `CreditService` revisa que no pase de lo que el cliente debe. |
+| Acceso a datos (`repository`) | `CreditPaymentJdbcRepository` lo guarda en la tabla `ABONO` (o `CreditPaymentRepository` en `abonos.json`). |
 
 ## 5. Buenas prácticas
 
-| Práctica | Evidencia en el código |
+| Práctica | Cómo se aplicó |
 |---|---|
-| Código limpio | Métodos cortos con nombres que dicen lo que hacen (`disminuirStock`, `cantidadesPorProducto`, `resolverPerfilInicial`); se eliminó el código muerto de P2 (módulo de usuarios, `InventoryService.hoy()`, `diasParaVencer()`, `Sale.addItem()`; `IdGenerator.generar()` se reemplazó por `conPrefijo()`). |
-| Javadoc | Todas las clases y los métodos públicos relevantes están documentados con `/** ... */`. |
-| Convenciones de nombres | `PascalCase` en clases, `camelCase` en métodos y atributos, `UPPER_SNAKE_CASE` en constantes (`Sale.ESTADO_COMPLETADA`, `StockEntry.PREFIJO_ID`). |
-| Constantes en lugar de valores mágicos | Prefijos de ID, estados, nombres de archivo, medidas de la ventana y de las etiquetas. |
-| Validación de datos | `validar()` en `Product`, `Category`, `Supplier`, `Profile`, `InventoryMovement`, `SaleItem` y `Sale`; nombres de archivo validados en `BackupRepository` y `LabelRepository`; rutas validadas en `ZipArchiver.extraer`. |
-| Manejo de excepciones | `ValidationException` para reglas, `PersistenceException` para errores de archivos y `AssistantException` para fallas del asistente con un mensaje claro (sin internet, clave inválida, límite gratuito); `BridgeResponse.ejecutar` las convierte en `ERROR: mensaje` en un solo lugar y `AssistantLog` deja el detalle en `~/.inventariopro/asistente.log`. |
-| Concurrencia | El asistente trabaja en su propio hilo y accede a los datos con `JavaBridge.CANDADO_DATOS` o en el hilo de la interfaz; las colecciones compartidas son concurrentes. |
-| Seguridad | La clave del asistente no está en el código ni en GitHub; el servidor local solo escucha en `127.0.0.1` y exige una clave por sesión; el asistente no cambia datos sin confirmación. |
+| Código limpio | Métodos cortos con nombres que dicen lo que hacen (`disminuirStock`, `registrarAbono`, `aceptaMedioPago`); se quitó el código que no se usaba. |
+| Javadoc | Todas las clases y los métodos públicos tienen su comentario `/** ... */`. |
+| Convenciones de nombres | `PascalCase` en clases, `camelCase` en métodos y atributos y `MAYUSCULAS_CON_GUION` en constantes (`Sale.PREFIJO_ID`, `CreditPayment.PREFIJO_ID`). |
+| Validación de datos | Cada clase del modelo tiene `validar()` (`Product`, `Sale`, `CreditPayment`…) y los servicios revisan las reglas que dependen de otros datos (stock, deuda, medios de pago del negocio, permisos del rol). |
+| Excepciones | `ValidationException` para reglas del negocio, `PersistenceException` para errores al guardar y `AssistantException` para fallas del asistente. `BridgeResponse` las convierte en un mensaje para el usuario en un solo lugar. |
+| Datos privados | Las contraseñas se guardan cifradas; la clave del asistente y la de la base de datos no están en el código ni en GitHub. |
 
-La tabla de trazabilidad GRASP / SOLID / Código limpio está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
+## 6. Tabla de trazabilidad GRASP y SOLID
 
-## 6. Gestión del proyecto con Git
+| Patrón o principio | Dónde se aplica |
+|---|---|
+| Creador | [`Sale.agregarItem`](../src/main/java/sistemainventario/model/Sale.java), [`ProfileServicesFactory`](../src/main/java/sistemainventario/service/ProfileServicesFactory.java), [`CreditService.listarCuentas`](../src/main/java/sistemainventario/service/CreditService.java) |
+| Controlador | [`JavaBridge`](../src/main/java/sistemainventario/bridge/JavaBridge.java) y los controladores del paquete `bridge` |
+| Experto en información | [`Product`](../src/main/java/sistemainventario/model/Product.java), [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`CustomerDebt`](../src/main/java/sistemainventario/model/CustomerDebt.java), [`Rol`](../src/main/java/sistemainventario/model/Rol.java) |
+| Bajo acoplamiento | [`Repository<T>`](../src/main/java/sistemainventario/repository/Repository.java), [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) |
+| Alta cohesión | Controladores del `bridge`, [`AccessPolicy`](../src/main/java/sistemainventario/bridge/AccessPolicy.java), [`AuditTrail`](../src/main/java/sistemainventario/bridge/AuditTrail.java), [`CreditService`](../src/main/java/sistemainventario/service/CreditService.java) |
+| SRP | `Product` / `InventoryService` / `ProductRepository`; `UserService` / `SessionService` / `PasswordHasher` |
+| OCP | `Repository<T>` con `JsonRepository<T>` y `JdbcRepository<T>`; `Camera` con `WebcamCamera` y `PhoneCamera` |
 
-Datos tomados del historial del repositorio hasta la etiqueta `v3.3.0` (2026-11-10).
+La tabla completa, con código limpio, está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
 
-### 6.1 Resumen de commits por integrante
+## 7. Gestión del proyecto con Git
 
-| Integrante | Usuario GitHub | Commits | Fusiones de PR aprobadas |
+Datos del repositorio hasta la versión v3.4.0 y los commits de la ronda v3.5.0. Los commits de la v3.5.0 tienen su código (hash) en GitHub.
+
+### 7.1 Commits por integrante
+
+| Integrante | Usuario GitHub | Commits | Pull Requests que aprobó y fusionó |
 |---|---|---|---|
-| Kevin Jhosep Mercado | @kjhosepmercadom | 17 | 5 |
-| Reinaldo Padilla Pedroza | @rjpadillap | 17 | 6 |
-| Dair José Quintero | @djosequintero | 17 | 6 |
+| Kevin Jhosep Mercado | @kjhosepmercadom | 27 | 7 |
+| Dair José Quintero | @djosequintero | 24 | 10 |
+| Reinaldo Padilla Pedroza | @rjpadillap | 23 | 8 |
 
-Además está el commit `Initial commit` con el que GitHub creó el repositorio. Las fusiones las hace el integrante que revisa y aprueba el Pull Request, nunca su autor.
+Además está el commit `Initial commit` con el que GitHub creó el repositorio. Cada Pull Request lo aprueba y lo fusiona un integrante distinto de su autor.
 
-### 6.2 Evidencia de commits
+### 7.2 Evidencia de commits
 
 **Kevin Jhosep Mercado**
 
@@ -216,28 +250,16 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `009c723` | 2026-10-28 | feat(bridge): add EtiquetaController and EscaneoController |
 | `f1d0457` | 2026-11-10 | refactor: rename all classes to English |
 | `bbc9f3e` | 2026-11-10 | feat: purchase price and estimated profit per product |
-
-**Reinaldo Padilla Pedroza**
-
-| Commit | Fecha | Mensaje |
-|---|---|---|
-| `d46f2b9` | 2026-10-27 | feat(repository): PersistenciaException y JsonFileStore con escritura segura |
-| `f9f8543` | 2026-10-27 | chore: eliminar modulo de usuarios sin uso (codigo muerto) |
-| `2445053` | 2026-10-27 | refactor(repository): interfaz Repository y JsonRepository generico (OCP, DIP) |
-| `1dc9aa6` | 2026-10-27 | refactor(repository): ConfiguracionGlobalRepository sobre JsonFileStore y DirectorioPerfiles |
-| `5e6374c` | 2026-10-27 | docs: arquitectura en capas y diagrama de paquetes |
-| `21b084b` | 2026-10-27 | fix(view): incluir Tailwind CSS y la fuente en el proyecto para ejecutar sin internet |
-| `548c82e` | 2026-10-27 | feat(repository): add ArchivadorZip to compress and extract the data folder |
-| `17bd048` | 2026-10-27 | feat(repository): add Respaldo model and RespaldoRepository for backup files |
-| `1d4b8a5` | 2026-10-27 | docs: add backup classes to the architecture document |
-| `2edf33d` | 2026-10-27 | chore: remove obsolete working-folder rule from .gitignore |
-| `959764b` | 2026-10-28 | build: add ZXing and webcam-capture dependencies |
-| `2b39064` | 2026-10-28 | feat(util): add GeneradorQR and LectorQR to create and read QR codes |
-| `f6e9e76` | 2026-10-28 | feat(repository): add EtiquetaRepository to store QR label images |
-| `ae54179` | 2026-10-28 | feat(device): add Camara interface and webcam implementation |
-| `e5e2227` | 2026-11-10 | docs: update the diagrams with the English class names |
-| `6ff8804` | 2026-11-10 | docs: add phase 1 specification and phase 2 design |
-| `48ac0de` | 2026-11-10 | docs: add phases 3 and 4, update traceability and README |
+| `73820ed` | 2026-11-16 | feat: Colombian payment methods and unit cost on each sale |
+| `8e40e40` | 2026-11-16 | feat: sales reports by period with Excel export |
+| `73eaead` | 2026-11-16 | feat: AI assistant with Google Gemini (free tier) |
+| `b01c1f7` | 2026-11-16 | feat: reports and assistant controllers in the bridge |
+| v3.5.0 | 2026-11-22 | feat: PostgreSQL and Oracle storage with JDBC DAO and SQL scripts |
+| v3.5.0 | 2026-11-22 | feat: logical deletion, cancellations and the Costs section |
+| v3.5.0 | 2026-11-22 | feat: backups stored inside the database |
+| v3.5.0 | 2026-11-22 | feat: action history (who did what and when) |
+| v3.5.0 | 2026-11-22 | feat: credit sales (fiados) with customer payments |
+| v3.5.0 | 2026-11-22 | feat: several computers on the same database (cloud) |
 
 **Dair José Quintero**
 
@@ -260,8 +282,43 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `b041923` | 2026-11-10 | feat(ui): add the TBalance stylesheet in orange and white |
 | `0202eb4` | 2026-11-10 | feat(ui): purchase and sale price, profit column and new dashboard |
 | `4d0212a` | 2026-11-10 | docs: add screenshots of the redesigned interface |
+| `b4fa826` | 2026-11-16 | feat(ui): Outfit font, T logo and high-resolution app icons |
+| `8c03c39` | 2026-11-16 | feat(view): open the interface in an Edge app window |
+| `c5fe391` | 2026-11-16 | feat(ui): flat interface with a color per business type, Today view and cash book |
+| `9f00176` | 2026-11-16 | docs: add screenshots of the v3.4.0 interface |
+| v3.5.0 | 2026-11-22 | feat: phone as a wireless QR label reader |
+| v3.5.0 | 2026-11-22 | feat(ui): glass sign-in and windows with the business color |
+| v3.5.0 | 2026-11-22 | docs: screenshots of the v3.5.0 interface |
 
-### 6.3 Ramas y fusiones
+**Reinaldo Padilla Pedroza**
+
+| Commit | Fecha | Mensaje |
+|---|---|---|
+| `d46f2b9` | 2026-10-27 | feat(repository): PersistenciaException y JsonFileStore con escritura segura |
+| `f9f8543` | 2026-10-27 | chore: eliminar modulo de usuarios sin uso (codigo muerto) |
+| `2445053` | 2026-10-27 | refactor(repository): interfaz Repository y JsonRepository generico (OCP, DIP) |
+| `1dc9aa6` | 2026-10-27 | refactor(repository): ConfiguracionGlobalRepository sobre JsonFileStore y DirectorioPerfiles |
+| `5e6374c` | 2026-10-27 | docs: arquitectura en capas y diagrama de paquetes |
+| `21b084b` | 2026-10-27 | fix(view): incluir Tailwind CSS y la fuente en el proyecto para ejecutar sin internet |
+| `548c82e` | 2026-10-27 | feat(repository): add ArchivadorZip to compress and extract the data folder |
+| `17bd048` | 2026-10-27 | feat(repository): add Respaldo model and RespaldoRepository for backup files |
+| `1d4b8a5` | 2026-10-27 | docs: add backup classes to the architecture document |
+| `2edf33d` | 2026-10-27 | chore: remove obsolete working-folder rule from .gitignore |
+| `959764b` | 2026-10-28 | build: add ZXing and webcam-capture dependencies |
+| `2b39064` | 2026-10-28 | feat(util): add GeneradorQR and LectorQR to create and read QR codes |
+| `f6e9e76` | 2026-10-28 | feat(repository): add EtiquetaRepository to store QR label images |
+| `ae54179` | 2026-10-28 | feat(device): add Camara interface and webcam implementation |
+| `e5e2227` | 2026-11-10 | docs: update the diagrams with the English class names |
+| `6ff8804` | 2026-11-10 | docs: add phase 1 specification and phase 2 design |
+| `48ac0de` | 2026-11-10 | docs: add phases 3 and 4, update traceability and README |
+| `a707362` | 2026-11-16 | docs: update the diagrams for v3.4.0 |
+| `5bbb0ef` | 2026-11-16 | docs: phases 1 and 2 with payments, reports and assistant |
+| `8cfda15` | 2026-11-16 | docs: phases 3 and 4, traceability and README for v3.4.0 |
+| v3.5.0 | 2026-11-22 | feat: sign-in with owner, administrator and cashier roles |
+| v3.5.0 | 2026-11-22 | feat: the assistant respects the role of the user |
+| v3.5.0 | 2026-11-22 | docs: phases 1 to 4, diagrams and README for v3.5.0 |
+
+### 7.3 Ramas y fusiones
 
 | PR | Rama | Destino | Fecha | Aprobó y fusionó |
 |---|---|---|---|---|
@@ -282,38 +339,51 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | #15 | `feature/dair-profit-ui-redesign` | `dev` | 2026-11-10 | @rjpadillap |
 | #16 | `feature/reinaldo-docs-v3.3.0` | `dev` | 2026-11-10 | @kjhosepmercadom |
 | #17 | `dev` | `main` | 2026-11-10 | @djosequintero |
+| #18 | `feature/kevin-payments-reports-assistant` | `dev` | 2026-11-16 | @djosequintero |
+| #19 | `feature/dair-edge-window-new-ui` | `dev` | 2026-11-16 | @rjpadillap |
+| #20 | `feature/reinaldo-docs-v3.4.0` | `dev` | 2026-11-16 | @kjhosepmercadom |
+| #21 | `dev` | `main` | 2026-11-16 | @djosequintero |
+| #22 | `feature/kevin-database-history-credit` | `dev` | 2026-11-22 | @djosequintero |
+| #23 | `feature/dair-glass-ui-phone-reader` | `dev` | 2026-11-22 | @rjpadillap |
+| #24 | `feature/reinaldo-roles-docs-v3.5.0` | `dev` | 2026-11-22 | @kjhosepmercadom |
+| #25 | `dev` | `main` | 2026-11-22 | @djosequintero |
 
-Las ramas `feature/*` se borraron después de fusionarse; en el repositorio quedan `main` y `dev`.
+Las ramas `feature/*` se borran después de fusionarse; en el repositorio quedan `main` y `dev`.
 
-### 6.4 Estado de las tareas
+### 7.4 Estado de las tareas
 
 | Integrante | Tarea | Estado | Versión |
 |---|---|---|---|
 | Kevin Mercado | Importar el código de P2 y configurar el repositorio | Completada | v3.0.0-avance1 |
-| Dair Quintero | Corregir `pom.xml` y crear utilidades (`TextUtil`, `DateUtil`, `IdGenerator`) y `ValidationException` | Completada | v3.0.0-avance1 |
-| Dair Quintero | Modelo de dominio: Experto en `Product` y `Sale`, jerarquía `InventoryMovement`, `IdentifiedEntity` | Completada | v3.0.0-avance1 |
-| Reinaldo Padilla | `Repository<T>`, `JsonRepository<T>`, `JsonFileStore`, `ProfileDirectory`, eliminar módulo de usuarios sin uso | Completada | v3.0.0-avance1 |
-| Reinaldo Padilla | Incluir Tailwind CSS y las fuentes para funcionar sin internet | Completada | v3.0.0-avance1 |
-| Kevin Mercado | `EntityService<T>` (Template Method), inyección de dependencias, `ProfileServicesFactory`, `AppContext` | Completada | v3.0.0-avance1 |
-| Kevin Mercado | `JavaBridge` como fachada con controladores, `BridgeResponse`, `ViewNotifier`, `Launcher` | Completada | v3.0.0-avance1 |
-| Reinaldo Padilla | `ZipArchiver`, `Backup`, `BackupRepository` | Completada | v3.1.0 |
-| Kevin Mercado | `BackupService`, recarga del `AppContext`, `BackupController` | Completada | v3.1.0 |
-| Dair Quintero | Sección Respaldos de la interfaz y notificaciones | Completada | v3.1.0 |
-| Reinaldo Padilla | Dependencias ZXing y webcam-capture, `QrGenerator`, `QrReader`, `LabelRepository`, `Camera`, `WebcamCamera` | Completada | v3.2.0 |
+| Dair Quintero | Modelo de dominio: `Product` y `Sale` como expertos, jerarquía `InventoryMovement`, `IdentifiedEntity` encapsulada | Completada | v3.0.0-avance1 |
+| Reinaldo Padilla | Persistencia: `Repository<T>`, `JsonRepository<T>`, `JsonFileStore`, `ProfileDirectory`; quitar código muerto | Completada | v3.0.0-avance1 |
+| Kevin Mercado | Servicios con `EntityService<T>`, inyección de dependencias, `AppContext` y `JavaBridge` con controladores | Completada | v3.0.0-avance1 |
+| Reinaldo Padilla | Respaldos: `ZipArchiver`, `Backup`, `BackupRepository` | Completada | v3.1.0 |
+| Kevin Mercado | `BackupService`, recarga del `AppContext` y `BackupController` | Completada | v3.1.0 |
+| Dair Quintero | Sección Respaldos en la interfaz y documentación | Completada | v3.1.0 |
+| Reinaldo Padilla | Documentación de arquitectura de respaldos | Completada | v3.1.0 |
+| Reinaldo Padilla | Dependencias ZXing y webcam-capture, `QrGenerator`, `QrReader`, `LabelRepository`, `Camera` | Completada | v3.2.0 |
 | Kevin Mercado | QR en `Product`, `LabelService`, `QrSaleScanner`, `LabelController`, `ScanController` | Completada | v3.2.0 |
 | Dair Quintero | Etiquetas QR en Productos y pantalla Venta por QR | Completada | v3.2.0 |
-| Kevin Mercado | Nombres de las clases en inglés en todas las capas | Completada | v3.3.0 |
-| Kevin Mercado | Utilidad por producto y del inventario (`Product`, `InventoryService`, estadísticas) | Completada | v3.3.0 |
-| Dair Quintero | Rediseño de la interfaz: menú con pestaña activa, tarjetas en forma de carpeta, dashboard nuevo e íconos propios (`css/tbalance.css`) | Completada | v3.3.0 |
-| Dair Quintero | Precio de compra y de venta en el formulario, columna de utilidad y tarjeta en el dashboard | Completada | v3.3.0 |
-| Reinaldo Padilla | Documentación organizada según la estructura del proyecto de aula (Fases 1 a 4) | Completada | v3.3.0 |
-| Kevin Mercado | Métodos de pago colombianos y costo de cada venta (`PaymentMethod`, `Sale`, `SaleItem`, `SaleService`) | Completada | v3.4.0 |
-| Kevin Mercado | Informes de ventas y exportación a Excel (`SalesReport`, `ReportService`, `ReportExportService`, `ReportExcelWriter`, `ReportController`) | Completada | v3.4.0 |
-| Kevin Mercado | Asistente con Gemini (`ia`, `AssistantService`, `AssistantTools`, `AssistantSettingsService`, `AssistantController`) | Completada | v3.4.0 |
-| Dair Quintero | Fuente Outfit, logo de la T e íconos de la aplicación en alta resolución | Completada | v3.4.0 |
-| Dair Quintero | Ventana de Edge con servidor local y transiciones de JavaFX (`DesktopBrowserApp`, `LocalWebServer`, `BrowserWindow`, `SseNotifier`, `BridgeInvoker`) | Completada | v3.4.0 |
-| Dair Quintero | Interfaz plana con color por tipo de negocio, pantalla Hoy, cuaderno de caja, Informes con PDF, asistente y métodos de pago en las ventas | Completada | v3.4.0 |
+| Kevin Mercado | Nombres de las clases en inglés y utilidad por producto | Completada | v3.3.0 |
+| Dair Quintero | Precio de compra y venta, columna de utilidad e interfaz rediseñada | Completada | v3.3.0 |
+| Reinaldo Padilla | Documentación por fases (Fase 1 a 4) | Completada | v3.3.0 |
+| Kevin Mercado | Métodos de pago (`PaymentMethod`), informes (`ReportService`, Excel) y asistente (`ia`, `AssistantService`) | Completada | v3.4.0 |
+| Dair Quintero | Ventana de Edge, interfaz plana con color por tipo de negocio, pantalla Hoy, cuaderno de caja, Informes, asistente y métodos de pago, capturas | Completada | v3.4.0 |
 | Reinaldo Padilla | Documentación v3.4.0: diagramas, requerimientos, clases nuevas y trazabilidad | Completada | v3.4.0 |
-| Por asignar | Persistencia en base de datos relacional con DAO (implementación de `Repository<T>`) | Pendiente | — |
-| Por asignar | MER y diccionario de datos de la base de datos relacional | Pendiente | — |
-
+| Kevin Mercado | Guardar los datos en PostgreSQL u Oracle (repositorios JDBC, scripts SQL y cambios automáticos del esquema) | Completada | v3.5.0 |
+| Kevin Mercado | Borrado lógico (deshabilitar y anular con motivo) y sección Costos | Completada | v3.5.0 |
+| Kevin Mercado | Copias de seguridad dentro de la base de datos | Completada | v3.5.0 |
+| Kevin Mercado | Historial de acciones (quién hizo qué y cuándo) | Completada | v3.5.0 |
+| Kevin Mercado | Fiados: quién debe, abonos y anulación de abonos | Completada | v3.5.0 |
+| Kevin Mercado | Base en la nube desde varios computadores: recarga por cambios, stock real al vender y reconexión | Completada | v3.5.0 |
+| Dair Quintero | Celular como lector de etiquetas QR por el Wi-Fi del local | Completada | v3.5.0 |
+| Dair Quintero | Interfaz: inicio de sesión y ventanas en vidrio, Fiados, Historial, Usuarios, buscador, cobro por cuenta y QR de Bre-B, y carga más rápida | Completada | v3.5.0 |
+| Dair Quintero | Capturas de la interfaz v3.5.0 | Completada | v3.5.0 |
+| Reinaldo Padilla | Inicio de sesión con roles (dueño, administrador y cajero) | Completada | v3.5.0 |
+| Reinaldo Padilla | El asistente respeta el rol y responde quién debe | Completada | v3.5.0 |
+| Reinaldo Padilla | Documentación v3.5.0: fases 1 a 4, diagramas, trazabilidad y README | Completada | v3.5.0 |
+| Kevin Mercado | Procedimientos almacenados de consulta en la base de datos | En progreso | siguiente versión |
+| Equipo | Pruebas unitarias con JUnit | Pendiente | siguiente versión |
+| Equipo | Conectar una pasarela de pago (hoy solo se registra el medio de pago) | Pendiente | trabajo futuro |
+| Equipo | Versión para celular Android y datos en la nube | Pendiente | trabajo futuro |

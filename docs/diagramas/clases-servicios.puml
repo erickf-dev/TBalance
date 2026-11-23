@@ -14,68 +14,120 @@ skinparam package {
   BorderColor #1e4a35
   FontColor #14281d
 }
-skinparam note {
-  BackgroundColor #fdf8ea
-  BorderColor #d4a72c
-}
 hide empty members
 
-title Diagrama de clases — paquete service y raíz de composición
-package sistemainventario {
-class AppContext {
-  - directorioDatos : Path
-  - gestorRespaldo : BackupService
-  - gestorEtiquetas : LabelService
-  - ajustesAsistente : AssistantSettingsService
-  - exportadorInformes : ReportExportService
-  - gestorPerfiles : ProfileService
-  - serviciosActivos : ProfileServices
-  + recargar()
-  + restaurarRespaldo(nombre : String) : Backup
-  + get() : AppContext {static}
-  + requerirServiciosActivos() : ProfileServices
-  + activarPerfil(perfilId : String)
-  + eliminarPerfil(perfilId : String)
-  + esPrimerArranque() : boolean
-}
-}
+title Diagrama de clases — lógica de negocio (service) — TBalance v3.5.0
+
 package service {
-abstract class EntityService<T extends IdentifiedEntity> {
-  # repositorio : Repository<T>
-  + listarTodos() : List<T>
-  + buscarPorId(id : String) : Optional<T>
-  + obtener(id : String) : T
-  + guardar(entidad : T) : T
-  + eliminar(id : String) : boolean
-  # validar(entidad : T) {abstract}
-  # generarId() : String {abstract}
-  # nombreEntidad() : String {abstract}
+class AuditService {
+  - historial : Repository<AuditEntry>
+  + registrar()
 }
-class InventoryService {
-  # validar(producto : Product)
-  # generarId() : String
-  # nombreEntidad() : String
-  + registrarCambioDeStock(producto : Product)
-  + buscarPorTexto(texto : String) : List<Product>
-  + filtrarPorCategoria(categoria : String) : List<Product>
-  + getUtilidadEstimadaInventario() : double
-  + getSinPrecioCompra() : List<Product>
-  + getBajoStock() : List<Product>
-  + getAgotados() : List<Product>
-  + getVencidos() : List<Product>
-  + getPorVencer(dias : int) : List<Product>
+class BackupService {
+  - archivador : ZipArchiver
+  - almacen : BackupStore
+  - datos : DataSnapshot
+  + usar()
+  + listar() : List<Backup>
+  + crear() : Backup
+  + restaurar() : Backup
+  + eliminar()
+  + getCarpetaRespaldos() : Path
+  + getUbicacion() : String
 }
 class CategoryService {
-  # validar(categoria : Category)
-  # generarId() : String
-  # nombreEntidad() : String
-  + crearPredefinidas(tipoNegocio : BusinessType)
+  - productos : Supplier<List<Product>>
+  + usarProductos()
+  + resolverCategoria()
+  + sinCategoria() : Category
+  + buscarPorNombre() : Optional<Category>
+  + validarDeshabilitar()
+  + validar()
+  + generarId() : String
+  + nombreEntidad() : String
+  + crearPredefinidas()
 }
-class SupplierService {
-  # validar(proveedor : Supplier)
-  # generarId() : String
-  # nombreEntidad() : String
-  + buscar(texto : String) : List<Supplier>
+class CostService {
+  - inventario : InventoryService
+  - movimientos : MovementService
+  - proveedores : SupplierService
+  + resumen() : Summary
+}
+class CreditService {
+  - ventas : SaleService
+  - abonos : Repository<CreditPayment>
+  + listarCuentas() : List<CustomerDebt>
+  + obtenerCuenta() : CustomerDebt
+  + totalPorCobrar() : double
+  + registrarAbono() : CreditPayment
+  + anularAbono() : CreditPayment
+  + listarAbonos() : List<CreditPayment>
+  + {static} claveCliente() : String
+}
+interface DataSnapshot {
+  + {abstract} prepararCarpeta() : Path
+  + {abstract} liberarCarpeta()
+  + {abstract} restaurarDesde()
+}
+class DataTransferService {
+  + copiar() : Resumen
+  + copiarUsuarios()
+  + vaciar()
+}
+class DatabaseSnapshot {
+  - base : StorageProvider
+  - copiador : DataTransferService
+  + prepararCarpeta() : Path
+  + liberarCarpeta()
+  + restaurarDesde()
+}
+abstract class EntityService {
+  - repositorio : Repository<T>
+  + refrescar()
+  + listarTodos() : List<T>
+  + listarDeshabilitados() : List<T>
+  + buscarPorId() : Optional<T>
+  + obtener() : T
+  + guardar() : T
+  + cambiarEstado() : T
+  + validarDeshabilitar()
+  + {abstract} validar()
+  + ... (2 más)
+}
+class FileSnapshot {
+  - directorioDatos : Path
+  + prepararCarpeta() : Path
+  + liberarCarpeta()
+  + restaurarDesde()
+}
+class GlobalConfigService {
+  - repositorio : GlobalConfigRepository
+  + esPrimerArranque() : boolean
+  + getPerfilActivoId() : Optional<String>
+  + establecerPerfilActivo()
+  + sincronizarPerfiles()
+}
+class InventoryService {
+  - categorias : CategoryService
+  + usarCategorias()
+  + validar()
+  + normalizarCategorias() : int
+  + generarId() : String
+  + nombreEntidad() : String
+  + obtenerHabilitado() : Product
+  + registrarCambioDeStock()
+  + buscarPorTexto() : List<Product>
+  + filtrarPorCategoria() : List<Product>
+  + ... (6 más)
+}
+class LabelService {
+  - generadorQR : QrGenerator
+  - etiquetas : LabelRepository
+  + vistaPrevia() : String
+  + guardarEtiqueta() : Path
+  + guardarHojas() : List<Path>
+  + getCarpeta() : Path
+  + dibujarEtiqueta() : BufferedImage
 }
 class MovementService {
   - inventario : InventoryService
@@ -83,25 +135,12 @@ class MovementService {
   - salidas : Repository<StockExit>
   + listarEntradas() : List<StockEntry>
   + listarSalidas() : List<StockExit>
-  + registrarEntrada(entrada : StockEntry) : StockEntry
-  + registrarSalida(salida : StockExit) : StockExit
-}
-class SaleService {
-  - inventario : InventoryService
-  - ventas : Repository<Sale>
-  + registrar(venta : Sale) : Sale
-  + listarTodas() : List<Sale>
-}
-class ProfileServices <<record>> {
-  - inventario : InventoryService
-  - categorias : CategoryService
-  - proveedores : SupplierService
-  - movimientos : MovementService
-  - ventas : SaleService
-}
-class ProfileServicesFactory {
-  - directorios : ProfileDirectory
-  + crear(perfilId : String) : ProfileServices
+  + listarEntradasAnuladas() : List<StockEntry>
+  + listarSalidasAnuladas() : List<StockExit>
+  + anularEntrada() : StockEntry
+  + anularSalida() : StockExit
+  + registrarEntrada() : StockEntry
+  + registrarSalida() : StockExit
 }
 class ProfileService {
   - perfiles : Repository<Profile>
@@ -109,95 +148,105 @@ class ProfileService {
   - directorios : ProfileDirectory
   - fabricaServicios : ProfileServicesFactory
   + listarTodos() : List<Profile>
-  + buscarPorId(id : String) : Optional<Profile>
+  + buscarPorId() : Optional<Profile>
   + getPerfilActivo() : Optional<Profile>
   + esPrimerArranque() : boolean
   + resolverPerfilInicial() : Optional<String>
-  + crear(datos : Profile) : Profile
-  + actualizar(cambios : Profile) : Profile
-  + eliminar(id : String)
-  + seleccionar(id : String) : Optional<ProfileServices>
-  + crearServicios(id : String) : ProfileServices
+  + crear() : Profile
+  + actualizar() : Profile
+  + deshabilitar()
+  + habilitar()
+  + ... (4 más)
 }
-class GlobalConfigService {
-  - repositorio : GlobalConfigRepository
-  + esPrimerArranque() : boolean
-  + establecerPerfilActivo(perfilId : String)
-  + sincronizarPerfiles(perfiles : List<Profile>)
+class ProfileServices <<record>> {
 }
-class BackupService {
-  - directorioDatos : Path
-  - respaldos : BackupRepository
-  - archivador : ZipArchiver
-  + listar() : List<Backup>
-  + crear() : Backup
-  + restaurar(nombre : String) : Backup
-  + eliminar(nombre : String)
-}
-class LabelService {
-  - generadorQR : QrGenerator
-  - etiquetas : LabelRepository
-  + vistaPrevia(producto : Product) : String
-  + guardarEtiqueta(producto : Product) : Path
-  + guardarHojas(productos : List<Product>) : List<Path>
-  + dibujarEtiqueta(producto : Product) : BufferedImage
+class ProfileServicesFactory {
+  - almacen : StorageProvider
+  + crear() : ProfileServices
+  + normalizarCategorias() : int
 }
 class QrSaleScanner {
   - lector : QrReader
   - reloj : LongSupplier
+  - nombreNegocio : Function<String, Optional<String>>
   - ultimoContenido : String
   - ultimaLectura : long
-  + procesar(cuadro : BufferedImage, inventario : InventoryService) : Optional<Product>
+  + conNombresDeNegocio() : QrSaleScanner
+  + procesar() : Optional<Lectura>
+  + validar() : Lectura
 }
-class AssistantSettingsService {
-  - repositorio : AssistantConfigRepository
-  + leer() : Optional<AssistantSettings>
-  + modeloActual() : String
-  + configurar(clave : String, modelo : String)
-  + requerir() : AssistantSettings
-  + crearModelo(alCambiarModelo : Consumer<String>) : LanguageModel
-  + probarConexion(alCambiarModelo : Consumer<String>) : ConnectionTest
+class SaleService {
+  - inventario : InventoryService
+  - ventas : Repository<Sale>
+  - medioPermitido : Predicate<String>
+  + usarMediosDePago()
+  + aceptaMedioPago() : boolean
+  + registrar() : Sale
+  + listarTodas() : List<Sale>
+  + listarAnuladas() : List<Sale>
+  + anular() : Sale
+  + obtener() : Sale
+  + getTotalVentas() : double
+  + getTotalTransacciones() : int
 }
-class ReportExportService {
-  - excel : ReportExcelWriter
-  - carpeta : Path
-  + exportarExcel(informe : SalesReport, negocio : String) : Path
-  + carpetaPorDefecto(usuario : Path) : Path {static}
+class SessionService {
+  - reloj : LongSupplier
+  - usuario : User
+  - ultimaActividad : long
+  + abrir()
+  + cerrar()
+  + refrescar()
+  + registrarActividad() : boolean
+  + actual() : Optional<User>
+  + requerir() : User
+  + rolEn() : Optional<Rol>
+  + puede() : boolean
+}
+class StorageService {
+  - ajustes : DatabaseSettingsRepository
+  - directorioDatos : Path
+  - copiador : DataTransferService
+  + leer() : DatabaseSettings
+  + abrir() : Apertura
+  + probar() : String
+  + guardar()
+  + exportarAArchivos()
+}
+class SupplierService {
+  + validar()
+  + generarId() : String
+  + nombreEntidad() : String
+  + buscar() : List<Supplier>
+}
+class UserService {
+  - repositorio : Repository<User>
+  + esPrimeraVez() : boolean
+  + crearPrimerDueno() : User
+  + iniciarSesion() : User
+  + usuariosDe() : List<User>
+  + crear() : User
+  + editar() : User
+  + cambiarEstado()
+  + restablecerClave()
+  + cambiarMiClave()
+  + ... (2 más)
 }
 }
-package util {
-class QrGenerator {
-  + generar(contenido : String, tamanoPx : int) : BufferedImage
-}
-class QrReader {
-  - pistas : Map<DecodeHintType, Object>
-  + leer(imagen : BufferedImage) : Optional<String>
-}
-}
-
-interface Repository<T>
-EntityService <|-- InventoryService
+BackupService --> DataSnapshot
+CostService --> InventoryService
+CostService --> MovementService
+CostService --> SupplierService
+CreditService --> SaleService
+DataSnapshot <|.. DatabaseSnapshot
+DataSnapshot <|.. FileSnapshot
+DatabaseSnapshot --> DataTransferService
 EntityService <|-- CategoryService
+EntityService <|-- InventoryService
 EntityService <|-- SupplierService
-EntityService o-- Repository : repositorio
-MovementService o-- InventoryService
-SaleService o-- InventoryService
-ProfileServices *-- InventoryService
-ProfileServices *-- CategoryService
-ProfileServices *-- SupplierService
-ProfileServices *-- MovementService
-ProfileServices *-- SaleService
-ProfileServicesFactory ..> ProfileServices : crea
-ProfileService o-- ProfileServicesFactory
-ProfileService o-- GlobalConfigService
-AppContext *-- ProfileService
-AppContext *-- BackupService
-AppContext *-- LabelService
-AppContext *-- AssistantSettingsService
-AppContext *-- ReportExportService
-AppContext o-- ProfileServices : serviciosActivos
-LabelService o-- QrGenerator
-QrSaleScanner o-- QrReader
-QrSaleScanner ..> InventoryService : procesar()
-
+InventoryService --> CategoryService
+MovementService --> InventoryService
+ProfileService --> GlobalConfigService
+ProfileService --> ProfileServicesFactory
+SaleService --> InventoryService
+StorageService --> DataTransferService
 @enduml

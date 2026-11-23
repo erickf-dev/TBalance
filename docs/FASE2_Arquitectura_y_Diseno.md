@@ -11,770 +11,1133 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 
 ![Diagrama de paquetes](diagramas/paquetes.png)
 
-| Capa | Paquetes | Responsabilidad |
+| Capa | Paquetes | Qué hace |
 |---|---|---|
-| Presentación | `resources/html`, `view`, `bridge` | Interfaz web (HTML, CSS y JavaScript), ventana de Edge con su servidor local o ventana JavaFX con el `WebView`, y controladores que reciben los eventos de la vista. |
-| Lógica de negocio | `service`, `model` | Casos de uso y reglas de negocio (incluye informes y asistente); entidades del dominio con sus propias reglas. |
-| Acceso a datos | `repository`, `ia`, `dispositivo` | Lectura y escritura de archivos JSON, copias `.zip`, imágenes `.png` y libros `.xlsx`; cliente del modelo de lenguaje (Gemini); acceso a la webcam. |
-| Transversal | `util`, `exception` | Utilidades sin estado (fechas, IDs, texto, JSON, QR) y excepciones del proyecto. |
-| Raíz | `sistemainventario` | `Launcher` y `Main` arrancan la aplicación; `AppContext` crea y conecta los objetos. |
+| Presentación | `resources/html`, `view`, `bridge` | La página web que ve el usuario, la ventana que la muestra y los controladores que reciben lo que el usuario hace. |
+| Lógica de negocio | `service`, `model` | Las reglas del negocio: vender, registrar mercancía, calcular la deuda de un cliente, revisar permisos. |
+| Acceso a datos | `repository`, `ia`, `dispositivo` | Guardar y leer los datos (PostgreSQL, Oracle o archivos JSON), hablar con el asistente en internet y usar la cámara o el celular. |
+| Transversal | `util`, `exception` | Utilidades que usan todas las capas (fechas, textos, códigos QR, cifrado de contraseñas) y los errores del proyecto. |
+| Raíz | `sistemainventario` | `Launcher` y `Main` arrancan el programa; `AppContext` crea los objetos y los conecta. |
 
-Las flechas del diagrama son las dependencias reales del código (los `import` de cada paquete). La vista nunca accede a los repositorios ni al servicio externo: el `bridge` llega a los datos y al asistente solo a través de los servicios.
+Cada capa solo usa a la de abajo: la pantalla nunca lee la base de datos directamente, siempre pasa por los servicios.
 
 ## 2. Diagrama de clases
 
-El sistema tiene **95 clases**: 85 concretas (incluye 2 enumeraciones y 3 records), 4 abstractas y 6 interfaces. Por su tamaño, el diagrama se divide en seis vistas. En los diagramas se omiten los getters y setters.
+El sistema tiene **154 clases**: 126 concretas, 5 abstractas, 13 interfaces, 5 enumeraciones y 5 registros (`record`). Por su tamaño, el diagrama se divide en siete partes. En los diagramas no se dibujan los getters y setters.
 
-### 2.1 Modelo de dominio (`model`, `exception`)
+### 2.1 Modelo del negocio (`model`, `exception`)
 
 ![Diagrama de clases del modelo](diagramas/clases-modelo.png)
 
-### 2.2 Acceso a datos (`repository`)
+### 2.2 Acceso a datos con archivos (`repository`)
 
-![Diagrama de clases de persistencia](diagramas/clases-persistencia.png)
+![Diagrama de clases de persistencia con archivos](diagramas/clases-persistencia.png)
 
-### 2.3 Servicios y raíz de composición (`service`, `AppContext`, `util`)
+### 2.3 Acceso a datos con PostgreSQL y Oracle (`repository`)
+
+![Diagrama de clases de persistencia con base de datos](diagramas/clases-persistencia-bd.png)
+
+### 2.4 Lógica de negocio (`service`)
 
 ![Diagrama de clases de servicios](diagramas/clases-servicios.png)
 
-### 2.4 Presentación y dispositivo (`bridge`, `dispositivo`)
+### 2.5 Presentación (`bridge` y raíz)
 
 ![Diagrama de clases de presentación](diagramas/clases-presentacion.png)
 
-### 2.5 Ventanas: Edge y JavaFX (`view`, `Main`, `Launcher`)
+### 2.6 Ventanas, cámaras y utilidades (`view`, `dispositivo`, `util`)
 
-![Diagrama de clases de las ventanas](diagramas/clases-ventanas.png)
+![Diagrama de clases de ventanas y utilidades](diagramas/clases-ventanas.png)
 
-### 2.6 Informes y asistente (`service`, `ia`, `model`, `repository`)
+### 2.7 Informes y asistente (`service`, `ia`, `model`, `repository`)
 
 ![Diagrama de clases de informes y asistente](diagramas/clases-informes-asistente.png)
 
-Las fuentes de los diagramas están en [`docs/diagramas`](diagramas) (archivos `.puml` de PlantUML).
+Los diagramas se generan a partir del código; sus fuentes están en [`docs/diagramas`](diagramas) (archivos `.puml` de PlantUML).
 
 ### Tabla de identificación de clases
 
-| # | Nombre | Tipo | Descripción y rol |
-|---|---|---|---|
-| 1 | [`AppContext`](../src/main/java/sistemainventario/AppContext.java) | Concreta | `sistemainventario` — Singleton y raíz de composición: crea los repositorios y servicios, los conecta por constructor y cambia los servicios cuando se activa otro perfil. |
-| 2 | [`Launcher`](../src/main/java/sistemainventario/Launcher.java) | Concreta | `sistemainventario` — Punto de entrada que no extiende Application; permite ejecutar la aplicación desde IntelliJ sin configurar módulos de JavaFX. |
-| 3 | [`Main`](../src/main/java/sistemainventario/Main.java) | Concreta | `sistemainventario` — Aplicación de TBalance: abre la interfaz en una ventana de Edge (DesktopBrowserApp) y, si no hay Edge ni Chrome, en el visor de JavaFX. |
-| 4 | [`AssistantSettings`](../src/main/java/sistemainventario/model/AssistantSettings.java) | Record (concreta) | `model` — Record con la configuración del asistente: clave de API y modelo de Gemini. |
-| 5 | [`Backup`](../src/main/java/sistemainventario/model/Backup.java) | Concreta | `model` — Datos de solo lectura de una copia de seguridad: nombre, fecha y tamaño. |
-| 6 | [`BusinessType`](../src/main/java/sistemainventario/model/BusinessType.java) | Enumeración (concreta) | `model` — Enumeración de tipos de negocio con sus categorías predefinidas y sugerencias para los formularios. |
-| 7 | [`Category`](../src/main/java/sistemainventario/model/Category.java) | Concreta | `model` — Agrupa los productos de un perfil (por ejemplo “Bebidas”) y valida sus propios datos. |
-| 8 | [`GlobalConfig`](../src/main/java/sistemainventario/model/GlobalConfig.java) | Concreta | `model` — Guarda la lista de perfiles y cuál es el perfil activo. |
-| 9 | [`IdentifiedEntity`](../src/main/java/sistemainventario/model/IdentifiedEntity.java) | Abstracta | `model` — Superclase abstracta de las entidades persistidas: encapsula el ID y define la igualdad por ID. |
-| 10 | [`InventoryMovement`](../src/main/java/sistemainventario/model/InventoryMovement.java) | Abstracta | `model` — Superclase abstracta de los movimientos que cambian el stock; define aplicarA(Product) para que cada subclase lo implemente. |
-| 11 | [`PaymentMethod`](../src/main/java/sistemainventario/model/PaymentMethod.java) | Enumeración (concreta) | `model` — Enumeración de los métodos de pago de las tiendas colombianas (efectivo, Nequi, Daviplata, Bre-B, transferencia, tarjetas y fiado) e indica cuáles son digitales. |
-| 12 | [`Product`](../src/main/java/sistemainventario/model/Product.java) | Concreta | `model` — Artículo del inventario; controla su stock, estado, vencimiento y el texto de su etiqueta QR. |
-| 13 | [`Profile`](../src/main/java/sistemainventario/model/Profile.java) | Concreta | `model` — Negocio independiente con sus propios datos, tipo de negocio y configuración. |
-| 14 | [`Sale`](../src/main/java/sistemainventario/model/Sale.java) | Concreta | `model` — Venta con uno o varios ítems; crea sus ítems, calcula el total, agrupa cantidades por producto y valida el método de pago. |
-| 15 | [`SaleItem`](../src/main/java/sistemainventario/model/SaleItem.java) | Concreta | `model` — Línea de una venta: producto, cantidad, precio unitario, subtotal y costo del producto en el momento de la venta. |
-| 16 | [`SalesReport`](../src/main/java/sistemainventario/model/SalesReport.java) | Record (concreta) | `model` — Record con el informe de ventas de un período: totales, comparación con el período anterior, serie en el tiempo, productos más vendidos, métodos de pago y detalle. |
-| 17 | [`StockEntry`](../src/main/java/sistemainventario/model/StockEntry.java) | Concreta | `model` — Ingreso de mercancía: al aplicarse aumenta el stock del producto. |
-| 18 | [`StockExit`](../src/main/java/sistemainventario/model/StockExit.java) | Concreta | `model` — Retiro de mercancía que no es venta (daño, merma, uso interno): al aplicarse disminuye el stock. |
-| 19 | [`Supplier`](../src/main/java/sistemainventario/model/Supplier.java) | Concreta | `model` — Distribuidor que abastece productos; valida sus datos y responde búsquedas. |
-| 20 | [`AssistantException`](../src/main/java/sistemainventario/exception/AssistantException.java) | Concreta | `exception` — Excepción no comprobada con un mensaje claro cuando falla la conexión con el modelo (sin internet, clave inválida, límite gratuito). |
-| 21 | [`PersistenceException`](../src/main/java/sistemainventario/exception/PersistenceException.java) | Concreta | `exception` — Excepción no comprobada para errores al leer o escribir archivos de datos. |
-| 22 | [`ValidationException`](../src/main/java/sistemainventario/exception/ValidationException.java) | Concreta | `exception` — Excepción no comprobada para reglas de negocio o datos de entrada inválidos. |
-| 23 | [`AssistantConfigRepository`](../src/main/java/sistemainventario/repository/AssistantConfigRepository.java) | Concreta | `repository` — Lee y escribe la configuración del asistente (AssistantSettings) en ~/.inventariopro/asistente.json, fuera de los datos de los perfiles y de las copias. |
-| 24 | [`BackupRepository`](../src/main/java/sistemainventario/repository/BackupRepository.java) | Concreta | `repository` — Lista, ubica y elimina los archivos .zip de la carpeta de respaldos, validando sus nombres. |
-| 25 | [`CategoryRepository`](../src/main/java/sistemainventario/repository/CategoryRepository.java) | Concreta | `repository` — Repositorio de categorías de un perfil en categorias.json. |
-| 26 | [`GlobalConfigRepository`](../src/main/java/sistemainventario/repository/GlobalConfigRepository.java) | Concreta | `repository` — Lee y escribe configuracion-global.json mediante JsonFileStore. |
-| 27 | [`JsonFileStore`](../src/main/java/sistemainventario/repository/JsonFileStore.java) | Concreta | `repository` — Lee y escribe un archivo de texto; escribe primero un archivo temporal y luego reemplaza el original. |
-| 28 | [`JsonRepository`](../src/main/java/sistemainventario/repository/JsonRepository.java) | Abstracta | `repository` — Implementación genérica de Repository: mantiene la lista en memoria y la guarda en un archivo JSON. |
-| 29 | [`LabelRepository`](../src/main/java/sistemainventario/repository/LabelRepository.java) | Concreta | `repository` — Guarda las etiquetas como imágenes PNG y las convierte a data URI para la vista. |
-| 30 | [`ProductRepository`](../src/main/java/sistemainventario/repository/ProductRepository.java) | Concreta | `repository` — Repositorio de productos de un perfil en productos.json. |
-| 31 | [`ProfileDirectory`](../src/main/java/sistemainventario/repository/ProfileDirectory.java) | Concreta | `repository` — Crea, ubica y elimina las carpetas de datos de cada perfil. |
-| 32 | [`ProfileRepository`](../src/main/java/sistemainventario/repository/ProfileRepository.java) | Concreta | `repository` — Repositorio de la lista de perfiles en perfiles.json. |
-| 33 | [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) | Concreta | `repository` — Escribe un SalesReport como libro de Excel (.xlsx) de cuatro hojas con formato de informe, sin librerías externas. |
-| 34 | [`Repository`](../src/main/java/sistemainventario/repository/Repository.java) | Interfaz | `repository` — Contrato genérico de acceso a datos (listar, buscar, agregar, actualizar, eliminar) que usan los servicios. |
-| 35 | [`SaleRepository`](../src/main/java/sistemainventario/repository/SaleRepository.java) | Concreta | `repository` — Repositorio de ventas de un perfil en ventas.json. |
-| 36 | [`StockEntryRepository`](../src/main/java/sistemainventario/repository/StockEntryRepository.java) | Concreta | `repository` — Repositorio de entradas de inventario de un perfil en entradas.json. |
-| 37 | [`StockExitRepository`](../src/main/java/sistemainventario/repository/StockExitRepository.java) | Concreta | `repository` — Repositorio de salidas de inventario de un perfil en salidas.json. |
-| 38 | [`SupplierRepository`](../src/main/java/sistemainventario/repository/SupplierRepository.java) | Concreta | `repository` — Repositorio de proveedores de un perfil en proveedores.json. |
-| 39 | [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java) | Concreta | `repository` — Comprime una carpeta en un .zip y lo extrae, rechazando rutas que salgan de la carpeta destino. |
-| 40 | [`GeminiClient`](../src/main/java/sistemainventario/ia/GeminiClient.java) | Concreta | `ia` — Implementación de LanguageModel con la API de Google Gemini (capa gratuita); si Google retira el modelo, elige otro disponible. |
-| 41 | [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) | Interfaz | `ia` — Contrato de un modelo de lenguaje en la nube: recibe instrucciones, historial y funciones y devuelve texto o llamadas a funciones. |
-| 42 | [`SecureConnection`](../src/main/java/sistemainventario/ia/SecureConnection.java) | Concreta | `ia` — Crea el cliente HTTP del asistente con el proxy y los certificados de Windows además de los de Java. |
-| 43 | [`AssistantProposal`](../src/main/java/sistemainventario/service/AssistantProposal.java) | Concreta | `service` — Cambio propuesto por el asistente (venta, entrada, salida, precio o producto nuevo) que solo se ejecuta si el usuario lo confirma. |
-| 44 | [`AssistantService`](../src/main/java/sistemainventario/service/AssistantService.java) | Concreta | `service` — Conversación con el asistente: envía el historial al modelo, ejecuta las funciones que pide y guarda los cambios propuestos hasta que el usuario los confirme. |
-| 45 | [`AssistantSettingsService`](../src/main/java/sistemainventario/service/AssistantSettingsService.java) | Concreta | `service` — Configuración del asistente: guarda la clave y el modelo, crea el cliente del modelo de lenguaje y prueba la conexión. |
-| 46 | [`AssistantTools`](../src/main/java/sistemainventario/service/AssistantTools.java) | Concreta | `service` — Funciones del inventario que el asistente puede usar: consultas (productos, por reponer, proveedores, ventas, vencimientos) y propuestas de cambios. |
-| 47 | [`BackupService`](../src/main/java/sistemainventario/service/BackupService.java) | Concreta | `service` — Crea, lista, restaura (con copia automática previa) y elimina copias de seguridad. |
-| 48 | [`CategoryService`](../src/main/java/sistemainventario/service/CategoryService.java) | Concreta | `service` — Reglas de las categorías; crea las categorías predefinidas del tipo de negocio y asigna ID a las que no tienen. |
-| 49 | [`EntityService`](../src/main/java/sistemainventario/service/EntityService.java) | Abstracta | `service` — Servicio base abstracto con el CRUD común; guardar() es un método plantilla (Template Method). |
-| 50 | [`GlobalConfigService`](../src/main/java/sistemainventario/service/GlobalConfigService.java) | Concreta | `service` — Lee y actualiza la configuración global (perfil activo y lista de perfiles). |
-| 51 | [`InventoryService`](../src/main/java/sistemainventario/service/InventoryService.java) | Concreta | `service` — Reglas del catálogo de productos: validación, búsqueda, filtros y alertas de stock y vencimiento. |
-| 52 | [`LabelService`](../src/main/java/sistemainventario/service/LabelService.java) | Concreta | `service` — Dibuja la etiqueta QR de un producto y arma hojas tamaño carta de 18 etiquetas. |
-| 53 | [`MovementService`](../src/main/java/sistemainventario/service/MovementService.java) | Concreta | `service` — Registra entradas y salidas aplicando cada movimiento sobre el producto. |
-| 54 | [`ProfileService`](../src/main/java/sistemainventario/service/ProfileService.java) | Concreta | `service` — Ciclo de vida de los perfiles: crear, editar, eliminar y seleccionar. |
-| 55 | [`ProfileServices`](../src/main/java/sistemainventario/service/ProfileServices.java) | Record (concreta) | `service` — Record que agrupa los cinco gestores que trabajan sobre los datos de un perfil. |
-| 56 | [`ProfileServicesFactory`](../src/main/java/sistemainventario/service/ProfileServicesFactory.java) | Concreta | `service` — Crea los repositorios y servicios de un perfil a partir de su carpeta. |
-| 57 | [`QrSaleScanner`](../src/main/java/sistemainventario/service/QrSaleScanner.java) | Concreta | `service` — Convierte un cuadro de la cámara en el producto de la etiqueta y evita contar dos veces la misma etiqueta quieta. |
-| 58 | [`ReportExportService`](../src/main/java/sistemainventario/service/ReportExportService.java) | Concreta | `service` — Exporta un informe a Excel: decide la carpeta (Documentos/TBalance) y el nombre del archivo y usa ReportExcelWriter. |
-| 59 | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java) | Concreta | `service` — Calcula el informe de ventas de un período: totales, comparación, agrupación por día, semana o mes, ranking de productos, métodos de pago y utilidad real. |
-| 60 | [`SaleService`](../src/main/java/sistemainventario/service/SaleService.java) | Concreta | `service` — Registra ventas verificando el stock de todos los productos antes de descontarlo. |
-| 61 | [`SupplierService`](../src/main/java/sistemainventario/service/SupplierService.java) | Concreta | `service` — Reglas y búsqueda de proveedores. |
-| 62 | [`AssistantController`](../src/main/java/sistemainventario/bridge/AssistantController.java) | Concreta | `bridge` — Controlador del asistente: configuración, prueba de conexión y conversación en segundo plano; confirma o descarta lo que propone. |
-| 63 | [`BackupController`](../src/main/java/sistemainventario/bridge/BackupController.java) | Concreta | `bridge` — Controlador de los casos de uso de copias de seguridad. |
-| 64 | [`BridgeInvoker`](../src/main/java/sistemainventario/bridge/BridgeInvoker.java) | Concreta | `bridge` — Llama por nombre a un método público del JavaBridge con argumentos en JSON; lo usa el servidor local de la ventana de Edge. |
-| 65 | [`BridgeResponse`](../src/main/java/sistemainventario/bridge/BridgeResponse.java) | Concreta | `bridge` — Da formato a las respuestas para JavaScript (OK, JSON o “ERROR: …”) y centraliza el manejo de excepciones del bridge. |
-| 66 | [`CatalogController`](../src/main/java/sistemainventario/bridge/CatalogController.java) | Concreta | `bridge` — Controlador de los casos de uso de categorías y proveedores: convierte el JSON de la vista y delega en los gestores. |
-| 67 | [`DesktopFileOpener`](../src/main/java/sistemainventario/bridge/DesktopFileOpener.java) | Concreta | `bridge` — Implementación de FileOpener con java.awt.Desktop. |
-| 68 | [`FileOpener`](../src/main/java/sistemainventario/bridge/FileOpener.java) | Interfaz | `bridge` — Contrato para abrir un archivo o carpeta con el programa predeterminado del sistema operativo. |
-| 69 | [`InventoryController`](../src/main/java/sistemainventario/bridge/InventoryController.java) | Concreta | `bridge` — Controlador de los casos de uso de productos y de las estadísticas del inventario. |
-| 70 | [`JavaBridge`](../src/main/java/sistemainventario/bridge/JavaBridge.java) | Concreta | `bridge` — Fachada que la vista web usa como window.javaBridge; no tiene lógica, delega cada método en su controlador. |
-| 71 | [`LabelController`](../src/main/java/sistemainventario/bridge/LabelController.java) | Concreta | `bridge` — Controlador de los casos de uso de etiquetas QR: vista previa, guardar una etiqueta y generar la hoja de todos los productos. |
-| 72 | [`ProfileController`](../src/main/java/sistemainventario/bridge/ProfileController.java) | Concreta | `bridge` — Controlador de los casos de uso de perfiles: crear, editar, eliminar, seleccionar y describir los tipos de negocio. |
-| 73 | [`ReportController`](../src/main/java/sistemainventario/bridge/ReportController.java) | Concreta | `bridge` — Controlador de la sección Informes: devuelve el informe de un período en JSON y lo exporta a Excel. |
-| 74 | [`ScanController`](../src/main/java/sistemainventario/bridge/ScanController.java) | Concreta | `bridge` — Controlador del caso de uso “venta por QR”: enciende la cámara en un hilo propio, envía la vista previa y avisa a la vista cada producto leído. |
-| 75 | [`ScreenTransition`](../src/main/java/sistemainventario/bridge/ScreenTransition.java) | Interfaz | `bridge` — Contrato de una transición visual que la ventana hace por encima de la página (desvanecer una zona). |
-| 76 | [`SseNotifier`](../src/main/java/sistemainventario/bridge/SseNotifier.java) | Concreta | `bridge` — Implementación de ViewNotifier para la ventana de Edge: envía cada aviso a la página por una conexión de eventos (Server-Sent Events). |
-| 77 | [`TransactionController`](../src/main/java/sistemainventario/bridge/TransactionController.java) | Concreta | `bridge` — Controlador de los casos de uso que mueven stock: entradas, salidas y ventas. |
-| 78 | [`ViewNotifier`](../src/main/java/sistemainventario/bridge/ViewNotifier.java) | Interfaz | `bridge` — Contrato para que Java avise a la vista web ejecutando una función de JavaScript. |
-| 79 | [`WebViewNotifier`](../src/main/java/sistemainventario/bridge/WebViewNotifier.java) | Concreta | `bridge` — Implementación de ViewNotifier que ejecuta el script en el WebEngine de JavaFX, en el hilo de la interfaz. |
-| 80 | [`BrowserWindow`](../src/main/java/sistemainventario/view/BrowserWindow.java) | Concreta | `view` — Busca Edge o Chrome y abre la interfaz en modo aplicación (ventana sin barra de direcciones) con una carpeta de perfil propia. |
-| 81 | [`DesktopBrowserApp`](../src/main/java/sistemainventario/view/DesktopBrowserApp.java) | Concreta | `view` — Arranca la aplicación en una ventana de Edge: crea el servidor local, abre la ventana y cierra el programa cuando la ventana se cierra. |
-| 82 | [`LocalWebServer`](../src/main/java/sistemainventario/view/LocalWebServer.java) | Concreta | `view` — Servidor HTTP solo en 127.0.0.1 con clave aleatoria: entrega la interfaz, atiende las llamadas al bridge y envía los avisos a la página. |
-| 83 | [`SnapshotTransition`](../src/main/java/sistemainventario/view/SnapshotTransition.java) | Concreta | `view` — Implementación de ScreenTransition con JavaFX: toma una imagen de la zona y la desvanece con la tarjeta gráfica. |
-| 84 | [`WebViewMain`](../src/main/java/sistemainventario/view/WebViewMain.java) | Concreta | `view` — Ventana de respaldo con el visor de JavaFX: carga la interfaz HTML, registra el JavaBridge, hace las transiciones grandes y apaga la cámara al cerrar. |
-| 85 | [`WindowsTaskbarIcon`](../src/main/java/sistemainventario/view/WindowsTaskbarIcon.java) | Concreta | `view` — Asigna el ícono de alta resolución a la ventana de Edge en la barra de tareas de Windows (con PowerShell y la API de Windows). |
-| 86 | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) | Interfaz | `dispositivo` — Contrato de una cámara de la que se toman cuadros para leer códigos QR. |
-| 87 | [`WebcamCamera`](../src/main/java/sistemainventario/dispositivo/WebcamCamera.java) | Concreta | `dispositivo` — Implementación de Camera con la webcam del computador (librería webcam-capture). |
-| 88 | [`AssistantLog`](../src/main/java/sistemainventario/util/AssistantLog.java) | Concreta | `util` — Escribe los errores del asistente en ~/.inventariopro/asistente.log para poder revisar por qué no respondió. |
-| 89 | [`DateUtil`](../src/main/java/sistemainventario/util/DateUtil.java) | Concreta | `util` — Utilidades de fecha: fecha actual, conversión y formato. |
-| 90 | [`IdGenerator`](../src/main/java/sistemainventario/util/IdGenerator.java) | Concreta | `util` — Genera identificadores con prefijo o numéricos consecutivos. |
-| 91 | [`ImageEncoder`](../src/main/java/sistemainventario/util/ImageEncoder.java) | Concreta | `util` — Convierte una imagen en JPEG codificado en Base64 para mostrarla en la vista. |
-| 92 | [`JsonUtil`](../src/main/java/sistemainventario/util/JsonUtil.java) | Concreta | `util` — Configuración única de Gson para convertir objetos a JSON y viceversa. |
-| 93 | [`QrGenerator`](../src/main/java/sistemainventario/util/QrGenerator.java) | Concreta | `util` — Genera la imagen de un código QR a partir de un texto (ZXing). |
-| 94 | [`QrReader`](../src/main/java/sistemainventario/util/QrReader.java) | Concreta | `util` — Lee el texto de un código QR que aparece en una imagen (ZXing). |
-| 95 | [`TextUtil`](../src/main/java/sistemainventario/util/TextUtil.java) | Concreta | `util` — Utilidades de texto: vacío, búsqueda sin mayúsculas, normalizar y recortar. |
+| # | Clase | Tipo | Paquete | Capa | Rol |
+|---|---|---|---|---|---|
+| 1 | `AppContext` | Concreta | `raíz` | Presentación | Arma la aplicación al arrancar: crea los repositorios y los servicios, y los cambia cuando se abre otro negocio, se restaura una copia o se cambia de base de datos. |
+| 2 | `Launcher` | Concreta | `raíz` | Presentación | Punto de entrada para ejecutar TBalance desde IntelliJ o con Maven. |
+| 3 | `Main` | Concreta | `raíz` | Presentación | Arranca TBalance: abre la interfaz en Edge o, si no hay, en la ventana de JavaFX. |
+| 4 | `Acceso` | Concreta | `model` | Lógica de negocio | Dice a qué negocio entra una persona y con qué rol. |
+| 5 | `Anulable` | Interfaz | `model` | Lógica de negocio | Operación que no se borra sino que se anula: ventas, entradas y salidas. |
+| 6 | `AssistantSettings` | Registro | `model` | Lógica de negocio | Guarda la clave y el modelo del asistente. |
+| 7 | `AuditEntry` | Concreta | `model` | Lógica de negocio | Una acción registrada en el historial: quién, cuándo, en qué negocio y qué hizo. |
+| 8 | `Backup` | Concreta | `model` | Lógica de negocio | Información de un archivo de copia de seguridad (.zip) del sistema. |
+| 9 | `BusinessType` | Enumeración | `model` | Lógica de negocio | Tipos de negocio que puede tener un Profile. |
+| 10 | `Category` | Concreta | `model` | Lógica de negocio | Agrupación lógica de productos dentro de un perfil (por ejemplo "Medicamentos" o "Herramientas"). |
+| 11 | `CreditPayment` | Concreta | `model` | Lógica de negocio | Abono de un cliente para pagar lo que quedó debiendo de sus ventas fiadas; no se borra, se anula con motivo. |
+| 12 | `CustomerDebt` | Concreta | `model` | Lógica de negocio | Cuenta de un cliente que compró fiado: cuánto se le fió, cuánto ha abonado y cuánto debe. |
+| 13 | `DatabaseEngine` | Enumeración | `model` | Lógica de negocio | Dónde guarda TBalance los datos de los negocios. |
+| 14 | `DatabaseSettings` | Registro | `model` | Lógica de negocio | Conexión a la base de datos elegida en este computador. |
+| 15 | `Deshabilitable` | Interfaz | `model` | Lógica de negocio | Registro que no se borra sino que se deshabilita (borrado lógico). |
+| 16 | `GlobalConfig` | Concreta | `model` | Lógica de negocio | Configuración general: qué negocio está abierto y la lista de negocios. |
+| 17 | `IdentifiedEntity` | Abstracta | `model` | Lógica de negocio | Clase base de todo lo que se guarda: le da a cada objeto su ID. |
+| 18 | `InventoryMovement` | Abstracta | `model` | Lógica de negocio | Movimiento que modifica el stock de un producto (entrada o salida). |
+| 19 | `PaymentMethod` | Enumeración | `model` | Lógica de negocio | Métodos de pago que se usan en las tiendas colombianas. |
+| 20 | `Permiso` | Enumeración | `model` | Lógica de negocio | Acciones de TBalance que dependen del rol. |
+| 21 | `Product` | Concreta | `model` | Lógica de negocio | Producto del inventario de un negocio, con sus precios, stock y vencimiento. |
+| 22 | `Profile` | Concreta | `model` | Lógica de negocio | Un negocio: nombre, tipo, color y configuración (por ejemplo, los medios de pago que recibe). |
+| 23 | `QrLabel` | Registro | `model` | Lógica de negocio | Datos que se leen de una etiqueta QR de TBalance. |
+| 24 | `Rol` | Enumeración | `model` | Lógica de negocio | Rol de una persona dentro de un negocio. |
+| 25 | `Sale` | Concreta | `model` | Lógica de negocio | Transacción comercial compuesta por uno o varios SaleItem. |
+| 26 | `SaleItem` | Concreta | `model` | Lógica de negocio | Línea de detalle de una Sale: producto, cantidad y precio. |
+| 27 | `SalesReport` | Registro | `model` | Lógica de negocio | Informe de ventas de un período: totales, comparación con el período anterior, ventas agrupadas en el tiempo, productos más vendidos y métodos de pago. |
+| 28 | `StockEntry` | Concreta | `model` | Lógica de negocio | Ingreso de mercancía al inventario: incrementa el stock del producto. |
+| 29 | `StockExit` | Concreta | `model` | Lógica de negocio | Retiro de mercancía que no es una venta (merma, daño, uso interno): reduce el stock del producto. |
+| 30 | `Supplier` | Concreta | `model` | Lógica de negocio | Distribuidor o fabricante que abastece productos al negocio. |
+| 31 | `User` | Concreta | `model` | Lógica de negocio | Persona que usa TBalance, con su contraseña cifrada y sus accesos a los negocios. |
+| 32 | `AssistantException` | Concreta | `exception` | Transversal | Error al hablar con el modelo de lenguaje (sin internet, clave inválida, límite gratuito alcanzado...). |
+| 33 | `PersistenceException` | Concreta | `exception` | Transversal | Error al leer o escribir los datos (archivos o base de datos). |
+| 34 | `ValidationException` | Concreta | `exception` | Transversal | Error de una regla del negocio o de un dato mal escrito; su mensaje se le muestra al usuario. |
+| 35 | `AssistantConfigRepository` | Concreta | `repository` | Acceso a datos | Guarda la clave y el modelo del asistente en ~/.inventariopro/asistente.json. |
+| 36 | `AuditJdbcRepository` | Concreta | `repository` | Acceso a datos | Historial de acciones en la tabla AUDITORIA. |
+| 37 | `AuditRepository` | Concreta | `repository` | Acceso a datos | Historial de acciones en auditoria.json (junto a usuarios.json). |
+| 38 | `BackupRepository` | Concreta | `repository` | Acceso a datos | Administra los archivos de copia de seguridad guardados en ~/.inventariopro/respaldos/. |
+| 39 | `BackupStore` | Interfaz | `repository` | Acceso a datos | Dónde se guardan las copias de seguridad (archivos .zip con los datos en JSON). |
+| 40 | `CategoryJdbcRepository` | Concreta | `repository` | Acceso a datos | Categorías de un negocio en la tabla CATEGORIA. |
+| 41 | `CategoryRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las categorías de un perfil en categorias.json. |
+| 42 | `CreditPaymentJdbcRepository` | Concreta | `repository` | Acceso a datos | Abonos de los clientes que deben, en la tabla ABONO. |
+| 43 | `CreditPaymentRepository` | Concreta | `repository` | Acceso a datos | Abonos de los clientes que deben, en abonos.json de cada negocio. |
+| 44 | `Database` | Concreta | `repository` | Acceso a datos | Conexión JDBC a PostgreSQL u Oracle y utilidades para ejecutar SQL. |
+| 45 | `DatabaseBackupRepository` | Concreta | `repository` | Acceso a datos | Copias de seguridad dentro de PostgreSQL u Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna binaria (BYTEA o BLOB). |
+| 46 | `DatabaseSettingsRepository` | Concreta | `repository` | Acceso a datos | Guarda en ~/.inventariopro/basedatos.json qué base de datos usa este computador (motor, URL, usuario y clave). |
+| 47 | `DatabaseStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios JDBC sobre PostgreSQL u Oracle; todos comparten una conexión. |
+| 48 | `GlobalConfigRepository` | Concreta | `repository` | Acceso a datos | Persiste la GlobalConfig (perfil activo y lista de perfiles) en configuracion-global.json. |
+| 49 | `JdbcRepository` | Abstracta | `repository` | Acceso a datos | Repositorio genérico sobre una tabla de PostgreSQL u Oracle (acceso a datos con JDBC). |
+| 50 | `JsonFileStore` | Concreta | `repository` | Acceso a datos | Lectura y escritura de un archivo de texto JSON en disco. |
+| 51 | `JsonRepository` | Abstracta | `repository` | Acceso a datos | Implementación genérica de Repository que guarda una lista de entidades en un archivo JSON y la mantiene en memoria (caché). |
+| 52 | `JsonStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios en archivos JSON: data/perfiles.json y una carpeta por negocio. |
+| 53 | `LabelRepository` | Concreta | `repository` | Acceso a datos | Guarda las etiquetas generadas como imágenes PNG en ~/.inventariopro/etiquetas/ y las convierte a Base64 para mostrarlas en la vista. |
+| 54 | `OracleDialect` | Concreta | `repository` | Acceso a datos | Dialecto de Oracle (18c Express Edition o superior). |
+| 55 | `PaymentQrRepository` | Concreta | `repository` | Acceso a datos | Imagen del QR de cobro (Bre-B) de cada negocio, en ~/.inventariopro/qr-cobro/.img. |
+| 56 | `PostgresDialect` | Concreta | `repository` | Acceso a datos | Dialecto de PostgreSQL (11 o superior). |
+| 57 | `ProductJdbcRepository` | Concreta | `repository` | Acceso a datos | Productos de un negocio en la tabla PRODUCTO. |
+| 58 | `ProductRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los productos de un perfil en productos.json. |
+| 59 | `ProfileDirectory` | Concreta | `repository` | Acceso a datos | Administra las carpetas físicas de cada perfil: ~/.inventariopro/data/perfiles//. |
+| 60 | `ProfileJdbcRepository` | Concreta | `repository` | Acceso a datos | Perfiles (negocios) en la tabla PERFIL y su configuración en PERFIL_CONFIGURACION. |
+| 61 | `ProfileRepository` | Concreta | `repository` | Acceso a datos | Persistencia global de la lista de perfiles en perfiles.json. |
+| 62 | `ReportExcelWriter` | Concreta | `repository` | Acceso a datos | Guarda un SalesReport como libro de Excel (.xlsx) con formato de informe: encabezado con el negocio y el período, tablas con estilos, filas alternadas, totales con fórmulas, filtros, barras de datos, encabezados fijos y pie de página con el número de página para imprimir. |
+| 63 | `Repository` | Interfaz | `repository` | Acceso a datos | Contrato de acceso a datos para cualquier entidad del sistema. |
+| 64 | `SaleJdbcRepository` | Concreta | `repository` | Acceso a datos | Ventas de un negocio en las tablas VENTA y DETALLE_VENTA. |
+| 65 | `SaleRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las ventas de un perfil en ventas.json. |
+| 66 | `SqlDialect` | Interfaz | `repository` | Acceso a datos | Diferencias entre PostgreSQL y Oracle (tipos de datos, consultas de catálogo). |
+| 67 | `StockEntryJdbcRepository` | Concreta | `repository` | Acceso a datos | Entradas de inventario de un negocio en la tabla ENTRADA. |
+| 68 | `StockEntryRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las entradas de inventario de un perfil en entradas.json. |
+| 69 | `StockExitJdbcRepository` | Concreta | `repository` | Acceso a datos | Salidas de inventario de un negocio en la tabla SALIDA. |
+| 70 | `StockExitRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las salidas de inventario de un perfil en salidas.json. |
+| 71 | `StorageProvider` | Interfaz | `repository` | Acceso a datos | Entrega los repositorios de TBalance, sean de archivos JSON o de base de datos. |
+| 72 | `SupplierJdbcRepository` | Concreta | `repository` | Acceso a datos | Proveedores de un negocio en la tabla PROVEEDOR. |
+| 73 | `SupplierRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los proveedores de un perfil en proveedores.json. |
+| 74 | `UserJdbcRepository` | Concreta | `repository` | Acceso a datos | Personas en la tabla USUARIO y sus accesos en NEGOCIO_USUARIO (qué negocio y con qué rol). |
+| 75 | `UserRepository` | Concreta | `repository` | Acceso a datos | Personas que usan TBalance, en usuarios.json (junto a perfiles.json). |
+| 76 | `ZipArchiver` | Concreta | `repository` | Acceso a datos | Comprime una carpeta en un archivo .zip y la extrae de nuevo. |
+| 77 | `GeminiClient` | Concreta | `ia` | Acceso a datos | Cliente de la API de Google Gemini (capa gratuita) con llamadas a funciones. |
+| 78 | `LanguageModel` | Interfaz | `ia` | Acceso a datos | Modelo de lenguaje en la nube que usa el asistente. |
+| 79 | `SecureConnection` | Concreta | `ia` | Acceso a datos | Prepara el cliente HTTP del asistente para que se conecte como lo hace Edge en el mismo computador. |
+| 80 | `AssistantProposal` | Concreta | `service` | Lógica de negocio | Cambio que el asistente propone y que solo se hace si el usuario lo confirma (registrar una venta, una entrada de mercancía, cambiar un precio...). |
+| 81 | `AssistantService` | Concreta | `service` | Lógica de negocio | Maneja la conversación con el asistente y guarda lo que propone hasta que el usuario confirma. |
+| 82 | `AssistantSettingsService` | Concreta | `service` | Lógica de negocio | Guarda y prueba la configuración del asistente. |
+| 83 | `AssistantTools` | Concreta | `service` | Lógica de negocio | Funciones del inventario que el asistente puede usar. |
+| 84 | `AuditService` | Concreta | `service` | Lógica de negocio | Anota acciones en el historial y las lista con filtros (persona, fechas, negocio). |
+| 85 | `BackupService` | Concreta | `service` | Lógica de negocio | Crea, lista, restaura y elimina las copias de seguridad. |
+| 86 | `CategoryService` | Concreta | `service` | Lógica de negocio | Casos de uso de las categorías de un perfil. |
+| 87 | `CostService` | Concreta | `service` | Lógica de negocio | Costos del negocio por sus productos: cuánto cuesta cada producto, cuánto costó todo lo que hay en inventario y cuánto se ha comprado (entradas) en un periodo. |
+| 88 | `CreditService` | Concreta | `service` | Lógica de negocio | Calcula quién debe y cuánto (ventas fiadas menos abonos) y registra y anula abonos. |
+| 89 | `DataSnapshot` | Interfaz | `service` | Lógica de negocio | Cómo se sacan y se reponen los datos para las copias de seguridad. |
+| 90 | `DataTransferService` | Concreta | `service` | Lógica de negocio | Copia todos los negocios de un almacenamiento a otro: de los archivos JSON a PostgreSQL u Oracle la primera vez que se conecta, y de la base a los archivos para las copias de seguridad. |
+| 91 | `DatabaseSnapshot` | Concreta | `service` | Lógica de negocio | Copias de seguridad cuando los datos están en PostgreSQL u Oracle. |
+| 92 | `EntityService` | Abstracta | `service` | Lógica de negocio | Servicio base para las entidades con CRUD simple (productos, categorías y proveedores). |
+| 93 | `FileSnapshot` | Concreta | `service` | Lógica de negocio | Copias de seguridad cuando los datos están en archivos JSON. |
+| 94 | `GlobalConfigService` | Concreta | `service` | Lógica de negocio | Lectura y actualización de la GlobalConfig. |
+| 95 | `InventoryService` | Concreta | `service` | Lógica de negocio | Casos de uso del catálogo de productos: CRUD, búsqueda, filtros y alertas de stock y vencimiento. |
+| 96 | `LabelService` | Concreta | `service` | Lógica de negocio | Genera etiquetas con código QR para los productos: una etiqueta individual (vista previa o imagen) y hojas listas para imprimir. |
+| 97 | `MovementService` | Concreta | `service` | Lógica de negocio | Registro de entradas y salidas de inventario. |
+| 98 | `ProfileService` | Concreta | `service` | Lógica de negocio | Crea, edita, deshabilita, habilita y abre negocios. |
+| 99 | `ProfileServices` | Registro | `service` | Lógica de negocio | Agrupa los servicios de un negocio: inventario, categorías, proveedores, movimientos, ventas y fiados. |
+| 100 | `ProfileServicesFactory` | Concreta | `service` | Lógica de negocio | Construye los repositorios y servicios de un perfil. |
+| 101 | `QrSaleScanner` | Concreta | `service` | Lógica de negocio | Convierte lo que ve la cámara en productos para la venta por QR. |
+| 102 | `ReportExportService` | Concreta | `service` | Lógica de negocio | Exporta un informe de ventas a un libro de Excel en la carpeta Documentos/TBalance. |
+| 103 | `ReportService` | Concreta | `service` | Lógica de negocio | Calcula los informes de ventas de un período. |
+| 104 | `SaleService` | Concreta | `service` | Lógica de negocio | Registro y consulta de ventas. |
+| 105 | `SessionService` | Concreta | `service` | Lógica de negocio | Guarda quién inició sesión y cierra la sesión después de 30 minutos sin uso. |
+| 106 | `StorageService` | Concreta | `service` | Lógica de negocio | Decide dónde se guardan los datos (archivos JSON, PostgreSQL u Oracle) y prepara ese almacenamiento. |
+| 107 | `SupplierService` | Concreta | `service` | Lógica de negocio | Casos de uso de los proveedores de un perfil. |
+| 108 | `UserService` | Concreta | `service` | Lógica de negocio | Casos de uso de las personas que usan TBalance: la primera cuenta (el dueño), iniciar sesión, crear usuarios de un negocio, deshabilitarlos y cambiar contraseñas. |
+| 109 | `AccessPolicy` | Concreta | `bridge` | Presentación | Revisa en Java, antes de cada llamada de la página, que la persona tenga la sesión abierta y el permiso que pide esa acción en el negocio abierto. |
+| 110 | `AssistantController` | Concreta | `bridge` | Presentación | Recibe las acciones del asistente: configurar la clave, conversar y confirmar o descartar lo que propone. |
+| 111 | `AuditTrail` | Concreta | `bridge` | Presentación | Decide qué llamadas del puente quedan en el historial y arma el texto de cada una. |
+| 112 | `BackupController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla copias de seguridad. |
+| 113 | `BridgeInvoker` | Concreta | `bridge` | Presentación | Ejecuta un método público de JavaBridge a partir de su nombre y de sus argumentos en JSON, y devuelve el resultado también en JSON. |
+| 114 | `BridgeResponse` | Concreta | `bridge` | Presentación | Formato de las respuestas que el bridge devuelve a JavaScript. |
+| 115 | `CatalogController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla categorías y proveedores. |
+| 116 | `CostController` | Concreta | `bridge` | Presentación | Entrega a la pantalla los datos de la sección Costos. |
+| 117 | `CreditController` | Concreta | `bridge` | Presentación | Recibe las acciones de la sección Fiados: ver quién debe, ver la cuenta de un cliente, registrar y anular abonos. |
+| 118 | `DesktopFileOpener` | Concreta | `bridge` | Presentación | Implementación de FileOpener con Desktop. |
+| 119 | `FileOpener` | Interfaz | `bridge` | Presentación | Abre un archivo o carpeta con el programa predeterminado del sistema operativo (visor de imágenes, explorador de archivos...). |
+| 120 | `InventoryController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla productos y del dashboard. |
+| 121 | `JavaBridge` | Concreta | `bridge` | Presentación | Objeto que la página web llama como window.javaBridge; pasa cada pedido al controlador que le corresponde. |
+| 122 | `LabelController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla etiquetas con código QR. |
+| 123 | `ProfileController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla perfiles: recibe los eventos de la vista, delega en ProfileService y avisa a la vista cuando cambia el estado. |
+| 124 | `ReportController` | Concreta | `bridge` | Presentación | Entrega a la pantalla los informes de ventas y los exporta a Excel. |
+| 125 | `ScanController` | Concreta | `bridge` | Presentación | Recibe la acción de la pantalla "registrar venta por QR". |
+| 126 | `ScreenTransition` | Interfaz | `bridge` | Presentación | Transición visual que hace la ventana de JavaFX por encima de la página HTML. |
+| 127 | `SessionController` | Concreta | `bridge` | Presentación | Recibe las acciones del inicio de sesión y de los usuarios de cada negocio. |
+| 128 | `SseNotifier` | Concreta | `bridge` | Presentación | Implementación de ViewNotifier para cuando la interfaz se muestra en Edge: envía cada script a la página por un flujo de eventos del servidor (Server-Sent Events) y la página lo ejecuta al recibirlo. |
+| 129 | `StorageController` | Concreta | `bridge` | Presentación | Recibe las acciones de "Dónde se guardan los datos": probar la conexión y cambiar de almacenamiento. |
+| 130 | `TransactionController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla que mueven stock: entradas, salidas y ventas. |
+| 131 | `ViewNotifier` | Interfaz | `bridge` | Presentación | Canal para que Java avise a la vista web de un cambio de estado. |
+| 132 | `WebViewNotifier` | Concreta | `bridge` | Presentación | Implementación de ViewNotifier sobre el WebEngine de JavaFX. |
+| 133 | `BrowserWindow` | Concreta | `view` | Presentación | Abre la interfaz en una ventana de aplicación de Microsoft Edge (o de Google Chrome si no hay Edge): una ventana propia, sin pestañas ni barra de direcciones, que dibuja la página con la tarjeta gráfica. |
+| 134 | `DesktopBrowserApp` | Concreta | `view` | Presentación | Arranca TBalance mostrando la interfaz en una ventana de Edge (modo aplicación) en lugar del visor de JavaFX. |
+| 135 | `LocalWebServer` | Concreta | `view` | Presentación | Servidor HTTP local (solo en 127.0.0.1) que entrega la interfaz a Edge y conecta la página con Java. |
+| 136 | `SnapshotTransition` | Concreta | `view` | Presentación | Hace las transiciones grandes de la ventana de JavaFX con animaciones de JavaFX. |
+| 137 | `WebViewBridgeAdapter` | Concreta | `view` | Presentación | Conecta la página con JavaBridge cuando se usa la ventana de JavaFX. |
+| 138 | `WebViewMain` | Concreta | `view` | Presentación | Ventana de JavaFX que muestra la interfaz cuando no hay Edge. |
+| 139 | `WindowsTaskbarIcon` | Concreta | `view` | Presentación | Pone el ícono de TBalance en alta resolución en la ventana de Edge (barra de tareas y barra de título de Windows). |
+| 140 | `Camera` | Interfaz | `dispositivo` | Acceso a datos | Cámara de la que se toman cuadros para leer códigos QR. |
+| 141 | `CameraProvider` | Interfaz | `dispositivo` | Acceso a datos | Cámaras disponibles en el computador. |
+| 142 | `PhoneCamera` | Concreta | `dispositivo` | Acceso a datos | Camera que toma las imágenes del celular conectado por Wi-Fi (PhoneLink). |
+| 143 | `PhoneLink` | Concreta | `dispositivo` | Acceso a datos | Conexión con el celular por el Wi-Fi del local, para usarlo como lector de etiquetas sin instalar aplicaciones ni usar internet. |
+| 144 | `WebcamCamera` | Concreta | `dispositivo` | Acceso a datos | Camera implementada con la webcam del computador mediante la librería webcam-capture. |
+| 145 | `AssistantLog` | Concreta | `util` | Transversal | Registro de errores del asistente en ~/.inventariopro/asistente.log, para poder ver qué pasó si no responde. |
+| 146 | `DateUtil` | Concreta | `util` | Transversal | Utilidades de fecha usadas por todo el sistema. |
+| 147 | `FileUtil` | Concreta | `util` | Transversal | Operaciones con carpetas que usan las copias de seguridad. |
+| 148 | `IdGenerator` | Concreta | `util` | Transversal | Generador de identificadores únicos. |
+| 149 | `ImageEncoder` | Concreta | `util` | Transversal | Convierte imágenes en texto para mostrarlas en la página. |
+| 150 | `JsonUtil` | Concreta | `util` | Transversal | Punto único de configuración de Gson para todo el sistema. |
+| 151 | `PasswordHasher` | Concreta | `util` | Transversal | Cifra las contraseñas antes de guardarlas y las comprueba al iniciar sesión. |
+| 152 | `QrGenerator` | Concreta | `util` | Transversal | Genera imágenes de códigos QR usando la librería ZXing. |
+| 153 | `QrReader` | Concreta | `util` | Transversal | Lee el texto de un código QR que aparece en una imagen (por ejemplo, un cuadro de la cámara). |
+| 154 | `TextUtil` | Concreta | `util` | Transversal | Utilidades puras para el manejo de texto. |
 
 ### Descripción de cada clase
 
-#### Paquete raíz `sistemainventario`
+Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públicos. Los getters y setters se agrupan en una sola fila.
+
+#### Paquete `sistemainventario`
 
 ##### AppContext
 
 | Campo | Valor |
 |---|---|
-| Clase | `AppContext` |
-| Paquete | `sistemainventario` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Singleton y raíz de composición: crea los repositorios y servicios, los conecta por constructor y cambia los servicios cuando se activa otro perfil. |
+| Herencia | — |
+| Responsabilidad | Arma la aplicación al arrancar: crea los repositorios y los servicios, y los cambia cuando se abre otro negocio, se restaura una copia o se cambia de base de datos. |
 | Archivo | [AppContext.java](../src/main/java/sistemainventario/AppContext.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `directorioDatos` | `Path` | Carpeta raíz de los datos (~/.inventariopro/data) |
-| `gestorRespaldo` | `BackupService` | Servicio de copias de seguridad |
-| `gestorEtiquetas` | `LabelService` | Servicio de etiquetas QR |
-| `ajustesAsistente` | `AssistantSettingsService` | Configuración del asistente |
-| `exportadorInformes` | `ReportExportService` | Exportación de informes a Excel |
-| `gestorPerfiles` | `ProfileService` | Servicio de perfiles (se reconstruye al recargar) |
-| `serviciosActivos` | `ProfileServices` | Servicios del perfil activo |
-| `instancia` (static) | `AppContext` | Única instancia (Singleton) |
-| Constantes (`static final`) | — | `DIRECTORIO_DATOS`, `CARPETA_RESPALDOS`, `CARPETA_ETIQUETAS`, `ARCHIVO_ASISTENTE` |
+| `instancia (static)` | `AppContext` | Instancia (AppContext) |
+| `directorioDatos` | `Path` | Directorio datos |
+| `gestorRespaldo` | `BackupService` | Gestor respaldo (BackupService) |
+| `respaldosEnCarpeta` | `BackupRepository` | Respaldos en carpeta (BackupRepository) |
+| `gestorEtiquetas` | `LabelService` | Gestor etiquetas (LabelService) |
+| `ajustesAsistente` | `AssistantSettingsService` | Ajustes asistente (AssistantSettingsService) |
+| `exportadorInformes` | `ReportExportService` | Exportador informes (ReportExportService) |
+| `almacenamiento` | `StorageService` | Almacenamiento (StorageService) |
+| `almacenActual` | `StorageProvider` | Almacen actual (StorageProvider) |
+| `avisoAlmacenamiento` | `String` | Aviso almacenamiento |
+| `gestorPerfiles` | `ProfileService` | Gestor perfiles (ProfileService) |
+| `serviciosActivos` | `ProfileServices` | Servicios activos (ProfileServices) |
+| `usuarios` | `UserService` | Usuarios (UserService) |
+| `auditoria` | `AuditService` | Auditoria (AuditService) |
+| `sesion` | `SessionService` | Sesion (SessionService) |
+
+**Constantes:** `DIRECTORIO_DATOS`, `CARPETA_RESPALDOS`, `CARPETA_ETIQUETAS`, `ARCHIVO_ASISTENTE`, `ARCHIVO_BASE_DATOS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `recargar()` | `void` | Vuelve a leer los JSON y reconstruye los servicios |
-| `restaurarRespaldo(String nombre)` | `Backup` | Restaura una copia y recarga los datos |
-| `getAjustesAsistente()` | `AssistantSettingsService` | Servicio de configuración del asistente |
-| `getExportadorInformes()` | `ReportExportService` | Servicio de exportación de informes |
-| `get()` *(static)* | `AppContext` | Devuelve la única instancia (Singleton) |
-| `requerirServiciosActivos()` | `ProfileServices` | Servicios del perfil activo; error si no hay perfil |
-| `activarPerfil(String perfilId)` | `void` | Activa un perfil y reconstruye sus servicios |
-| `eliminarPerfil(String perfilId)` | `void` | Elimina un perfil y libera sus servicios |
-| `esPrimerArranque()` | `boolean` | Indica si aún no existe ningún perfil |
-| Getters | — | `getGestorRespaldo()`, `getGestorEtiquetas()`, `getGestorPerfiles()`, `getServiciosActivos()` |
+| `recargar()` | `void` | Construye de nuevo los repositorios y servicios leyendo los archivos JSON |
+| `getUsuarios()` | `UserService` | Personas que usan TBalance |
+| `getAuditoria()` | `AuditService` | Historial de acciones (quién hizo qué) |
+| `iniciarSesion(String usuario, String clave)` | `User` | La persona que entró |
+| `crearPrimerDueno(String nombre, String usuario, String clave)` | `User` | Primera vez: crea la cuenta del dueño con acceso a los negocios que ya hay y abre su sesión |
+| `cerrarSesion()` | `void` | Cierra la sesión; los servicios del negocio quedan sin cargar hasta que alguien entre |
+| `perfilesPermitidos()` | `List<Profile>` | Negocios habilitados a los que entra la persona con sesión abierta |
+| `rolActual()` | `Optional<Rol>` | Rol en el negocio abierto, si hay sesión y negocio |
+| `puedeCrearNegocios()` | `boolean` | True si la persona puede crear negocios: es dueño de alguno, o es la primera cuenta y todavía no hay negocios |
+| `esDuenoDe(String perfilId)` | `boolean` | True si la persona con sesión es dueño de ese negocio |
+| `registrarNegocioCreado(String perfilId)` | `void` | Da acceso de dueño a quien acaba de crear un negocio |
+| `cambiarAlmacenamiento(DatabaseSettings nueva)` | `String` | Cambia dónde se guardan los datos |
+| `getAjustesBaseDeDatos()` | `DatabaseSettings` | Configuración de la base de datos de este computador |
+| `getAlmacenamiento()` | `StorageService` | Servicio que prueba y guarda la configuración de la base |
+| `getAlmacenEnUso()` | `String` | Nombre del almacenamiento en uso ("Archivos JSON", "PostgreSQL", "Oracle") |
+| `getAvisoAlmacenamiento()` | `String` | Aviso pendiente sobre el almacenamiento (migración o error de conexión), o null |
+| `restaurarRespaldo(String nombre)` | `Backup` | Restaura respaldo |
+| `getAjustesAsistente()` | `AssistantSettingsService` | Configuración del asistente (clave y modelo, fuera de los datos de los perfiles) |
+| `getExportadorInformes()` | `ReportExportService` | Exportación de informes a Excel |
+| `get()` *(static)* | `AppContext` | La instancia única, creada la primera vez que se solicita |
+| `getServiciosActivos()` | `Optional<ProfileServices>` | Servicios del perfil activo, si lo hay |
+| `requerirServiciosActivos()` | `ProfileServices` | Servicios del perfil activo |
+| `activarPerfil(String perfilId)` | `void` | Activa un perfil y reconstruye sus servicios (aislamiento de datos) |
+| `deshabilitarPerfil(String perfilId)` | `void` | Deshabilita un negocio; si era el activo, quedan cargados los servicios del negocio que lo reemplaza |
+| `habilitarPerfil(String perfilId)` | `void` | Habilita perfil |
+| `revisarCambiosDeOtrosEquipos()` | `long` | Con base de datos, pregunta si otro equipo guardó cambios |
+| `getQrCobro()` | `PaymentQrRepository` | Imágenes del QR de cobro de cada negocio (~/.inventariopro/qr-cobro) |
+| `getCarpetaCelular()` | `Path` | Carpeta del certificado para conectar el celular (~/.inventariopro/celular) |
+| `getPerfilActivoId()` | `String` | ID del negocio abierto, o null si no hay ninguno |
+| `esPrimerArranque()` | `boolean` | True si todavía no existe ningún perfil |
+| Getters y setters | — | `getGestorEtiquetas()`, `getGestorPerfiles()`, `getGestorRespaldo()`, `getSesion()` |
 
 ##### Launcher
 
 | Campo | Valor |
 |---|---|
-| Clase | `Launcher` |
-| Paquete | `sistemainventario` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Punto de entrada que no extiende Application; permite ejecutar la aplicación desde IntelliJ sin configurar módulos de JavaFX. |
+| Herencia | — |
+| Responsabilidad | Punto de entrada para ejecutar TBalance desde IntelliJ o con Maven. |
 | Archivo | [Launcher.java](../src/main/java/sistemainventario/Launcher.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `main(String[] args)` *(static)* | `void` | Arranca la aplicación llamando a Main |
+| `main(String[] args)` *(static)* | `void` | Arranca el programa |
 
 ##### Main
 
 | Campo | Valor |
 |---|---|
-| Clase | `Main` |
-| Paquete | `sistemainventario` |
 | Tipo | Concreta |
-| Hereda de / implementa | `Application` |
-| Responsabilidad principal | Aplicación de TBalance: abre la interfaz en una ventana de Edge (DesktopBrowserApp) y, si no hay Edge ni Chrome, en el visor de JavaFX. |
+| Herencia | hereda de `Application` |
+| Responsabilidad | Arranca TBalance: abre la interfaz en Edge o, si no hay, en la ventana de JavaFX. |
 | Archivo | [Main.java](../src/main/java/sistemainventario/Main.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `start(Stage ventanaPrincipal)` | `void` | Crea la ventana principal (sobrescribe Application.start) `@Override` |
-| `main(String[] args)` *(static)* | `void` | Lanza la aplicación JavaFX |
+| `start(Stage ventanaPrincipal)` | `void` | Arranca la ventana |
+| `main(String[] args)` *(static)* | `void` | Abre la interfaz en una ventana de Edge (fluida, dibujada con la tarjeta gráfica); si no hay Edge ni Chrome, usa el visor de JavaFX |
 
 #### Paquete `model`
 
-##### AssistantSettings
+##### Acceso
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantSettings` |
-| Paquete | `sistemainventario.model` |
-| Tipo | Record (concreta) |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Record con la configuración del asistente: clave de API y modelo de Gemini. |
-| Archivo | [AssistantSettings.java](../src/main/java/sistemainventario/model/AssistantSettings.java) |
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Dice a qué negocio entra una persona y con qué rol. |
+| Archivo | [Acceso.java](../src/main/java/sistemainventario/model/Acceso.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `clave` | `String` | Clave de API de Google AI Studio |
-| `modelo` | `String` | Modelo de Gemini |
+| `perfilId` | `String` | Negocio al que pertenece |
+| `rol` | `String` | Rol |
 
 **Métodos**
 
-No declara métodos propios.
+| Método | Retorna | Descripción |
+|---|---|---|
+| `Acceso()` / `Acceso(String perfilId, Rol rol)` | — | Constructores |
+| `getRol()` | `Rol` | El rol (cajero si el dato guardado no se reconoce, por seguridad) |
+| Getters y setters | — | `getPerfilId()`, `setRol()` |
+
+##### Anulable
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | — |
+| Responsabilidad | Operación que no se borra sino que se anula: ventas, entradas y salidas. |
+| Archivo | [Anulable.java](../src/main/java/sistemainventario/model/Anulable.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `VIGENTE` | `String` | Estado de una operación vigente |
+| `ANULADA` | `String` | Estado de una operación anulada |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `isAnulada()` *(abstracto)* | `boolean` | True si la operación fue anulada |
+| `getFechaAnulacion()` *(abstracto)* | `String` | Fecha y hora de la anulación, o null |
+| `getMotivoAnulacion()` *(abstracto)* | `String` | Motivo de la anulación, o null |
+| `anular(String fecha, String motivo)` *(abstracto)* | `void` | Marca la operación como anulada |
+| `getAnuladaPor()` *(abstracto)* | `String` | Nombre de quien anuló, o null (anulaciones antes de existir el login) |
+| `setAnuladaPor(String anuladaPor)` *(abstracto)* | `void` | Set anulada por |
+
+##### AssistantSettings
+
+| Campo | Valor |
+|---|---|
+| Tipo | Registro |
+| Herencia | — |
+| Responsabilidad | Guarda la clave y el modelo del asistente. |
+| Archivo | [AssistantSettings.java](../src/main/java/sistemainventario/model/AssistantSettings.java) |
+
+**Datos:** `(String clave, String modelo)`
+
+##### AuditEntry
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `IdentifiedEntity` |
+| Responsabilidad | Una acción registrada en el historial: quién, cuándo, en qué negocio y qué hizo. |
+| Archivo | [AuditEntry.java](../src/main/java/sistemainventario/model/AuditEntry.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `fecha` | `String` | Fecha |
+| `usuarioId` | `String` | Persona que lo hizo |
+| `usuario` | `String` | Usuario |
+| `rol` | `String` | Rol |
+| `perfilId` | `String` | Negocio al que pertenece |
+| `perfil` | `String` | Perfil |
+| `accion` | `String` | Accion |
+| `detalle` | `String` | Detalle |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `AuditEntry()` | — | Constructor |
+| Getters y setters | — | `getAccion()`, `getDetalle()`, `getFecha()`, `getPerfil()`, `getPerfilId()`, `getRol()`, `getUsuario()`, `getUsuarioId()`, `setAccion()`, `setDetalle()`, `setFecha()`, `setPerfil()`, `setPerfilId()`, `setRol()`, `setUsuario()`, `setUsuarioId()` |
 
 ##### Backup
 
 | Campo | Valor |
 |---|---|
-| Clase | `Backup` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Datos de solo lectura de una copia de seguridad: nombre, fecha y tamaño. |
+| Herencia | — |
+| Responsabilidad | Información de un archivo de copia de seguridad (.zip) del sistema. |
 | Archivo | [Backup.java](../src/main/java/sistemainventario/model/Backup.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `nombre` | `String` | Nombre del archivo .zip |
-| `fecha` | `String` | Fecha de modificación del archivo |
-| `tamanoBytes` | `long` | Tamaño en bytes |
+| `nombre` | `String` | Nombre |
+| `fecha` | `String` | Fecha |
+| `tamanoBytes` | `long` | Tamano bytes |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `Backup(String nombre, String fecha, long tamanoBytes)` | — (constructor) | Constructor |
-| Getters | — | `getNombre()`, `getFecha()`, `getTamanoBytes()` |
+| `Backup(String nombre, String fecha, long tamanoBytes)` | — | Constructor |
+| Getters y setters | — | `getFecha()`, `getNombre()`, `getTamanoBytes()` |
 
 ##### BusinessType
 
 | Campo | Valor |
 |---|---|
-| Clase | `BusinessType` |
-| Paquete | `sistemainventario.model` |
-| Tipo | Enumeración (concreta) |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Enumeración de tipos de negocio con sus categorías predefinidas y sugerencias para los formularios. |
+| Tipo | Enumeración |
+| Herencia | — |
+| Responsabilidad | Tipos de negocio que puede tener un Profile. |
 | Archivo | [BusinessType.java](../src/main/java/sistemainventario/model/BusinessType.java) |
+
+**Valores:** `BOUTIQUE`, `FARMACIA`, `FERRETERIA`, `SUPERMERCADO`, `TIENDA_BARRIO`, `TECNOLOGIA`, `NINGUNO`
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| Constantes del enum | — | `BOUTIQUE`, `FARMACIA`, `FERRETERIA`, `SUPERMERCADO`, `TIENDA_BARRIO`, `TECNOLOGIA`, `NINGUNO` |
-| `etiqueta` | `String` | Nombre legible del tipo |
-| `categoriasPredefinidas` | `List<String>` | Categorías que se crean con el perfil |
-| `requiereVencimiento` | `boolean` | Si el tipo controla vencimientos |
-| `sugerencias` | `Suggestions` | Textos de ejemplo para los formularios |
+| `etiqueta` | `String` | Texto que se muestra |
+| `categoriasPredefinidas` | `List<String>` | Categorias predefinidas |
+| `requiereVencimiento` | `boolean` | Requiere vencimiento |
+| `sugerencias` | `Suggestions` | Sugerencias |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `BusinessType(String etiqueta, List<String> categorias, boolean requiereVencimiento, Suggestions sugerencias)` | — (constructor) | Constructor |
-| `desdeClave(String clave)` *(static)* | `BusinessType` | Busca un tipo por clave o etiqueta |
-| `tieneCategorias()` | `boolean` | Si trae categorías predefinidas |
-| `requiereControlVencimiento()` | `boolean` | Si controla vencimientos |
-| `getSugerencias()` | `Map<String, String>` | Textos de ejemplo |
-| `describir()` | `Map<String, Object>` | Datos del tipo para la vista |
-| Getters | — | `getEtiqueta()`, `getCategoriasPredefinidas()` |
+| `BusinessType(String etiqueta, List<String> categorias, boolean requiereVencimiento, Suggestions sugerencias)` | — | Constructor |
+| `desdeClave(String clave)` *(static)* | `BusinessType` | Busca un tipo por su nombre de constante o por su etiqueta |
+| `tieneCategorias()` | `boolean` | Tiene categorias |
+| `requiereControlVencimiento()` | `boolean` | True si los productos de este negocio manejan fecha de vencimiento |
+| `getSugerencias()` | `Map<String, String>` | Mapa con las claves producto, categoria y proveedor |
+| `describir()` | `Map<String, Object>` | El tipo de negocio sabe describirse para la vista |
+| Getters y setters | — | `getCategoriasPredefinidas()`, `getEtiqueta()` |
 
 ##### Category
 
 | Campo | Valor |
 |---|---|
-| Clase | `Category` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | `IdentifiedEntity` |
-| Responsabilidad principal | Agrupa los productos de un perfil (por ejemplo “Bebidas”) y valida sus propios datos. |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Deshabilitable` |
+| Responsabilidad | Agrupación lógica de productos dentro de un perfil (por ejemplo "Medicamentos" o "Herramientas"). |
 | Archivo | [Category.java](../src/main/java/sistemainventario/model/Category.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `nombre` | `String` | Nombre de la categoría |
-| `descripcion` | `String` | Descripción opcional |
+| `nombre` | `String` | Nombre |
+| `descripcion` | `String` | Descripción |
+| `activo` | `Boolean` | Null en los datos de versiones anteriores, que cuentan como habilitados |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `Category()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `Category(String id, String nombre, String descripcion)` | — (constructor) | Constructor |
-| `validar()` | `void` | Exige el nombre |
-| `getEtiqueta()` | `String` | Devuelve el nombre (sobrescribe) `@Override` |
-| Getters | — | `getNombre()`, `getDescripcion()` |
-| Setters | `void` | `setNombre()`, `setDescripcion()` |
+| `Category()` / `Category(String id, String nombre, String descripcion)` | — | Constructores |
+| `validar()` | `void` | La categoría valida sus propios datos |
+| `getEtiqueta()` | `String` | Etiqueta legible para selectores y tablas |
+| Getters y setters | — | `getDescripcion()`, `getNombre()`, `isActivo()`, `setActivo()`, `setDescripcion()`, `setNombre()` |
+
+##### CreditPayment
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Anulable` |
+| Responsabilidad | Abono de un cliente para pagar lo que quedó debiendo de sus ventas fiadas; no se borra, se anula con motivo. |
+| Archivo | [CreditPayment.java](../src/main/java/sistemainventario/model/CreditPayment.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `cliente` | `String` | Nombre del cliente |
+| `clienteDocumento` | `String` | Cédula del cliente |
+| `monto` | `double` | Valor |
+| `metodoPago` | `String` | Cómo pagó |
+| `referenciaPago` | `String` | Número de comprobante o voucher |
+| `nota` | `String` | Nota |
+| `fecha` | `String` | Fecha |
+| `usuarioId` | `String` | Persona que lo hizo |
+| `registradoPor` | `String` | Quién lo recibió |
+| `estado` | `String` | Estado (COMPLETADA o ANULADA) |
+| `fechaAnulacion` | `String` | Cuándo se anuló |
+| `motivoAnulacion` | `String` | Por qué se anuló |
+| `anuladaPor` | `String` | Quién la anuló |
+
+**Constantes:** `PREFIJO_ID`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CreditPayment()` / `CreditPayment(String clienteDocumento, double monto, String metodoPago)` | — | Constructores |
+| `validar()` | `void` | Revisa que el abono tenga cliente, un valor positivo y un medio de pago válido (no se puede abonar "fiando" otra vez) |
+| `isAnulada()` | `boolean` | True si la operación fue anulada |
+| `getEstado()` | `String` | COMPLETADA o ANULADA |
+| `anular(String fecha, String motivo)` | `void` | Marca la operación como anulada |
+| `setAnulacion(String fechaAnulacion, String motivoAnulacion)` | `void` | Set anulacion |
+| Getters y setters | — | `getAnuladaPor()`, `getCliente()`, `getClienteDocumento()`, `getFecha()`, `getFechaAnulacion()`, `getMetodoPago()`, `getMonto()`, `getMotivoAnulacion()`, `getNota()`, `getReferenciaPago()`, `getRegistradoPor()`, `getUsuarioId()`, `setAnuladaPor()`, `setCliente()`, `setClienteDocumento()`, `setEstado()`, `setFecha()`, `setMetodoPago()`, `setMonto()`, `setNota()`, `setReferenciaPago()`, `setRegistradoPor()`, `setUsuarioId()` |
+
+##### CustomerDebt
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Cuenta de un cliente que compró fiado: cuánto se le fió, cuánto ha abonado y cuánto debe. |
+| Archivo | [CustomerDebt.java](../src/main/java/sistemainventario/model/CustomerDebt.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `clave` | `String` | Clave |
+| `cliente` | `String` | Nombre del cliente |
+| `documento` | `String` | Documento |
+| `totalFiado` | `double` | Total fiado |
+| `totalAbonado` | `double` | Total abonado |
+| `ultimaFecha` | `String` | Ultima fecha |
+| `saldo` | `double` | Saldo |
+| `ventas` | `List<Sale>` | Ventas |
+| `abonos` | `List<CreditPayment>` | Abonos |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CustomerDebt(String clave, String cliente, String documento)` | — | Constructor |
+| `agregarVenta(Sale venta)` | `void` | Agrega venta |
+| `agregarAbono(CreditPayment abono)` | `void` | Agrega abono |
+| `getSaldo()` | `double` | Lo que debe todavía (0 si ya pagó todo) |
+| `estaAlDia()` | `boolean` | True si ya no debe nada |
+| Getters y setters | — | `getAbonos()`, `getClave()`, `getCliente()`, `getDocumento()`, `getTotalAbonado()`, `getTotalFiado()`, `getUltimaFecha()`, `getVentas()` |
+
+##### DatabaseEngine
+
+| Campo | Valor |
+|---|---|
+| Tipo | Enumeración |
+| Herencia | — |
+| Responsabilidad | Dónde guarda TBalance los datos de los negocios. |
+| Archivo | [DatabaseEngine.java](../src/main/java/sistemainventario/model/DatabaseEngine.java) |
+
+**Valores:** `JSON`, `POSTGRESQL`, `ORACLE`
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `etiqueta` | `String` | Texto que se muestra |
+| `urlPorDefecto` | `String` | Url por defecto |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `DatabaseEngine(String etiqueta, String urlPorDefecto)` | — | Constructor |
+| `getEtiqueta()` | `String` | Nombre para mostrar en la interfaz |
+| `getUrlPorDefecto()` | `String` | URL JDBC sugerida para una instalación local |
+| `esRelacional()` | `boolean` | True si el motor es una base de datos relacional |
+| `desde(String nombre)` *(static)* | `DatabaseEngine` | El motor correspondiente |
+
+##### DatabaseSettings
+
+| Campo | Valor |
+|---|---|
+| Tipo | Registro |
+| Herencia | — |
+| Responsabilidad | Conexión a la base de datos elegida en este computador. |
+| Archivo | [DatabaseSettings.java](../src/main/java/sistemainventario/model/DatabaseSettings.java) |
+
+**Datos:** `(DatabaseEngine motor, String url, String usuario, String clave)`
+
+**Constantes:** `ARCHIVOS`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `usaBaseDeDatos()` | `boolean` | True si los datos van a PostgreSQL u Oracle |
+
+##### Deshabilitable
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | — |
+| Responsabilidad | Registro que no se borra sino que se deshabilita (borrado lógico). |
+| Archivo | [Deshabilitable.java](../src/main/java/sistemainventario/model/Deshabilitable.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `isActivo()` *(abstracto)* | `boolean` | True si está habilitado (los datos antiguos sin el campo cuentan como habilitados) |
+| `setActivo(boolean activo)` *(abstracto)* | `void` | Set activo |
 
 ##### GlobalConfig
 
 | Campo | Valor |
 |---|---|
-| Clase | `GlobalConfig` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Guarda la lista de perfiles y cuál es el perfil activo. |
+| Herencia | — |
+| Responsabilidad | Configuración general: qué negocio está abierto y la lista de negocios. |
 | Archivo | [GlobalConfig.java](../src/main/java/sistemainventario/model/GlobalConfig.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `perfiles` | `List<Profile>` | Perfiles registrados |
-| `perfilActivoId` | `String` | ID del perfil activo |
-| `version` | `String` | Versión del formato de configuración |
-| Constantes (`static final`) | — | `VERSION_ACTUAL` |
+| `perfiles` | `List<Profile>` | Perfiles |
+| `perfilActivoId` | `String` | Perfil activo id |
+| `version` | `String` | Version |
+
+**Constantes:** `VERSION_ACTUAL`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `getPerfilActivo()` | `Profile` | Busca el perfil activo en la lista |
-| `tienePerfiles()` | `boolean` | Indica si hay perfiles |
-| `tienePerfilActivo()` | `boolean` | Indica si hay perfil activo |
-| Getters | — | `getPerfiles()`, `getPerfilActivoId()`, `getVersion()` |
-| Setters | `void` | `setPerfiles()`, `setPerfilActivoId()`, `setVersion()` |
+| `getPerfilActivo()` | `Profile` | La configuración conoce la lista y el ID activo |
+| `tienePerfiles()` | `boolean` | True si existe al menos un perfil registrado |
+| `tienePerfilActivo()` | `boolean` | True si hay un perfil marcado como activo |
+| Getters y setters | — | `getPerfilActivoId()`, `getPerfiles()`, `getVersion()`, `setPerfilActivoId()`, `setPerfiles()`, `setVersion()` |
 
 ##### IdentifiedEntity
 
 | Campo | Valor |
 |---|---|
-| Clase | `IdentifiedEntity` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Abstracta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Superclase abstracta de las entidades persistidas: encapsula el ID y define la igualdad por ID. |
+| Herencia | — |
+| Responsabilidad | Clase base de todo lo que se guarda: le da a cada objeto su ID. |
 | Archivo | [IdentifiedEntity.java](../src/main/java/sistemainventario/model/IdentifiedEntity.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `id` | `String` | Identificador único de la entidad |
+| `id` | `String` | Identificador |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `IdentifiedEntity()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `IdentifiedEntity(String id)` | — (constructor) | Constructor |
-| `tieneId()` | `boolean` | Indica si la entidad ya tiene ID |
-| `getEtiqueta()` | `String` | Texto legible (las subclases lo sobrescriben) |
-| `equals(Object otro)` | `boolean` | Igualdad por tipo e ID (sobrescribe) `@Override` |
-| `hashCode()` | `int` | Hash por ID (sobrescribe) `@Override` |
-| Getters | — | `getId()` |
-| Setters | `void` | `setId()` |
+| `IdentifiedEntity()` / `IdentifiedEntity(String id)` | — | Constructores |
+| `tieneId()` | `boolean` | La entidad sabe si ya fue identificada |
+| `getEtiqueta()` | `String` | Etiqueta legible para selectores y tablas |
+| `equals(Object otro)` | `boolean` | Dos entidades son iguales si son del mismo tipo concreto y comparten ID |
+| `hashCode()` | `int` | Código hash según el ID |
+| Getters y setters | — | `getId()`, `setId()` |
 
 ##### InventoryMovement
 
 | Campo | Valor |
 |---|---|
-| Clase | `InventoryMovement` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Abstracta |
-| Hereda de / implementa | `IdentifiedEntity` |
-| Responsabilidad principal | Superclase abstracta de los movimientos que cambian el stock; define aplicarA(Product) para que cada subclase lo implemente. |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Anulable` |
+| Responsabilidad | Movimiento que modifica el stock de un producto (entrada o salida). |
 | Archivo | [InventoryMovement.java](../src/main/java/sistemainventario/model/InventoryMovement.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `productoId` | `String` | Product afectado |
-| `cantidad` | `int` | Unidades del movimiento |
-| `fecha` | `String` | Fecha y hora del registro |
+| `productoId` | `String` | Producto |
+| `cantidad` | `int` | Cantidad |
+| `fecha` | `String` | Fecha |
+| `fechaRegistro` | `String` | Cuándo se anotó |
+| `estado` | `String` | Null en los datos anteriores, que cuentan como vigentes |
+| `fechaAnulacion` | `String` | Cuándo se anuló |
+| `motivoAnulacion` | `String` | Por qué se anuló |
+| `anuladaPor` | `String` | Quién la anuló |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `InventoryMovement()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `InventoryMovement(String id, String productoId, int cantidad, String fecha)` | — (constructor) | Constructor |
-| `aplicarA(Product producto)` *(abstract)* | `void` | Efecto del movimiento sobre el stock (abstracto) |
-| `getPrefijoId()` *(abstract)* | `String` | Prefijo del ID (abstracto) |
-| `validar()` | `void` | Exige producto y cantidad positiva |
-| `registrar(String nuevoId, String fechaRegistro)` | `void` | Asigna ID y fecha |
-| Getters | — | `getProductoId()`, `getCantidad()`, `getFecha()` |
-| Setters | `void` | `setProductoId()`, `setCantidad()`, `setFecha()` |
+| `InventoryMovement()` / `InventoryMovement(String id, String productoId, int cantidad, String fecha)` | — | Constructores |
+| `aplicarA(Product producto)` *(abstracto)* | `void` | Aplica el efecto del movimiento sobre el stock del producto |
+| `getPrefijoId()` *(abstracto)* | `String` | Prefijo usado para generar el ID (ENT, SAL, ...) |
+| `validar()` | `void` | Comprueba los datos mínimos del movimiento |
+| `validarFecha(LocalDate hoy)` | `void` | La fecha es la del movimiento real (por ejemplo, el día en que llegó la mercancía), que puede ser anterior al registro pero nunca futura |
+| `registrar(String nuevoId, String fechaRegistro)` | `void` | Marca el movimiento como registrado asignándole ID y fecha |
+| `getFechaRegistro()` | `String` | Fecha y hora en que se registró en TBalance (puede ser posterior a getFecha) |
+| `setFechaRegistro(String fechaRegistro)` | `void` | Set fecha registro |
+| `isAnulada()` | `boolean` | True si la operación fue anulada |
+| `getEstado()` | `String` | Estado guardado (COMPLETADA o ANULADA) |
+| `setEstado(String estado)` | `void` | Set estado |
+| `anular(String fecha, String motivo)` | `void` | Marca la operación como anulada |
+| `setAnulacion(String fechaAnulacion, String motivoAnulacion)` | `void` | Set anulacion |
+| Getters y setters | — | `getAnuladaPor()`, `getCantidad()`, `getFecha()`, `getFechaAnulacion()`, `getMotivoAnulacion()`, `getProductoId()`, `setAnuladaPor()`, `setCantidad()`, `setFecha()`, `setProductoId()` |
 
 ##### PaymentMethod
 
 | Campo | Valor |
 |---|---|
-| Clase | `PaymentMethod` |
-| Paquete | `sistemainventario.model` |
-| Tipo | Enumeración (concreta) |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Enumeración de los métodos de pago de las tiendas colombianas (efectivo, Nequi, Daviplata, Bre-B, transferencia, tarjetas y fiado) e indica cuáles son digitales. |
+| Tipo | Enumeración |
+| Herencia | — |
+| Responsabilidad | Métodos de pago que se usan en las tiendas colombianas. |
 | Archivo | [PaymentMethod.java](../src/main/java/sistemainventario/model/PaymentMethod.java) |
+
+**Valores:** `EFECTIVO`, `NEQUI`, `DAVIPLATA`, `BRE_B`, `BANCOLOMBIA`, `TARJETA_DEBITO`, `TARJETA_CREDITO`, `FIADO`
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| Constantes del enum | — | `EFECTIVO`, `NEQUI`, `DAVIPLATA`, `BRE_B`, `BANCOLOMBIA`, `TARJETA_DEBITO`, `TARJETA_CREDITO`, `FIADO` |
-| `etiqueta` | `String` | Nombre que se muestra y se guarda |
-| `digital` | `boolean` | Si admite número de comprobante |
+| `etiqueta` | `String` | Texto que se muestra |
+| `digital` | `boolean` | Digital |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `PaymentMethod(String etiqueta, boolean digital)` | — (constructor) | Constructor |
-| `esDigital()` | `boolean` | Si el método admite número de comprobante |
-| `desdeTexto(String texto)` *(static)* | `Optional<PaymentMethod>` | Reconoce el método aunque venga escrito de otra forma ("nequi", "tarjeta", "crédito") |
-| Getters | — | `getEtiqueta()` |
+| `PaymentMethod(String etiqueta, boolean digital)` | — | Constructor |
+| `getEtiqueta()` | `String` | El texto que se guarda en la venta y se muestra en pantalla |
+| `esDigital()` | `boolean` | True si el pago es electrónico y puede tener número de comprobante |
+| `desdeTexto(String texto)` *(static)* | `Optional<PaymentMethod>` | Reconoce el método aunque venga escrito de otra forma ("nequi", "transferencia", "tarjeta", "credito"...) |
+
+##### Permiso
+
+| Campo | Valor |
+|---|---|
+| Tipo | Enumeración |
+| Herencia | — |
+| Responsabilidad | Acciones de TBalance que dependen del rol. |
+| Archivo | [Permiso.java](../src/main/java/sistemainventario/model/Permiso.java) |
+
+**Valores:** `VENDER`, `VER_GANANCIA`, `EDITAR_CATALOGO`, `MOVIMIENTOS`, `ANULAR`, `DESHABILITAR`, `INFORMES`, `COSTOS`, `USUARIOS`, `NEGOCIOS`, `RESPALDOS`, `CONFIGURACION`, `HISTORIAL`
 
 ##### Product
 
 | Campo | Valor |
 |---|---|
-| Clase | `Product` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | `IdentifiedEntity` |
-| Responsabilidad principal | Artículo del inventario; controla su stock, estado, vencimiento y el texto de su etiqueta QR. |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Deshabilitable` |
+| Responsabilidad | Producto del inventario de un negocio, con sus precios, stock y vencimiento. |
 | Archivo | [Product.java](../src/main/java/sistemainventario/model/Product.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `nombre` | `String` | Nombre del producto |
-| `codigo` | `String` | Código interno o de barras |
-| `descripcion` | `String` | Descripción opcional |
-| `categoria` | `String` | Nombre de la categoría |
-| `categoriaId` | `String` | ID de la categoría |
-| `proveedorId` | `String` | ID del proveedor |
+| `nombre` | `String` | Nombre |
+| `codigo` | `String` | Código |
+| `descripcion` | `String` | Descripción |
+| `categoria` | `String` | Categoria |
+| `categoriaId` | `String` | Categoría |
+| `proveedorId` | `String` | Proveedor |
 | `precioCompra` | `double` | Precio de compra |
 | `precioVenta` | `double` | Precio de venta |
 | `stock` | `int` | Unidades disponibles |
-| `stockMin` | `int` | Límite para alerta de bajo stock |
-| `tipo` | `String` | Tipo de producto |
-| `requiereVencimiento` | `boolean` | Si controla fecha de vencimiento |
-| `fechaVencimiento` | `String` | Fecha de vencimiento (ISO) |
-| Constantes (`static final`) | — | `ESTADO_AGOTADO`, `ESTADO_BAJO_STOCK`, `ESTADO_DISPONIBLE`, `ENCABEZADO_QR`, `PREFIJO_ID_QR` |
+| `stockMin` | `int` | Stock mínimo |
+| `tipo` | `String` | Tipo |
+| `requiereVencimiento` | `boolean` | Requiere vencimiento |
+| `fechaVencimiento` | `String` | Fecha de vencimiento |
+| `activo` | `Boolean` | Null en los datos de versiones anteriores, que cuentan como habilitados |
+
+**Constantes:** `ESTADO_AGOTADO`, `ESTADO_BAJO_STOCK`, `ESTADO_DISPONIBLE`, `ENCABEZADO_QR`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `Product()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `Product(String id, String nombre, String descripcion, String categoria, String categoriaId, String proveedorId, double precioCompra, double precioVenta, int stock, int stockMin, String tipo)` | — (constructor) | Constructor |
-| `validar(LocalDate hoy)` | `void` | Exige nombre, precios y stock no negativos y fecha de vencimiento válida |
-| `getEstado()` | `String` | Agotado, Bajo Stock o Disponible |
-| `estaAgotado()` | `boolean` | Stock en 0 |
-| `estaBajoStock()` | `boolean` | Stock ≤ stock mínimo |
-| `tieneStockPara(int cantidad)` | `boolean` | Si alcanza para una cantidad |
-| `aumentarStock(int cantidad)` | `void` | Suma unidades |
-| `disminuirStock(int cantidad)` | `void` | Resta unidades; error si no alcanza |
-| `verificarStockDisponible(int cantidad)` | `void` | Error si no alcanza el stock |
-| `tienePrecioCompra()` | `boolean` | Si tiene precio de compra registrado |
-| `getUtilidadUnitaria()` | `double` | Precio de venta menos precio de compra |
-| `getMargen()` | `double` | Porcentaje de la venta que es ganancia |
-| `getUtilidadEstimadaStock()` | `double` | Utilidad de vender todo el stock actual |
-| `getFechaVencimientoComoFecha()` | `Optional<LocalDate>` | Fecha de vencimiento como LocalDate |
-| `estaVencido(LocalDate hoy)` | `boolean` | Si ya venció |
-| `venceDentroDe(int dias, LocalDate hoy)` | `boolean` | Si vence en los próximos N días |
-| `coincideCon(String texto)` | `boolean` | Búsqueda por nombre, descripción, código o ID |
-| `perteneceACategoria(String nombreCategoria)` | `boolean` | Si es de una categoría |
-| `contenidoEtiquetaQR()` | `String` | Texto del QR: TBalance, ID y precio |
-| `idDesdeEtiquetaQR(String contenido)` *(static)* | `Optional<String>` | Saca el ID del texto leído (estático) |
-| `getPrecioVentaFormateado()` | `String` | Precio con separador de miles |
-| `getEtiqueta()` | `String` | Devuelve el nombre (sobrescribe) `@Override` |
-| Getters | — | `getNombre()`, `getCodigo()`, `getDescripcion()`, `getCategoria()`, `getCategoriaId()`, `getProveedorId()`, `getPrecioCompra()`, `getPrecioVenta()`, `getStock()`, `getStockMin()`, `getTipo()`, `isRequiereVencimiento()`, `getFechaVencimiento()` |
-| Setters | `void` | `setNombre()`, `setCodigo()`, `setDescripcion()`, `setCategoria()`, `setCategoriaId()`, `setProveedorId()`, `setPrecioCompra()`, `setPrecioVenta()`, `setStock()`, `setStockMin()`, `setTipo()`, `setRequiereVencimiento()`, `setFechaVencimiento()` |
+| `Product()` | — | Constructor |
+| `validar(LocalDate hoy)` | `void` | Verifica las reglas de negocio del producto antes de guardarlo |
+| `getEstado()` | `String` | El estado legible según el stock actual y el mínimo |
+| `estaAgotado()` | `boolean` | True si no quedan unidades |
+| `estaBajoStock()` | `boolean` | True si quedan unidades pero en el mínimo o por debajo |
+| `tieneStockPara(int cantidad)` | `boolean` | True si el stock cubre la cantidad |
+| `aumentarStock(int cantidad)` | `void` | Incrementa el stock (entrada de mercancía) |
+| `disminuirStock(int cantidad)` | `void` | Descuenta stock (salida o venta) |
+| `verificarStockDisponible(int cantidad)` | `void` | Verifica stock disponible |
+| `tienePrecioCompra()` | `boolean` | True si se registró el precio de compra (necesario para estimar la utilidad) |
+| `getUtilidadUnitaria()` | `double` | Ganancia por unidad: precio de venta menos precio de compra (negativa si se vende a pérdida) |
+| `getMargen()` | `double` | Porcentaje de la venta que es ganancia, o 0 si el precio de venta es 0 |
+| `getUtilidadEstimadaStock()` | `double` | Utilidad que dejaría vender todo el stock actual a los precios registrados |
+| `getFechaVencimientoComoFecha()` | `Optional<LocalDate>` | La fecha de vencimiento si está controlada y es válida |
+| `estaVencido(LocalDate hoy)` | `boolean` | True si el producto controla vencimiento y la fecha ya pasó |
+| `venceDentroDe(int dias, LocalDate hoy)` | `boolean` | True si vence desde hoy y antes de hoy + dias |
+| `coincideCon(String texto)` | `boolean` | True si hay coincidencia (ignorando mayúsculas) |
+| `perteneceACategoria(String nombreCategoria)` | `boolean` | True si el producto pertenece a esa categoría |
+| `contenidoEtiquetaQR(String perfilId)` | `String` | El producto conoce sus datos, por eso arma el texto que se codifica en su etiqueta QR (formato en QrLabel) |
+| `idDesdeEtiquetaQR(String contenido)` *(static)* | `Optional<String>` | Operación inversa de contenidoEtiquetaQRString |
+| `getPrecioVentaFormateado()` | `String` | Precio de venta con separador de miles, por ejemplo $ 2.500 |
+| `getEtiqueta()` | `String` | Etiqueta legible para selectores y tablas |
+| Getters y setters | — | `getCategoria()`, `getCategoriaId()`, `getCodigo()`, `getDescripcion()`, `getFechaVencimiento()`, `getNombre()`, `getPrecioCompra()`, `getPrecioVenta()`, `getProveedorId()`, `getStock()`, `getStockMin()`, `getTipo()`, `isActivo()`, `isRequiereVencimiento()`, `setActivo()`, `setCategoria()`, `setCategoriaId()`, `setCodigo()`, `setDescripcion()`, `setFechaVencimiento()`, `setNombre()`, `setPrecioCompra()`, `setPrecioVenta()`, `setProveedorId()`, `setRequiereVencimiento()`, `setStock()`, `setStockMin()`, `setTipo()` |
 
 ##### Profile
 
 | Campo | Valor |
 |---|---|
-| Clase | `Profile` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | `IdentifiedEntity` |
-| Responsabilidad principal | Negocio independiente con sus propios datos, tipo de negocio y configuración. |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Deshabilitable` |
+| Responsabilidad | Un negocio: nombre, tipo, color y configuración (por ejemplo, los medios de pago que recibe). |
 | Archivo | [Profile.java](../src/main/java/sistemainventario/model/Profile.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `nombre` | `String` | Nombre del negocio |
-| `descripcion` | `String` | Descripción opcional |
-| `color` | `String` | Color identificador (hex) |
-| `tipoNegocio` | `String` | Clave del tipo de negocio (BusinessType) |
-| `fechaCreacion` | `String` | Fecha de creación |
-| `configuracion` | `Map<String, String>` | Ajustes clave-valor del perfil |
-| Constantes (`static final`) | — | `COLOR_POR_DEFECTO` |
+| `nombre` | `String` | Nombre |
+| `descripcion` | `String` | Descripción |
+| `color` | `String` | Color del negocio |
+| `tipoNegocio` | `String` | Tipo negocio |
+| `fechaCreacion` | `String` | Fecha creacion |
+| `configuracion` | `Map<String, String>` | Configuracion |
+| `activo` | `Boolean` | Null en los datos de versiones anteriores, que cuentan como habilitados |
+
+**Constantes:** `COLOR_POR_DEFECTO`, `CLAVES_CUENTAS`, `CLAVE_MEDIOS_PAGO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `Profile()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `Profile(String id, String nombre, String descripcion, String color, String tipoNegocio)` | — (constructor) | Constructor |
-| `validar()` | `void` | Exige el nombre |
-| `actualizarDatos(String nuevoNombre, String nuevaDescripcion, String nuevoColor)` | `void` | Cambia nombre, descripción y color |
-| `getPerfilNegocio()` | `BusinessType` | Tipo de negocio como enum |
-| `requiereControlVencimiento()` | `boolean` | Si su tipo controla vencimientos |
-| `getConfig(String clave, String defecto)` | `String` | Lee un ajuste |
-| `setConfig(String clave, String valor)` | `void` | Guarda un ajuste |
-| `getEtiqueta()` | `String` | Devuelve el nombre (sobrescribe) `@Override` |
-| Getters | — | `getNombre()`, `getDescripcion()`, `getColor()`, `getTipoNegocio()`, `getFechaCreacion()`, `getConfiguracion()` |
-| Setters | `void` | `setNombre()`, `setDescripcion()`, `setColor()`, `setTipoNegocio()`, `setFechaCreacion()`, `setConfiguracion()` |
+| `Profile()` / `Profile(String id, String nombre, String descripcion, String color, String tipoNegocio)` | — | Constructores |
+| `validar()` | `void` | Valida |
+| `actualizarDatos(String nuevoNombre, String nuevaDescripcion, String nuevoColor)` | `void` | Actualiza solo los datos editables y conserva la fecha de creación, la configuración y el tipo de negocio (que no puede cambiarse después de crear el perfil) |
+| `getPerfilNegocio()` | `BusinessType` | El tipo de negocio como enumeración (NINGUNO si no tiene) |
+| `requiereControlVencimiento()` | `boolean` | True si el tipo de negocio exige controlar vencimientos |
+| `getConfig(String clave, String defecto)` | `String` | El valor configurado o defecto |
+| `setConfig(String clave, String valor)` | `void` | Set config |
+| `copiarAjustesDePago(Profile datos)` | `void` | Copia de otro perfil los medios de pago y las cuentas que llegaron al crear o editar el negocio (solo esas claves, recortadas a 60 caracteres) |
+| `getMediosPago()` | `Set<String>` | Medios de pago que el negocio acepta |
+| `setMediosPago(Collection<String> medios)` | `void` | Guarda los medios de pago activos |
+| `aceptaMedioPago(String metodo)` | `boolean` | True si el negocio acepta ese medio |
+| `getEtiqueta()` | `String` | Etiqueta legible para selectores y tablas |
+| Getters y setters | — | `getColor()`, `getConfiguracion()`, `getDescripcion()`, `getFechaCreacion()`, `getNombre()`, `getTipoNegocio()`, `isActivo()`, `setActivo()`, `setColor()`, `setConfiguracion()`, `setDescripcion()`, `setFechaCreacion()`, `setNombre()`, `setTipoNegocio()` |
+
+##### QrLabel
+
+| Campo | Valor |
+|---|---|
+| Tipo | Registro |
+| Herencia | — |
+| Responsabilidad | Datos que se leen de una etiqueta QR de TBalance. |
+| Archivo | [QrLabel.java](../src/main/java/sistemainventario/model/QrLabel.java) |
+
+**Datos:** `(String productoId, String perfilId, String precio)`
+
+**Constantes:** `ENCABEZADO`, `PREFIJO_ID`, `PREFIJO_NEGOCIO`, `PREFIJO_PRECIO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `texto(Product producto, String perfilId)` *(static)* | `String` | Texto que se codifica en el QR |
+| `leer(String contenido)` *(static)* | `Optional<QrLabel>` | Los datos de la etiqueta, o vacío si no es una etiqueta de TBalance o le falta el ID (etiqueta dañada o incompleta) |
+| `pareceDeTBalance(String texto)` *(static)* | `boolean` | True si empieza como una etiqueta de TBalance (aunque esté incompleta) |
+| `esDeOtroNegocio(String perfilActivo)` | `boolean` | True si la etiqueta es de otro negocio (las antiguas, sin negocio, no lo son) |
+
+##### Rol
+
+| Campo | Valor |
+|---|---|
+| Tipo | Enumeración |
+| Herencia | — |
+| Responsabilidad | Rol de una persona dentro de un negocio. |
+| Archivo | [Rol.java](../src/main/java/sistemainventario/model/Rol.java) |
+
+**Valores:** `DUENO`, `ADMINISTRADOR`, `CAJERO`
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `etiqueta` | `String` | Texto que se muestra |
+| `permisos` | `Set<Permiso>` | Permisos |
+
+**Constantes:** `MINUTOS_ANULAR_PROPIA`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `Rol(String etiqueta, Set<Permiso> permisos)` | — | Constructor |
+| `getEtiqueta()` | `String` | Nombre para mostrar ("Dueño", "Administrador", "Cajero") |
+| `getPermisos()` | `Set<Permiso>` | Permisos del rol |
+| `puede(Permiso permiso)` | `boolean` | True si el rol la puede hacer |
+| `puedeAsignar(Rol otro)` | `boolean` | True si este rol puede crear o administrar usuarios con otro |
+| `desde(String texto)` *(static)* | `Rol` | El rol |
 
 ##### Sale
 
 | Campo | Valor |
 |---|---|
-| Clase | `Sale` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | `IdentifiedEntity` |
-| Responsabilidad principal | Venta con uno o varios ítems; crea sus ítems, calcula el total, agrupa cantidades por producto y valida el método de pago. |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Anulable` |
+| Responsabilidad | Transacción comercial compuesta por uno o varios SaleItem. |
 | Archivo | [Sale.java](../src/main/java/sistemainventario/model/Sale.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `cliente` | `String` | Cliente |
-| `metodoPago` | `String` | Método de pago (nombre de un PaymentMethod) |
-| `observacion` | `String` | Nota opcional |
-| `referenciaPago` | `String` | Comprobante de un pago digital (opcional) |
-| `fecha` | `String` | Fecha y hora de la venta |
-| `estado` | `String` | Estado (COMPLETADA) |
-| `items` | `List<SaleItem>` | Ítems de la venta |
-| `total` | `double` | Total (se guarda en el JSON) |
-| Constantes (`static final`) | — | `PREFIJO_ID`, `ESTADO_COMPLETADA` |
+| `cliente` | `String` | Nombre del cliente |
+| `clienteDocumento` | `String` | Cédula u otro documento del cliente; obligatoria cuando la venta es fiada |
+| `metodoPago` | `String` | Cómo pagó |
+| `observacion` | `String` | Observación |
+| `referenciaPago` | `String` | Número de comprobante de un pago digital (Nequi, Daviplata, tarjeta...); opcional |
+| `fecha` | `String` | Fecha |
+| `estado` | `String` | Estado (COMPLETADA o ANULADA) |
+| `fechaAnulacion` | `String` | Cuándo se anuló |
+| `motivoAnulacion` | `String` | Por qué se anuló |
+| `anuladaPor` | `String` | Quién la anuló |
+| `usuarioId` | `String` | Quién registró la venta (para que el cajero solo anule las suyas) |
+| `vendedor` | `String` | Quién vendió |
+| `fechaRegistro` | `String` | Fecha y hora exactas en que se registró (la fecha de la venta es solo el día) |
+| `items` | `List<SaleItem>` | Productos de la venta |
+| `total` | `double` | Total |
+
+**Constantes:** `PREFIJO_ID`, `ESTADO_COMPLETADA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `Sale()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `Sale(String id, String cliente, String metodoPago, String observacion, String fecha)` | — (constructor) | Constructor |
-| `agregarItem(Product producto, int cantidad, double precioUnitario)` | `SaleItem` | Crea y agrega un ítem (Creador) |
-| `validar()` | `void` | Exige al menos un ítem y valida cada uno |
-| `completar(String nuevoId, String fechaRegistro)` | `void` | Asigna ID, fecha y estado COMPLETADA |
-| `calcularTotal()` | `double` | Suma los subtotales |
-| `recalcularTotal()` | `void` | Actualiza total y subtotales guardados |
-| `getTotalUnidades()` | `int` | Suma de unidades |
-| `cantidadesPorProducto()` | `Map<String, Integer>` | Unidades agrupadas por producto |
-| `estaCompletada()` | `boolean` | Si está COMPLETADA |
-| `normalizarPago()` | `void` | Valida el método de pago y su nombre oficial; un fiado exige cliente y el comprobante solo se guarda en pagos digitales |
-| Getters | — | `getTotal()`, `getCliente()`, `getMetodoPago()`, `getReferenciaPago()`, `getObservacion()`, `getFecha()`, `getEstado()`, `getItems()` |
-| Setters | `void` | `setCliente()`, `setMetodoPago()`, `setReferenciaPago()`, `setObservacion()`, `setFecha()`, `setEstado()`, `setItems()` |
+| `Sale()` / `Sale(String id, String cliente, String metodoPago, String observacion, String fecha)` | — | Constructores |
+| `agregarItem(Product producto, int cantidad, double precioUnitario)` | `SaleItem` | Crea y agrega un ítem a partir de un producto |
+| `validar()` | `void` | Valida |
+| `completar(String nuevoId, String fechaRegistro)` | `void` | Asigna ID, fecha y estado COMPLETADA, y sincroniza el total persistido |
+| `calcularTotal()` | `double` | Suma de los subtotales de los ítems |
+| `recalcularTotal()` | `void` | Sincroniza los atributos total y subtotal antes de serializar |
+| `getTotal()` | `double` | Total de la venta, siempre consistente con sus ítems |
+| `getTotalUnidades()` | `int` | Número total de unidades vendidas |
+| `cantidadesPorProducto()` | `Map<String, Integer>` | Agrupa las cantidades por producto; útil cuando el mismo producto aparece en más de un ítem |
+| `estaCompletada()` | `boolean` | True si la venta está en estado COMPLETADA |
+| `normalizarPago()` | `void` | Deja el método de pago con su nombre oficial y revisa sus reglas: un fiado necesita el nombre y la cédula del cliente (para saber quién debe), una venta de contado sin cliente queda como "Consumidor final" y solo los pagos digitales llevan comprobante |
+| `getItems()` | `List<SaleItem>` | Vista de solo lectura de los ítems |
+| `isAnulada()` | `boolean` | True si la operación fue anulada |
+| `anular(String fecha, String motivo)` | `void` | Marca la operación como anulada |
+| `setAnulacion(String fechaAnulacion, String motivoAnulacion)` | `void` | Set anulacion |
+| `getVendedor()` | `String` | Nombre de quien vendió, o null en ventas de antes del login |
+| Getters y setters | — | `getAnuladaPor()`, `getCliente()`, `getClienteDocumento()`, `getEstado()`, `getFecha()`, `getFechaAnulacion()`, `getFechaRegistro()`, `getMetodoPago()`, `getMotivoAnulacion()`, `getObservacion()`, `getReferenciaPago()`, `getUsuarioId()`, `setAnuladaPor()`, `setCliente()`, `setClienteDocumento()`, `setEstado()`, `setFecha()`, `setFechaRegistro()`, `setItems()`, `setMetodoPago()`, `setObservacion()`, `setReferenciaPago()`, `setUsuarioId()`, `setVendedor()` |
 
 ##### SaleItem
 
 | Campo | Valor |
 |---|---|
-| Clase | `SaleItem` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Línea de una venta: producto, cantidad, precio unitario, subtotal y costo del producto en el momento de la venta. |
+| Herencia | — |
+| Responsabilidad | Línea de detalle de una Sale: producto, cantidad y precio. |
 | Archivo | [SaleItem.java](../src/main/java/sistemainventario/model/SaleItem.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `productoId` | `String` | Product vendido |
-| `nombreProducto` | `String` | Nombre del producto al momento de la venta |
-| `cantidad` | `int` | Unidades vendidas |
-| `precioUnitario` | `double` | Precio por unidad |
-| `subtotal` | `double` | Cantidad × precio (se guarda en el JSON) |
-| `costoUnitario` | `double` | Precio de compra del producto al momento de la venta |
+| `productoId` | `String` | Producto |
+| `nombreProducto` | `String` | Nombre producto |
+| `cantidad` | `int` | Cantidad |
+| `precioUnitario` | `double` | Precio unitario |
+| `subtotal` | `double` | Subtotal |
+| `costoUnitario` | `double` | Precio de compra del producto en el momento de la venta |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `SaleItem()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `SaleItem(String productoId, String nombreProducto, int cantidad, double precioUnitario)` | — (constructor) | Constructor |
-| `validar()` | `void` | Exige producto, cantidad mayor que 0 y precio no negativo |
-| `tieneCosto()` | `boolean` | Si la venta guardó el costo del producto |
-| `utilidadCon(double costo)` | `double` | Utilidad del ítem: (precio − costo) × cantidad |
-| `getSubtotal()` | `double` | Cantidad × precio |
-| `sincronizarSubtotal()` | `void` | Actualiza el subtotal guardado |
-| Getters | — | `getCostoUnitario()`, `getProductoId()`, `getNombreProducto()`, `getCantidad()`, `getPrecioUnitario()` |
-| Setters | `void` | `setCostoUnitario()`, `setProductoId()`, `setNombreProducto()`, `setCantidad()`, `setPrecioUnitario()` |
+| `SaleItem()` / `SaleItem(String productoId, String nombreProducto, int cantidad, double precioUnitario)` | — | Constructores |
+| `validar()` | `void` | Valida |
+| `tieneCosto()` | `boolean` | True si la venta guardó el costo del producto |
+| `utilidadCon(double costo)` | `double` | Utilidad del ítem: (precio de venta - costo) por cantidad |
+| `getSubtotal()` | `double` | Cantidad × precio unitario, siempre calculado |
+| `sincronizarSubtotal()` | `void` | Actualiza el atributo persistido con el subtotal calculado |
+| Getters y setters | — | `getCantidad()`, `getCostoUnitario()`, `getNombreProducto()`, `getPrecioUnitario()`, `getProductoId()`, `setCantidad()`, `setCostoUnitario()`, `setNombreProducto()`, `setPrecioUnitario()`, `setProductoId()` |
 
 ##### SalesReport
 
 | Campo | Valor |
 |---|---|
-| Clase | `SalesReport` |
-| Paquete | `sistemainventario.model` |
-| Tipo | Record (concreta) |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Record con el informe de ventas de un período: totales, comparación con el período anterior, serie en el tiempo, productos más vendidos, métodos de pago y detalle. |
+| Tipo | Registro |
+| Herencia | — |
+| Responsabilidad | Informe de ventas de un período: totales, comparación con el período anterior, ventas agrupadas en el tiempo, productos más vendidos y métodos de pago. |
 | Archivo | [SalesReport.java](../src/main/java/sistemainventario/model/SalesReport.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| `desde` | `String` | Primer día del período |
-| `hasta` | `String` | Último día del período |
-| `anteriorDesde` | `String` | Primer día del período de comparación |
-| `anteriorHasta` | `String` | Último día del período de comparación |
-| `agrupacion` | `String` | dia, semana o mes |
-| `actual` | `Totals` | Totales del período |
-| `anterior` | `Totals` | Totales del período anterior |
-| `serie` | `List<Point>` | Ventas y utilidad por grupo de tiempo |
-| `productos` | `List<ProductRanking>` | Productos vendidos (ranking) |
-| `metodosPago` | `List<PaymentShare>` | Ventas por método de pago |
-| `ventas` | `List<SaleLine>` | Detalle de cada venta |
-
-**Métodos**
-
-No declara métodos propios.
+**Datos:** `(String desde, public record SalesReport(String desde, String hasta, String anteriorDesde, String anteriorHasta, String agrupacion, Totals actual, Totals anterior, List serie, List productos, List metodosPago, List ventas)`
 
 ##### StockEntry
 
 | Campo | Valor |
 |---|---|
-| Clase | `StockEntry` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | `InventoryMovement` |
-| Responsabilidad principal | Ingreso de mercancía: al aplicarse aumenta el stock del producto. |
+| Herencia | hereda de `InventoryMovement` |
+| Responsabilidad | Ingreso de mercancía al inventario: incrementa el stock del producto. |
 | Archivo | [StockEntry.java](../src/main/java/sistemainventario/model/StockEntry.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `proveedorId` | `String` | Supplier de la mercancía |
-| `precioUnitario` | `double` | Precio de compra por unidad |
-| `observacion` | `String` | Nota opcional |
-| Constantes (`static final`) | — | `PREFIJO_ID` |
+| `proveedorId` | `String` | Proveedor |
+| `precioUnitario` | `double` | Precio unitario |
+| `observacion` | `String` | Observación |
+
+**Constantes:** `PREFIJO_ID`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `StockEntry()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `StockEntry(String id, String productoId, String proveedorId, int cantidad, double precioUnitario, String fecha, String observacion)` | — (constructor) | Constructor |
-| `aplicarA(Product producto)` | `void` | Aumenta el stock del producto (sobrescribe) `@Override` |
-| `getPrefijoId()` | `String` | Devuelve “ENT” (sobrescribe) `@Override` |
-| Getters | — | `getProveedorId()`, `getPrecioUnitario()`, `getObservacion()` |
-| Setters | `void` | `setProveedorId()`, `setPrecioUnitario()`, `setObservacion()` |
+| `StockEntry()` | — | Constructor |
+| `aplicarA(Product producto)` | `void` | Una entrada suma unidades al producto |
+| `getPrefijoId()` | `String` | Prefijo usado para generar el ID (ENT, SAL, ...) |
+| Getters y setters | — | `getObservacion()`, `getPrecioUnitario()`, `getProveedorId()`, `setObservacion()`, `setPrecioUnitario()`, `setProveedorId()` |
 
 ##### StockExit
 
 | Campo | Valor |
 |---|---|
-| Clase | `StockExit` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | `InventoryMovement` |
-| Responsabilidad principal | Retiro de mercancía que no es venta (daño, merma, uso interno): al aplicarse disminuye el stock. |
+| Herencia | hereda de `InventoryMovement` |
+| Responsabilidad | Retiro de mercancía que no es una venta (merma, daño, uso interno): reduce el stock del producto. |
 | Archivo | [StockExit.java](../src/main/java/sistemainventario/model/StockExit.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `motivo` | `String` | Razón del retiro |
-| `tipo` | `String` | Tipo de salida |
-| Constantes (`static final`) | — | `PREFIJO_ID` |
+| `motivo` | `String` | Motivo |
+| `tipo` | `String` | Tipo |
+
+**Constantes:** `PREFIJO_ID`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `StockExit()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `StockExit(String id, String productoId, int cantidad, String motivo, String fecha, String tipo)` | — (constructor) | Constructor |
-| `aplicarA(Product producto)` | `void` | Disminuye el stock validando disponibilidad (sobrescribe) `@Override` |
-| `getPrefijoId()` | `String` | Devuelve “SAL” (sobrescribe) `@Override` |
-| Getters | — | `getMotivo()`, `getTipo()` |
-| Setters | `void` | `setMotivo()`, `setTipo()` |
+| `StockExit()` | — | Constructor |
+| `aplicarA(Product producto)` | `void` | Una salida descuenta unidades y valida el stock disponible |
+| `getPrefijoId()` | `String` | Prefijo usado para generar el ID (ENT, SAL, ...) |
+| Getters y setters | — | `getMotivo()`, `getTipo()`, `setMotivo()`, `setTipo()` |
 
 ##### Supplier
 
 | Campo | Valor |
 |---|---|
-| Clase | `Supplier` |
-| Paquete | `sistemainventario.model` |
 | Tipo | Concreta |
-| Hereda de / implementa | `IdentifiedEntity` |
-| Responsabilidad principal | Distribuidor que abastece productos; valida sus datos y responde búsquedas. |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Deshabilitable` |
+| Responsabilidad | Distribuidor o fabricante que abastece productos al negocio. |
 | Archivo | [Supplier.java](../src/main/java/sistemainventario/model/Supplier.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `nombre` | `String` | Nombre del proveedor |
-| `contacto` | `String` | Persona de contacto |
+| `nombre` | `String` | Nombre |
+| `contacto` | `String` | Contacto |
 | `telefono` | `String` | Teléfono |
-| `email` | `String` | Correo electrónico |
+| `email` | `String` | Correo |
 | `direccion` | `String` | Dirección |
-| `categoria` | `String` | Rubro que abastece |
-| `activo` | `boolean` | Si el proveedor está activo |
+| `categoria` | `String` | Categoria |
+| `categoriaIds` | `List<String>` | Tipos de producto que surte: IDs de categorías del negocio |
+| `activo` | `boolean` | Si está habilitado (borrado lógico) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `Supplier()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `Supplier(String id, String nombre, String contacto, String telefono, String email, String direccion, String categoria)` | — (constructor) | Constructor |
-| `validar()` | `void` | Exige el nombre |
-| `coincideCon(String texto)` | `boolean` | Búsqueda por nombre o contacto |
-| `getEtiqueta()` | `String` | Devuelve el nombre (sobrescribe) `@Override` |
-| `toString()` | `String` | Texto del proveedor (sobrescribe) `@Override` |
-| Getters | — | `getNombre()`, `getContacto()`, `getTelefono()`, `getEmail()`, `getDireccion()`, `getCategoria()`, `isActivo()` |
-| Setters | `void` | `setNombre()`, `setContacto()`, `setTelefono()`, `setEmail()`, `setDireccion()`, `setCategoria()`, `setActivo()` |
+| `Supplier()` | — | Constructor |
+| `validar()` | `void` | El proveedor valida sus propios datos |
+| `coincideCon(String texto)` | `boolean` | El proveedor sabe si coincide con un texto de búsqueda |
+| `getEtiqueta()` | `String` | Etiqueta legible para selectores y tablas |
+| `toString()` | `String` | Texto que describe el objeto |
+| `getCategoriaIds()` | `List<String>` | IDs de las categorías que surte (nunca null) |
+| `setCategoriaIds(List<String> categoriaIds)` | `void` | Set categoria ids |
+| Getters y setters | — | `getCategoria()`, `getContacto()`, `getDireccion()`, `getEmail()`, `getNombre()`, `getTelefono()`, `isActivo()`, `setActivo()`, `setCategoria()`, `setContacto()`, `setDireccion()`, `setEmail()`, `setNombre()`, `setTelefono()` |
+
+##### User
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `IdentifiedEntity`; implementa `Deshabilitable` |
+| Responsabilidad | Persona que usa TBalance, con su contraseña cifrada y sus accesos a los negocios. |
+| Archivo | [User.java](../src/main/java/sistemainventario/model/User.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `nombre` | `String` | Nombre |
+| `usuario` | `String` | Usuario |
+| `clave` | `String` | Clave |
+| `activo` | `Boolean` | Si está habilitado (borrado lógico) |
+| `intentosFallidos` | `int` | Intentos fallidos |
+| `bloqueadoHasta` | `String` | Bloqueado hasta |
+| `fechaCreacion` | `String` | Fecha creacion |
+| `ultimoIngreso` | `String` | Ultimo ingreso |
+| `accesos` | `List<Acceso>` | Accesos |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `User()` | — | Constructor |
+| `getUsuario()` | `String` | Nombre de usuario para iniciar sesión, en minúsculas |
+| `getClave()` | `String` | Resumen de la contraseña (pbkdf2_sha256$iteraciones$sal$resumen) |
+| `getBloqueadoHasta()` | `String` | Fecha y hora hasta la que no puede entrar por intentos fallidos, o null |
+| `getAccesos()` | `List<Acceso>` | Accesos a negocios (copia) |
+| `rolEn(String perfilId)` | `Optional<Rol>` | La persona conoce sus accesos y responde qué rol tiene en cada negocio |
+| `darAcceso(String perfilId, Rol rol)` | `void` | Da o cambia el acceso a un negocio |
+| `esDuenoDeAlguno()` | `boolean` | True si es dueño de al menos un negocio |
+| Getters y setters | — | `getFechaCreacion()`, `getIntentosFallidos()`, `getNombre()`, `getUltimoIngreso()`, `isActivo()`, `setAccesos()`, `setActivo()`, `setBloqueadoHasta()`, `setClave()`, `setFechaCreacion()`, `setIntentosFallidos()`, `setNombre()`, `setUltimoIngreso()`, `setUsuario()` |
 
 #### Paquete `exception`
 
@@ -782,65 +1145,46 @@ No declara métodos propios.
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantException` |
-| Paquete | `sistemainventario.exception` |
 | Tipo | Concreta |
-| Hereda de / implementa | `RuntimeException` |
-| Responsabilidad principal | Excepción no comprobada con un mensaje claro cuando falla la conexión con el modelo (sin internet, clave inválida, límite gratuito). |
+| Herencia | hereda de `RuntimeException` |
+| Responsabilidad | Error al hablar con el modelo de lenguaje (sin internet, clave inválida, límite gratuito alcanzado...). |
 | Archivo | [AssistantException.java](../src/main/java/sistemainventario/exception/AssistantException.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `AssistantException(String mensaje)` | — (constructor) | Constructor |
-| `AssistantException(String mensaje, Throwable causa)` | — (constructor) | Constructor |
+| `AssistantException(String mensaje)` / `AssistantException(String mensaje, Throwable causa)` | — | Constructores |
 
 ##### PersistenceException
 
 | Campo | Valor |
 |---|---|
-| Clase | `PersistenceException` |
-| Paquete | `sistemainventario.exception` |
 | Tipo | Concreta |
-| Hereda de / implementa | `RuntimeException` |
-| Responsabilidad principal | Excepción no comprobada para errores al leer o escribir archivos de datos. |
+| Herencia | hereda de `RuntimeException` |
+| Responsabilidad | Error al leer o escribir los datos (archivos o base de datos). |
 | Archivo | [PersistenceException.java](../src/main/java/sistemainventario/exception/PersistenceException.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `PersistenceException(String mensaje, Throwable causa)` | — (constructor) | Constructor |
+| `PersistenceException(String mensaje, Throwable causa)` | — | Constructor |
 
 ##### ValidationException
 
 | Campo | Valor |
 |---|---|
-| Clase | `ValidationException` |
-| Paquete | `sistemainventario.exception` |
 | Tipo | Concreta |
-| Hereda de / implementa | `RuntimeException` |
-| Responsabilidad principal | Excepción no comprobada para reglas de negocio o datos de entrada inválidos. |
+| Herencia | hereda de `RuntimeException` |
+| Responsabilidad | Error de una regla del negocio o de un dato mal escrito; su mensaje se le muestra al usuario. |
 | Archivo | [ValidationException.java](../src/main/java/sistemainventario/exception/ValidationException.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ValidationException(String mensaje)` | — (constructor) | Constructor |
+| `ValidationException(String mensaje)` | — | Constructor |
 
 #### Paquete `repository`
 
@@ -848,435 +1192,979 @@ No tiene atributos.
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantConfigRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Lee y escribe la configuración del asistente (AssistantSettings) en ~/.inventariopro/asistente.json, fuera de los datos de los perfiles y de las copias. |
+| Herencia | — |
+| Responsabilidad | Guarda la clave y el modelo del asistente en ~/.inventariopro/asistente.json. |
 | Archivo | [AssistantConfigRepository.java](../src/main/java/sistemainventario/repository/AssistantConfigRepository.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `archivo` | `Path` | Ruta de asistente.json |
+| `archivo` | `Path` | Archivo |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `AssistantConfigRepository(Path archivo)` | — (constructor) | Constructor |
-| `leer()` | `Optional<AssistantSettings>` | Lee la clave y el modelo, si existen |
-| `guardar(AssistantSettings config)` | `void` | Guarda la clave y el modelo |
+| `AssistantConfigRepository(Path archivo)` | — | Constructor |
+| `leer()` | `Optional<AssistantSettings>` | La configuración guardada, si existe |
+| `guardar(AssistantSettings config)` | `void` | Guarda |
 | `borrar()` | `void` | Borra la clave guardada |
+
+##### AuditJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Historial de acciones en la tabla AUDITORIA. |
+| Archivo | [AuditJdbcRepository.java](../src/main/java/sistemainventario/repository/AuditJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `AuditJdbcRepository(Database bd)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(AuditEntry e)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `AuditEntry` | La entidad |
+
+##### AuditRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Historial de acciones en auditoria.json (junto a usuarios.json). |
+| Archivo | [AuditRepository.java](../src/main/java/sistemainventario/repository/AuditRepository.java) |
+
+**Constantes:** `ARCHIVO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `AuditRepository(Path directorio)` | — | Constructor |
 
 ##### BackupRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `BackupRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Lista, ubica y elimina los archivos .zip de la carpeta de respaldos, validando sus nombres. |
+| Herencia | implementa `BackupStore` |
+| Responsabilidad | Administra los archivos de copia de seguridad guardados en ~/.inventariopro/respaldos/. |
 | Archivo | [BackupRepository.java](../src/main/java/sistemainventario/repository/BackupRepository.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `carpeta` | `Path` | Carpeta de respaldos |
-| Constantes (`static final`) | — | `NOMBRE_VALIDO`, `FORMATO_FECHA` |
+| `carpeta` | `Path` | Carpeta |
+
+**Constantes:** `NOMBRE_VALIDO`, `FORMATO_FECHA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `BackupRepository(Path carpeta)` | — (constructor) | Constructor |
-| `listar()` | `List<Backup>` | Copias ordenadas de la más reciente a la más antigua |
-| `rutaExistente(String nombre)` | `Path` | Ruta de una copia existente |
-| `rutaNueva(String nombre)` | `Path` | Ruta para una copia nueva |
-| `describir(Path ruta)` | `Backup` | Crea el Backup de un archivo |
-| `eliminar(String nombre)` | `void` | Borra una copia |
-| Getters | — | `getCarpeta()` |
+| `BackupRepository(Path carpeta)` | — | Constructor |
+| `listar()` | `List<Backup>` | Respaldos existentes, del más reciente al más antiguo |
+| `rutaExistente(String nombre)` | `Path` | Ruta del respaldo existente |
+| `rutaNueva(String nombre)` | `Path` | Ruta dentro de la carpeta de respaldos |
+| `describir(Path ruta)` | `Backup` | La información del respaldo |
+| `eliminar(String nombre)` | `void` | Elimina |
+| `existe(String nombre)` | `boolean` | True si ya hay una copia con ese nombre |
+| `guardar(String nombre, Path zip)` | `Backup` | Guarda una copia |
+| `leer(String nombre, Path destino)` | `void` | Deja el contenido de una copia en un archivo .zip para restaurarla |
+| `ubicacion()` | `String` | Dónde están las copias, para mostrarlo ("C:\\...\\respaldos" o "la base de datos Oracle") |
+| `carpeta()` | `Path` | La carpeta de las copias, o null si están en una base de datos |
+| Getters y setters | — | `getCarpeta()` |
+
+##### BackupStore
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | — |
+| Responsabilidad | Dónde se guardan las copias de seguridad (archivos .zip con los datos en JSON). |
+| Archivo | [BackupStore.java](../src/main/java/sistemainventario/repository/BackupStore.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `listar()` *(abstracto)* | `List<Backup>` | Las copias, de la más reciente a la más antigua |
+| `existe(String nombre)` *(abstracto)* | `boolean` | True si ya hay una copia con ese nombre |
+| `guardar(String nombre, Path zip)` *(abstracto)* | `Backup` | Guarda una copia |
+| `leer(String nombre, Path destino)` *(abstracto)* | `void` | Deja el contenido de una copia en un archivo .zip para restaurarla |
+| `eliminar(String nombre)` *(abstracto)* | `void` | Elimina |
+| `ubicacion()` *(abstracto)* | `String` | Dónde están las copias, para mostrarlo ("C:\\...\\respaldos" o "la base de datos Oracle") |
+| `carpeta()` *(abstracto)* | `Path` | La carpeta de las copias, o null si están en una base de datos |
+
+##### CategoryJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Categorías de un negocio en la tabla CATEGORIA. |
+| Archivo | [CategoryJdbcRepository.java](../src/main/java/sistemainventario/repository/CategoryJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CategoryJdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(Category c)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `Category` | La entidad |
+| `antesDeEliminar(Connection conexion, String id)` | `void` | Los productos de la categoría quedan sin categoría (la llave foránea no lo permitiría) |
 
 ##### CategoryRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `CategoryRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | `JsonRepository<Category>` |
-| Responsabilidad principal | Repositorio de categorías de un perfil en categorias.json. |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Persistencia de las categorías de un perfil en categorias.json. |
 | Archivo | [CategoryRepository.java](../src/main/java/sistemainventario/repository/CategoryRepository.java) |
+
+**Constantes:** `ARCHIVO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CategoryRepository(Path directorio)` | — | Constructor |
+
+##### CreditPaymentJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Abonos de los clientes que deben, en la tabla ABONO. |
+| Archivo | [CreditPaymentJdbcRepository.java](../src/main/java/sistemainventario/repository/CreditPaymentJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CreditPaymentJdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(CreditPayment a)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `CreditPayment` | La entidad |
+
+##### CreditPaymentRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Abonos de los clientes que deben, en abonos.json de cada negocio. |
+| Archivo | [CreditPaymentRepository.java](../src/main/java/sistemainventario/repository/CreditPaymentRepository.java) |
+
+**Constantes:** `ARCHIVO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CreditPaymentRepository(Path directorio)` | — | Constructor |
+
+##### Database
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `AutoCloseable` |
+| Responsabilidad | Conexión JDBC a PostgreSQL u Oracle y utilidades para ejecutar SQL. |
+| Archivo | [Database.java](../src/main/java/sistemainventario/repository/Database.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO` |
+| `config` | `DatabaseSettings` | Config (DatabaseSettings) |
+| `dialecto` | `SqlDialect` | Dialecto (SqlDialect) |
+| `conexion` | `Connection` | Conexion |
+| `ultimoUso` | `long` | Ultimo uso |
+| `seguimiento` | `Boolean` | Null mientras no se sepa si la base tiene la tabla CAMBIO_VERSION (cambio v7) |
+| `versionConocida` | `long` | Version conocida |
+| `generacion` | `long` | Generacion |
+| `ultimaRevision` | `long` | Ultima revision |
+
+**Constantes:** `SCRIPTS_INICIALES`, `SEGUNDOS_VALIDACION`, `VALIDAR_TRAS_MS`, `REVISAR_CAMBIOS_CADA_MS`, `CLAVE_CAMBIOS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `CategoryRepository(Path directorio)` | — (constructor) | Constructor |
+| `Database(DatabaseSettings config)` | — | Constructor |
+| `getDialecto()` | `SqlDialect` | El dialecto del motor configurado |
+| `nombreMotor()` | `String` | Nombre del motor para los mensajes |
+| `probar()` | `void` | Abre la conexión y comprueba que responde |
+| `tieneTablas()` | `boolean` | True si ya existen las tablas de TBalance |
+| `crearTablas()` | `void` | Crea las tablas y los disparadores con los scripts del motor |
+| `versionEsquema()` | `int` | La versión del esquema que tiene la base (0 si no tiene tablas de TBalance) |
+| `versionActual()` *(static)* | `int` | La versión que dejan todos los cambios aplicados |
+| `actualizarEsquema()` | `int` | Deja la base en la versión actual: si no hay tablas las crea y después aplica, en orden, los cambios que falten |
+| `estaVacia()` | `boolean` | True si la tabla PERFIL no tiene filas |
+| `ejecutarScript(String recurso)` | `void` | Ejecuta todas las sentencias de un script de los recursos |
+| `consultar(String sql, LectorDeFila<T> lector, Object... parametros)` | `List<T>` | Ejecuta una consulta y lee cada fila |
+| `transaccion(Trabajo<T> trabajo)` | `T` | Ejecuta un trabajo en una transacción: confirma si todo salió bien y deshace todo si hubo un error |
+| `actualizar(Connection conexion, String sql, Object... parametros)` *(static)* | `int` | Ejecuta INSERT, UPDATE o DELETE con la conexión de una transacción |
+| `traducir(SQLException error, String accion)` | `RuntimeException` | Convierte un error de la base en una excepción de TBalance: los mensajes de los disparadores llegan como ValidationException (el usuario los ve tal cual); el resto como PersistenceException |
+| `revisarCambios(boolean ahora)` | `long` | Pregunta a la base si otro equipo guardó algo desde la última vez |
+| `generacion()` | `long` | El número de cambios de otros equipos que ya se conocen (sin consultar la base) |
+| `close()` | `void` | Cierra la conexión |
+
+##### DatabaseBackupRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `BackupStore` |
+| Responsabilidad | Copias de seguridad dentro de PostgreSQL u Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna binaria (BYTEA o BLOB). |
+| Archivo | [DatabaseBackupRepository.java](../src/main/java/sistemainventario/repository/DatabaseBackupRepository.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `bd` | `Database` | Conexión a la base de datos |
+
+**Constantes:** `NOMBRE_VALIDO`, `FORMATO_FECHA`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `DatabaseBackupRepository(Database bd)` | — | Constructor |
+| `listar()` | `List<Backup>` | Las copias, de la más reciente a la más antigua |
+| `existe(String nombre)` | `boolean` | True si ya hay una copia con ese nombre |
+| `guardar(String nombre, Path zip)` | `Backup` | Guarda una copia |
+| `leer(String nombre, Path destino)` | `void` | Deja el contenido de una copia en un archivo .zip para restaurarla |
+| `eliminar(String nombre)` | `void` | Elimina |
+| `ubicacion()` | `String` | Dónde están las copias, para mostrarlo ("C:\\...\\respaldos" o "la base de datos Oracle") |
+| `carpeta()` | `Path` | La carpeta de las copias, o null si están en una base de datos |
+
+##### DatabaseSettingsRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Guarda en ~/.inventariopro/basedatos.json qué base de datos usa este computador (motor, URL, usuario y clave). |
+| Archivo | [DatabaseSettingsRepository.java](../src/main/java/sistemainventario/repository/DatabaseSettingsRepository.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `archivo` | `Path` | Archivo |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `DatabaseSettingsRepository(Path archivo)` | — | Constructor |
+| `leer()` | `DatabaseSettings` | La configuración guardada o, si no hay, archivos JSON |
+| `guardar(DatabaseSettings config)` | `void` | Guarda |
+
+##### DatabaseStorageProvider
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `StorageProvider` |
+| Responsabilidad | Repositorios JDBC sobre PostgreSQL u Oracle; todos comparten una conexión. |
+| Archivo | [DatabaseStorageProvider.java](../src/main/java/sistemainventario/repository/DatabaseStorageProvider.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `bd` | `Database` | Conexión a la base de datos |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `DatabaseStorageProvider(Database bd)` | — | Constructor |
+| `getBaseDeDatos()` | `Database` | La conexión, para crear tablas o copiar datos |
+| `nombre()` | `String` | Nombre del almacenamiento para mostrar ("PostgreSQL", "Oracle"...) |
+| `perfiles()` | `Repository<Profile>` | Repositorio de perfiles |
+| `usuarios()` | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
+| `auditoria()` | `Repository<AuditEntry>` | Historial de acciones (quién hizo qué) |
+| `productos(String perfilId)` | `Repository<Product>` | Repositorio de productos del negocio |
+| `categorias(String perfilId)` | `Repository<Category>` | Repositorio de categorías del negocio |
+| `proveedores(String perfilId)` | `Repository<Supplier>` | Repositorio de proveedores del negocio |
+| `entradas(String perfilId)` | `Repository<StockEntry>` | Repositorio de entradas del negocio |
+| `abonos(String perfilId)` | `Repository<CreditPayment>` | Abonos de los clientes que deben (fiados) |
+| `salidas(String perfilId)` | `Repository<StockExit>` | Repositorio de salidas del negocio |
+| `ventas(String perfilId)` | `Repository<Sale>` | Repositorio de ventas del negocio |
+| `close()` | `void` | Libera la conexión, si la hay |
 
 ##### GlobalConfigRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `GlobalConfigRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Lee y escribe configuracion-global.json mediante JsonFileStore. |
+| Herencia | — |
+| Responsabilidad | Persiste la GlobalConfig (perfil activo y lista de perfiles) en configuracion-global.json. |
 | Archivo | [GlobalConfigRepository.java](../src/main/java/sistemainventario/repository/GlobalConfigRepository.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `almacen` | `JsonFileStore` | Archivo configuracion-global.json |
-| Constantes (`static final`) | — | `ARCHIVO` |
+| `almacen` | `JsonFileStore` | Almacen (JsonFileStore) |
+
+**Constantes:** `ARCHIVO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `GlobalConfigRepository(Path directorioBase)` | — (constructor) | Constructor |
-| `existe()` | `boolean` | Si existe el archivo |
-| `cargar()` | `GlobalConfig` | Lee la configuración |
-| `guardar(GlobalConfig configuracion)` | `void` | Escribe la configuración |
+| `GlobalConfigRepository(Path directorioBase)` | — | Constructor |
+| `existe()` | `boolean` | True si el archivo de configuración ya fue creado |
+| `cargar()` | `GlobalConfig` | Carga la configuración guardada |
+| `guardar(GlobalConfig configuracion)` | `void` | Guarda |
+
+##### JdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Abstracta |
+| Herencia | implementa `Repository` |
+| Responsabilidad | Repositorio genérico sobre una tabla de PostgreSQL u Oracle (acceso a datos con JDBC). |
+| Archivo | [JdbcRepository.java](../src/main/java/sistemainventario/repository/JdbcRepository.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `bd` | `Database` | Conexión a la base de datos |
+| `perfilId` | `String` | Negocio al que pertenece |
+| `cache` | `List<T>` | Copia en memoria de los registros |
+| `generacionCache` | `long` | Generación de cambios de otros equipos con la que se cargó cache |
+
+**Constantes:** `FECHA_HORA`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `JdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` *(abstracto)* | `String` | Nombre de la tabla |
+| `columnas()` *(abstracto)* | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(T entidad)` *(abstracto)* | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` *(abstracto)* | `T` | La entidad |
+| `completar(List<T> entidades)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
+| `guardarHijos(Connection conexion, T entidad, boolean nueva)` | `void` | Escribe los datos de tablas hijas después del INSERT o del UPDATE |
+| `antesDeEliminar(Connection conexion, String id)` | `void` | Prepara el borrado (por ejemplo, quitar referencias) |
+| `refrescar()` | `void` | Pregunta ya a la base si otro equipo cambió algo y, si es así, recarga |
+| `listarTodos()` | `List<T>` | Copia de todas las entidades almacenadas |
+| `buscarPorId(String id)` | `Optional<T>` | La entidad, o vacío si no existe |
+| `existe(String id)` | `boolean` | True si existe una entidad con ese ID |
+| `filtrar(Predicate<T> condicion)` | `List<T>` | Entidades que cumplen la condición |
+| `agregar(T entidad)` | `void` | Agrega una entidad nueva y persiste el cambio |
+| `actualizar(T entidad)` | `boolean` | Reemplaza la entidad que tenga el mismo ID y persiste el cambio |
+| `eliminar(String id)` | `boolean` | True si existía y fue eliminada |
+| `siguienteIdNumerico()` | `String` | El siguiente ID numérico disponible (mayor ID + 1) |
+| `porPerfil()` | `boolean` | True si la tabla pertenece a un negocio (tiene PERFIL_ID) |
+| `referenciaValida(String tablaReferida, String id)` | `Object` | El ID si existe en ese negocio; si no, un nulo (para no romper la llave foránea) |
+| `texto(String valor)` *(static)* | `Object` | Texto o nulo de tipo VARCHAR |
+| `dia(String iso)` *(static)* | `Object` | Fecha (columna DATE) a partir de "yyyy-MM-dd", o nulo |
+| `momento(String iso)` *(static)* | `Object` | Fecha y hora (columna TIMESTAMP) a partir de "yyyy-MM-dd" o "yyyy-MM-ddTHH:mm:ss", o nulo |
+| `leerDia(ResultSet fila, String columna)` *(static)* | `String` | La columna DATE como "yyyy-MM-dd" o null |
+| `leerMomento(ResultSet fila, String columna)` *(static)* | `String` | La columna TIMESTAMP como "yyyy-MM-ddTHH:mm:ss", o solo "yyyy-MM-dd" si la hora es 00:00:00 (así quedan igual las fechas que se guardaron sin hora) |
+| `leerNumero(ResultSet fila, String columna)` *(static)* | `double` | La columna numérica como double (0 si es nula) |
 
 ##### JsonFileStore
 
 | Campo | Valor |
 |---|---|
-| Clase | `JsonFileStore` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Lee y escribe un archivo de texto; escribe primero un archivo temporal y luego reemplaza el original. |
+| Herencia | — |
+| Responsabilidad | Lectura y escritura de un archivo de texto JSON en disco. |
 | Archivo | [JsonFileStore.java](../src/main/java/sistemainventario/repository/JsonFileStore.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `archivo` | `Path` | Ruta del archivo |
+| `archivo` | `Path` | Archivo |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `JsonFileStore(Path archivo)` | — (constructor) | Constructor |
-| `existe()` | `boolean` | Si existe el archivo |
-| `leer()` | `Optional<String>` | Lee el contenido |
-| `escribir(String contenido)` | `void` | Escribe de forma segura (.tmp y reemplazo) |
-| `crearDirectorio(Path directorio)` *(static)* | `void` | Crea una carpeta si no existe |
-| Getters | — | `getArchivo()` |
+| `JsonFileStore(Path archivo)` | — | Constructor |
+| `existe()` | `boolean` | True si el archivo existe en disco |
+| `leer()` | `Optional<String>` | El contenido del archivo, o vacío si todavía no existe |
+| `escribir(String contenido)` | `void` | Reemplaza el contenido del archivo de forma segura |
+| `crearDirectorio(Path directorio)` *(static)* | `void` | Crea una carpeta (y sus padres) si no existe |
+| Getters y setters | — | `getArchivo()` |
 
 ##### JsonRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `JsonRepository<T extends IdentifiedEntity>` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Abstracta |
-| Hereda de / implementa | `Repository<T>` |
-| Responsabilidad principal | Implementación genérica de Repository: mantiene la lista en memoria y la guarda en un archivo JSON. |
+| Herencia | implementa `Repository` |
+| Responsabilidad | Implementación genérica de Repository que guarda una lista de entidades en un archivo JSON y la mantiene en memoria (caché). |
 | Archivo | [JsonRepository.java](../src/main/java/sistemainventario/repository/JsonRepository.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `almacen` | `JsonFileStore` | Archivo JSON de la entidad |
-| `tipo` | `Class<T>` | Clase de la entidad (para Gson) |
-| `cache` | `List<T>` | Lista de entidades en memoria |
+| `almacen` | `JsonFileStore` | Almacen (JsonFileStore) |
+| `tipo` | `Class<T>` | Tipo |
+| `cache` | `List<T>` | Copia en memoria de los registros |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `JsonRepository(Path directorio, String nombreArchivo, Class<T> tipo)` | — (constructor) | Constructor |
-| `listarTodos()` | `List<T>` | Todas las entidades (implementa Repository) `@Override` |
-| `buscarPorId(String id)` | `Optional<T>` | Busca por ID (implementa Repository) `@Override` |
-| `existe(String id)` | `boolean` | Si existe un ID (implementa Repository) `@Override` |
-| `filtrar(Predicate<T> condicion)` | `List<T>` | Entidades que cumplen una condición (implementa Repository) `@Override` |
-| `agregar(T entidad)` | `void` | Agrega y persiste (implementa Repository) `@Override` |
-| `actualizar(T entidad)` | `boolean` | Reemplaza y persiste (implementa Repository) `@Override` |
-| `eliminar(String id)` | `boolean` | Elimina y persiste (implementa Repository) `@Override` |
-| `siguienteIdNumerico()` | `String` | Siguiente ID numérico libre (implementa Repository) `@Override` |
-| Getters | — | `getArchivo()` |
+| `JsonRepository(Path directorio, String nombreArchivo, Class<T> tipo)` | — | Constructor |
+| `listarTodos()` | `List<T>` | Copia de todas las entidades almacenadas |
+| `buscarPorId(String id)` | `Optional<T>` | La entidad, o vacío si no existe |
+| `existe(String id)` | `boolean` | True si existe una entidad con ese ID |
+| `filtrar(Predicate<T> condicion)` | `List<T>` | Entidades que cumplen la condición |
+| `agregar(T entidad)` | `void` | Agrega una entidad nueva y persiste el cambio |
+| `actualizar(T entidad)` | `boolean` | Reemplaza la entidad que tenga el mismo ID y persiste el cambio |
+| `eliminar(String id)` | `boolean` | True si existía y fue eliminada |
+| `siguienteIdNumerico()` | `String` | El siguiente ID numérico disponible (mayor ID + 1) |
+| `getArchivo()` | `Path` | Ruta del archivo JSON administrado |
+
+##### JsonStorageProvider
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `StorageProvider` |
+| Responsabilidad | Repositorios en archivos JSON: data/perfiles.json y una carpeta por negocio. |
+| Archivo | [JsonStorageProvider.java](../src/main/java/sistemainventario/repository/JsonStorageProvider.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `directorioDatos` | `Path` | Directorio datos |
+| `directorios` | `ProfileDirectory` | Directorios (ProfileDirectory) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `JsonStorageProvider(Path directorioDatos)` | — | Constructor |
+| `vaciarArchivos()` | `void` | Borra perfiles.json y las carpetas de los negocios (no toca la configuración global) |
+| `nombre()` | `String` | Nombre del almacenamiento para mostrar ("PostgreSQL", "Oracle"...) |
+| `perfiles()` | `Repository<Profile>` | Repositorio de perfiles |
+| `usuarios()` | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
+| `auditoria()` | `Repository<AuditEntry>` | Historial de acciones (quién hizo qué) |
+| `productos(String perfilId)` | `Repository<Product>` | Repositorio de productos del negocio |
+| `categorias(String perfilId)` | `Repository<Category>` | Repositorio de categorías del negocio |
+| `proveedores(String perfilId)` | `Repository<Supplier>` | Repositorio de proveedores del negocio |
+| `entradas(String perfilId)` | `Repository<StockEntry>` | Repositorio de entradas del negocio |
+| `abonos(String perfilId)` | `Repository<CreditPayment>` | Abonos de los clientes que deben (fiados) |
+| `salidas(String perfilId)` | `Repository<StockExit>` | Repositorio de salidas del negocio |
+| `ventas(String perfilId)` | `Repository<Sale>` | Repositorio de ventas del negocio |
 
 ##### LabelRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `LabelRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Guarda las etiquetas como imágenes PNG y las convierte a data URI para la vista. |
+| Herencia | — |
+| Responsabilidad | Guarda las etiquetas generadas como imágenes PNG en ~/.inventariopro/etiquetas/ y las convierte a Base64 para mostrarlas en la vista. |
 | Archivo | [LabelRepository.java](../src/main/java/sistemainventario/repository/LabelRepository.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `carpeta` | `Path` | Carpeta de etiquetas |
-| Constantes (`static final`) | — | `NOMBRE_VALIDO`, `FORMATO` |
+| `carpeta` | `Path` | Carpeta |
+
+**Constantes:** `NOMBRE_VALIDO`, `FORMATO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `LabelRepository(Path carpeta)` | — (constructor) | Constructor |
-| `guardar(String nombre, BufferedImage imagen)` | `Path` | Guarda una imagen PNG validando el nombre |
-| `aDataUri(BufferedImage imagen)` | `String` | Imagen como data:image/png;base64 |
-| Getters | — | `getCarpeta()` |
+| `LabelRepository(Path carpeta)` | — | Constructor |
+| `guardar(String nombre, BufferedImage imagen)` | `Path` | Ruta del archivo guardado |
+| `aDataUri(BufferedImage imagen)` | `String` | La imagen como data:image/png;base64,... para usarla en un |
+| Getters y setters | — | `getCarpeta()` |
 
-##### ProductRepository
+##### OracleDialect
 
 | Campo | Valor |
 |---|---|
-| Clase | `ProductRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | `JsonRepository<Product>` |
-| Responsabilidad principal | Repositorio de productos de un perfil en productos.json. |
-| Archivo | [ProductRepository.java](../src/main/java/sistemainventario/repository/ProductRepository.java) |
+| Herencia | implementa `SqlDialect` |
+| Responsabilidad | Dialecto de Oracle (18c Express Edition o superior). |
+| Archivo | [OracleDialect.java](../src/main/java/sistemainventario/repository/OracleDialect.java) |
+
+**Constantes:** `COMANDO_SQLPLUS`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `motor()` | `DatabaseEngine` | Motor al que corresponde este dialecto |
+| `carpetaScripts()` | `String` | Carpeta de los scripts dentro de los recursos (por ejemplo sql/oracle) |
+| `nombreDriver()` | `String` | Nombre del driver JDBC, para los mensajes de error |
+| `tablaExiste(Connection conexion, String tabla)` | `boolean` | True si la tabla existe en el esquema del usuario |
+| `separarSentencias(String script)` | `List<String>` | Sentencias listas para enviar una por una por JDBC |
+| `mensajeDeDisparador(SQLException error)` | `Optional<String>` | El mensaje para el usuario si el error lo lanzó un disparador de TBalance |
+
+##### PaymentQrRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Imagen del QR de cobro (Bre-B) de cada negocio, en ~/.inventariopro/qr-cobro/.img. |
+| Archivo | [PaymentQrRepository.java](../src/main/java/sistemainventario/repository/PaymentQrRepository.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO` |
+| `carpeta` | `Path` | Carpeta |
+
+**Constantes:** `TAMANO_MAXIMO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ProductRepository(Path directorio)` | — (constructor) | Constructor |
+| `PaymentQrRepository(Path carpeta)` | — | Constructor |
+| `guardar(String perfilId, byte[] imagen)` | `void` | Guarda |
+| `leerComoDataUrl(String perfilId)` | `Optional<String>` | La imagen como "data:image/...;base64,...", si el negocio subió una |
+| `eliminar(String perfilId)` | `void` | Elimina |
+
+##### PostgresDialect
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `SqlDialect` |
+| Responsabilidad | Dialecto de PostgreSQL (11 o superior). |
+| Archivo | [PostgresDialect.java](../src/main/java/sistemainventario/repository/PostgresDialect.java) |
+
+**Constantes:** `ERROR_DE_DISPARADOR`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `motor()` | `DatabaseEngine` | Motor al que corresponde este dialecto |
+| `carpetaScripts()` | `String` | Carpeta de los scripts dentro de los recursos (por ejemplo sql/oracle) |
+| `nombreDriver()` | `String` | Nombre del driver JDBC, para los mensajes de error |
+| `tablaExiste(Connection conexion, String tabla)` | `boolean` | True si la tabla existe en el esquema del usuario |
+| `separarSentencias(String script)` | `List<String>` | Sentencias listas para enviar una por una por JDBC |
+| `mensajeDeDisparador(SQLException error)` | `Optional<String>` | El mensaje para el usuario si el error lo lanzó un disparador de TBalance |
+
+##### ProductJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Productos de un negocio en la tabla PRODUCTO. |
+| Archivo | [ProductJdbcRepository.java](../src/main/java/sistemainventario/repository/ProductJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `ProductJdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(Product p)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `Product` | La entidad |
+
+##### ProductRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Persistencia de los productos de un perfil en productos.json. |
+| Archivo | [ProductRepository.java](../src/main/java/sistemainventario/repository/ProductRepository.java) |
+
+**Constantes:** `ARCHIVO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `ProductRepository(Path directorio)` | — | Constructor |
 
 ##### ProfileDirectory
 
 | Campo | Valor |
 |---|---|
-| Clase | `ProfileDirectory` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Crea, ubica y elimina las carpetas de datos de cada perfil. |
+| Herencia | — |
+| Responsabilidad | Administra las carpetas físicas de cada perfil: ~/.inventariopro/data/perfiles//. |
 | Archivo | [ProfileDirectory.java](../src/main/java/sistemainventario/repository/ProfileDirectory.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `directorioBase` | `Path` | Carpeta data |
-| Constantes (`static final`) | — | `CARPETA_PERFILES` |
+| `directorioBase` | `Path` | Directorio base |
+
+**Constantes:** `CARPETA_PERFILES`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ProfileDirectory(Path directorioBase)` | — (constructor) | Constructor |
-| `resolver(String perfilId)` | `Path` | Ruta de la carpeta de un perfil |
-| `crear(String perfilId)` | `Path` | Crea la carpeta de un perfil |
-| `eliminar(String perfilId)` | `void` | Borra la carpeta y sus archivos |
-| Getters | — | `getDirectorioBase()` |
+| `ProfileDirectory(Path directorioBase)` | — | Constructor |
+| `resolver(String perfilId)` | `Path` | Ruta de la carpeta del perfil (no se crea) |
+| `crear(String perfilId)` | `Path` | Crea la carpeta del perfil si no existe |
+| `eliminarTodas()` | `void` | Elimina las carpetas de todos los perfiles |
+| `eliminar(String perfilId)` | `void` | Elimina la carpeta del perfil y todos sus archivos |
+| Getters y setters | — | `getDirectorioBase()` |
+
+##### ProfileJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Perfiles (negocios) en la tabla PERFIL y su configuración en PERFIL_CONFIGURACION. |
+| Archivo | [ProfileJdbcRepository.java](../src/main/java/sistemainventario/repository/ProfileJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `ProfileJdbcRepository(Database bd)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(Profile p)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `Profile` | La entidad |
+| `completar(List<Profile> perfiles)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
+| `guardarHijos(Connection conexion, Profile perfil, boolean nuevo)` | `void` | Escribe los datos de tablas hijas después del INSERT o del UPDATE |
 
 ##### ProfileRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `ProfileRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | `JsonRepository<Profile>` |
-| Responsabilidad principal | Repositorio de la lista de perfiles en perfiles.json. |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Persistencia global de la lista de perfiles en perfiles.json. |
 | Archivo | [ProfileRepository.java](../src/main/java/sistemainventario/repository/ProfileRepository.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO` |
+**Constantes:** `ARCHIVO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ProfileRepository(Path directorio)` | — (constructor) | Constructor |
+| `ProfileRepository(Path directorio)` | — | Constructor |
 
 ##### ReportExcelWriter
 
 | Campo | Valor |
 |---|---|
-| Clase | `ReportExcelWriter` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Escribe un SalesReport como libro de Excel (.xlsx) de cuatro hojas con formato de informe, sin librerías externas. |
+| Herencia | — |
+| Responsabilidad | Guarda un SalesReport como libro de Excel (.xlsx) con formato de informe: encabezado con el negocio y el período, tablas con estilos, filas alternadas, totales con fórmulas, filtros, barras de datos, encabezados fijos y pie de página con el número de página para imprimir. |
 | Archivo | [ReportExcelWriter.java](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `TITULO`, `SUBTITULO`, `ENCABEZADO`, `TEXTO`, `DINERO`, `ENTERO`, `PORCENTAJE`, `VARIACION`, `FECHA`, `ALTERNA`, `TOTAL_TEXTO`, `TOTAL_DINERO`, `TOTAL_ENTERO`, `TOTAL_PORCENTAJE`, `NOTA`, `INDICADOR`, `DIA`, `COLUMNAS`, `CABECERA`, `RELACIONES_RAIZ`, `ESTILOS` |
+**Constantes:** `TITULO`, `SUBTITULO`, `ENCABEZADO`, `TEXTO`, `DINERO`, `ENTERO`, `PORCENTAJE`, `VARIACION`, `FECHA`, `ALTERNA`, `TOTAL_TEXTO`, `TOTAL_DINERO`, `TOTAL_ENTERO`, `TOTAL_PORCENTAJE`, `NOTA`, `INDICADOR`, `DIA`, `COLUMNAS`, `CABECERA`, `RELACIONES_RAIZ`, `ESTILOS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `escribir(SalesReport informe, String negocio, Path destino)` | `void` | Escribe el informe con el nombre del negocio en un archivo .xlsx |
+| `escribir(SalesReport informe, String negocio, Path destino)` | `void` | Escribe |
 
 ##### Repository
 
 | Campo | Valor |
 |---|---|
-| Clase | `Repository<T extends IdentifiedEntity>` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Interfaz |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Contrato genérico de acceso a datos (listar, buscar, agregar, actualizar, eliminar) que usan los servicios. |
+| Herencia | — |
+| Responsabilidad | Contrato de acceso a datos para cualquier entidad del sistema. |
 | Archivo | [Repository.java](../src/main/java/sistemainventario/repository/Repository.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `listarTodos()` | `List<T>` | Todas las entidades |
-| `buscarPorId(String id)` | `Optional<T>` | Busca por ID |
-| `existe(String id)` | `boolean` | Si existe un ID |
-| `filtrar(Predicate<T> condicion)` | `List<T>` | Entidades que cumplen una condición |
-| `agregar(T entidad)` | `void` | Agrega y persiste |
-| `actualizar(T entidad)` | `boolean` | Reemplaza y persiste |
-| `eliminar(String id)` | `boolean` | Elimina y persiste |
-| `siguienteIdNumerico()` | `String` | Siguiente ID numérico libre |
+| `listarTodos()` *(abstracto)* | `List<T>` | Copia de todas las entidades almacenadas |
+| `buscarPorId(String id)` *(abstracto)* | `Optional<T>` | La entidad, o vacío si no existe |
+| `existe(String id)` *(abstracto)* | `boolean` | True si existe una entidad con ese ID |
+| `filtrar(Predicate<T> condicion)` *(abstracto)* | `List<T>` | Entidades que cumplen la condición |
+| `agregar(T entidad)` *(abstracto)* | `void` | Agrega una entidad nueva y persiste el cambio |
+| `actualizar(T entidad)` *(abstracto)* | `boolean` | Reemplaza la entidad que tenga el mismo ID y persiste el cambio |
+| `eliminar(String id)` *(abstracto)* | `boolean` | True si existía y fue eliminada |
+| `siguienteIdNumerico()` *(abstracto)* | `String` | El siguiente ID numérico disponible (mayor ID + 1) |
+| `refrescar()` | `void` | Vuelve a leer los datos si otro equipo los cambió |
+
+##### SaleJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Ventas de un negocio en las tablas VENTA y DETALLE_VENTA. |
+| Archivo | [SaleJdbcRepository.java](../src/main/java/sistemainventario/repository/SaleJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `SaleJdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(Sale v)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `Sale` | La entidad |
+| `completar(List<Sale> ventas)` | `void` | Lee todo el detalle del negocio en una sola consulta y lo reparte entre las ventas |
+| `guardarHijos(Connection conexion, Sale venta, boolean nueva)` | `void` | Reescribe el detalle de la venta (al editar se borra el anterior) |
 
 ##### SaleRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `SaleRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | `JsonRepository<Sale>` |
-| Responsabilidad principal | Repositorio de ventas de un perfil en ventas.json. |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Persistencia de las ventas de un perfil en ventas.json. |
 | Archivo | [SaleRepository.java](../src/main/java/sistemainventario/repository/SaleRepository.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO` |
+**Constantes:** `ARCHIVO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `SaleRepository(Path directorio)` | — (constructor) | Constructor |
+| `SaleRepository(Path directorio)` | — | Constructor |
+
+##### SqlDialect
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | — |
+| Responsabilidad | Diferencias entre PostgreSQL y Oracle (tipos de datos, consultas de catálogo). |
+| Archivo | [SqlDialect.java](../src/main/java/sistemainventario/repository/SqlDialect.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `motor()` *(abstracto)* | `DatabaseEngine` | Motor al que corresponde este dialecto |
+| `carpetaScripts()` *(abstracto)* | `String` | Carpeta de los scripts dentro de los recursos (por ejemplo sql/oracle) |
+| `nombreDriver()` *(abstracto)* | `String` | Nombre del driver JDBC, para los mensajes de error |
+| `tablaExiste(Connection conexion, String tabla)` *(abstracto)* | `boolean` | True si la tabla existe en el esquema del usuario |
+| `separarSentencias(String script)` *(abstracto)* | `List<String>` | Sentencias listas para enviar una por una por JDBC |
+| `mensajeDeDisparador(SQLException error)` *(abstracto)* | `Optional<String>` | El mensaje para el usuario si el error lo lanzó un disparador de TBalance |
+| `para(DatabaseEngine motor)` *(static)* | `SqlDialect` | El dialecto de ese motor |
+
+##### StockEntryJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Entradas de inventario de un negocio en la tabla ENTRADA. |
+| Archivo | [StockEntryJdbcRepository.java](../src/main/java/sistemainventario/repository/StockEntryJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `StockEntryJdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(StockEntry e)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `StockEntry` | La entidad |
 
 ##### StockEntryRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `StockEntryRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | `JsonRepository<StockEntry>` |
-| Responsabilidad principal | Repositorio de entradas de inventario de un perfil en entradas.json. |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Persistencia de las entradas de inventario de un perfil en entradas.json. |
 | Archivo | [StockEntryRepository.java](../src/main/java/sistemainventario/repository/StockEntryRepository.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO` |
+**Constantes:** `ARCHIVO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `StockEntryRepository(Path directorio)` | — (constructor) | Constructor |
+| `StockEntryRepository(Path directorio)` | — | Constructor |
+
+##### StockExitJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Salidas de inventario de un negocio en la tabla SALIDA. |
+| Archivo | [StockExitJdbcRepository.java](../src/main/java/sistemainventario/repository/StockExitJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `StockExitJdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(StockExit s)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `StockExit` | La entidad |
 
 ##### StockExitRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `StockExitRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | `JsonRepository<StockExit>` |
-| Responsabilidad principal | Repositorio de salidas de inventario de un perfil en salidas.json. |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Persistencia de las salidas de inventario de un perfil en salidas.json. |
 | Archivo | [StockExitRepository.java](../src/main/java/sistemainventario/repository/StockExitRepository.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO` |
+**Constantes:** `ARCHIVO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `StockExitRepository(Path directorio)` | — (constructor) | Constructor |
+| `StockExitRepository(Path directorio)` | — | Constructor |
+
+##### StorageProvider
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | extiende `AutoCloseable` |
+| Responsabilidad | Entrega los repositorios de TBalance, sean de archivos JSON o de base de datos. |
+| Archivo | [StorageProvider.java](../src/main/java/sistemainventario/repository/StorageProvider.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `nombre()` *(abstracto)* | `String` | Nombre del almacenamiento para mostrar ("PostgreSQL", "Oracle"...) |
+| `perfiles()` *(abstracto)* | `Repository<Profile>` | Repositorio de perfiles |
+| `usuarios()` *(abstracto)* | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
+| `auditoria()` *(abstracto)* | `Repository<AuditEntry>` | Historial de acciones (quién hizo qué) |
+| `productos(String perfilId)` *(abstracto)* | `Repository<Product>` | Repositorio de productos del negocio |
+| `categorias(String perfilId)` *(abstracto)* | `Repository<Category>` | Repositorio de categorías del negocio |
+| `proveedores(String perfilId)` *(abstracto)* | `Repository<Supplier>` | Repositorio de proveedores del negocio |
+| `entradas(String perfilId)` *(abstracto)* | `Repository<StockEntry>` | Repositorio de entradas del negocio |
+| `salidas(String perfilId)` *(abstracto)* | `Repository<StockExit>` | Repositorio de salidas del negocio |
+| `ventas(String perfilId)` *(abstracto)* | `Repository<Sale>` | Repositorio de ventas del negocio |
+| `abonos(String perfilId)` *(abstracto)* | `Repository<CreditPayment>` | Abonos de los clientes que deben (fiados) |
+| `close()` | `void` | Libera la conexión, si la hay |
+
+##### SupplierJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Proveedores de un negocio en la tabla PROVEEDOR. |
+| Archivo | [SupplierJdbcRepository.java](../src/main/java/sistemainventario/repository/SupplierJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `SupplierJdbcRepository(Database bd, String perfilId)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(Supplier p)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `Supplier` | La entidad |
+| `completar(List<Supplier> proveedores)` | `void` | Lee de PROVEEDOR_CATEGORIA los tipos de producto de todos los proveedores del negocio |
+| `guardarHijos(Connection conexion, Supplier proveedor, boolean nuevo)` | `void` | Reescribe los tipos de producto del proveedor (solo categorías que existen en el negocio) |
+| `antesDeEliminar(Connection conexion, String id)` | `void` | Los productos del proveedor quedan sin proveedor (la llave foránea no lo permitiría) |
 
 ##### SupplierRepository
 
 | Campo | Valor |
 |---|---|
-| Clase | `SupplierRepository` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | `JsonRepository<Supplier>` |
-| Responsabilidad principal | Repositorio de proveedores de un perfil en proveedores.json. |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Persistencia de los proveedores de un perfil en proveedores.json. |
 | Archivo | [SupplierRepository.java](../src/main/java/sistemainventario/repository/SupplierRepository.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO` |
+**Constantes:** `ARCHIVO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `SupplierRepository(Path directorio)` | — (constructor) | Constructor |
+| `SupplierRepository(Path directorio)` | — | Constructor |
+
+##### UserJdbcRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JdbcRepository` |
+| Responsabilidad | Personas en la tabla USUARIO y sus accesos en NEGOCIO_USUARIO (qué negocio y con qué rol). |
+| Archivo | [UserJdbcRepository.java](../src/main/java/sistemainventario/repository/UserJdbcRepository.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `UserJdbcRepository(Database bd)` | — | Constructor |
+| `tabla()` | `String` | Nombre de la tabla |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `valores(User u)` | `Object[]` | Valores en el mismo orden de columnas |
+| `leer(ResultSet fila)` | `User` | La entidad |
+| `completar(List<User> usuarios)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
+| `guardarHijos(Connection conexion, User usuario, boolean nuevo)` | `void` | Escribe los datos de tablas hijas después del INSERT o del UPDATE |
+
+##### UserRepository
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | hereda de `JsonRepository` |
+| Responsabilidad | Personas que usan TBalance, en usuarios.json (junto a perfiles.json). |
+| Archivo | [UserRepository.java](../src/main/java/sistemainventario/repository/UserRepository.java) |
+
+**Constantes:** `ARCHIVO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `UserRepository(Path directorio)` | — | Constructor |
 
 ##### ZipArchiver
 
 | Campo | Valor |
 |---|---|
-| Clase | `ZipArchiver` |
-| Paquete | `sistemainventario.repository` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Comprime una carpeta en un .zip y lo extrae, rechazando rutas que salgan de la carpeta destino. |
+| Herencia | — |
+| Responsabilidad | Comprime una carpeta en un archivo .zip y la extrae de nuevo. |
 | Archivo | [ZipArchiver.java](../src/main/java/sistemainventario/repository/ZipArchiver.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `comprimir(Path carpeta, Path destino)` | `void` | Comprime una carpeta en un .zip |
-| `extraer(Path archivoZip, Path carpeta)` | `int` | Extrae un .zip validando las rutas |
+| `comprimir(Path carpeta, Path destino)` | `void` | Comprime todo el contenido de una carpeta |
+| `extraer(Path archivoZip, Path carpeta)` | `int` | Extrae un .zip dentro de una carpeta (que se crea si no existe) |
 
 #### Paquete `ia`
 
@@ -1284,76 +2172,63 @@ No tiene atributos.
 
 | Campo | Valor |
 |---|---|
-| Clase | `GeminiClient` |
-| Paquete | `sistemainventario.ia` |
 | Tipo | Concreta |
-| Hereda de / implementa | `LanguageModel` |
-| Responsabilidad principal | Implementación de LanguageModel con la API de Google Gemini (capa gratuita); si Google retira el modelo, elige otro disponible. |
+| Herencia | implementa `LanguageModel` |
+| Responsabilidad | Cliente de la API de Google Gemini (capa gratuita) con llamadas a funciones. |
 | Archivo | [GeminiClient.java](../src/main/java/sistemainventario/ia/GeminiClient.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `clave` | `String` | Clave de API de Google AI Studio |
-| `modelo` | `String` | Modelo en uso |
-| `http` | `HttpClient` | Cliente HTTP (SecureConnection) |
-| `alCambiarModelo` | `Consumer<String>` | Se avisa cuando se pasa a otro modelo |
-| Constantes (`static final`) | — | `MODELO_POR_DEFECTO`, `URL_BASE`, `ESPERA_MAXIMA` |
+| `clave` | `String` | Clave |
+| `modelo` | `String` | Modelo |
+| `http` | `HttpClient` | Http |
+| `alCambiarModelo` | `Consumer<String>` | Al cambiar modelo |
+
+**Constantes:** `MODELO_POR_DEFECTO`, `ESPERA_MAXIMA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `GeminiClient(String clave, String modelo)` | — (constructor) | Constructor |
-| `modelo()` | `String` | Modelo en uso |
-| `alCambiarModelo(Consumer<String> accion)` | `void` | Registra qué hacer cuando se cambia de modelo (guardarlo) |
-| `generar(String instrucciones, List<JsonObject> contenidos, JsonArray funciones)` | `ModelReply` |  `@Override` |
-| `buscarModeloDisponible()` | `Optional<String>` | Pregunta a Google qué modelos tiene la clave y elige el Flash-Lite estable más nuevo |
-| `elegirModelo(List<String> nombres)` *(static)* | `Optional<String>` | Elige el Flash-Lite (o Flash) estable de versión más alta |
-| `textoComoContenido(String rol, String texto)` *(static)* | `JsonObject` | Arma un mensaje de Gemini con un solo texto |
+| `GeminiClient(String clave, String modelo)` | — | Constructor |
+| `modelo()` | `String` | El modelo que se está usando (puede cambiar si Google retiró el configurado) |
+| `alCambiarModelo(Consumer<String> accion)` | `void` | Al cambiar modelo |
+| `generar(String instrucciones, List<JsonObject> contenidos, JsonArray funciones)` | `ModelReply` | Pide la siguiente respuesta del modelo |
+| `buscarModeloDisponible()` | `Optional<String>` | Pregunta a Google qué modelos puede usar esta clave y elige el más liviano: el Flash-Lite estable de versión más alta; si no hay, el Flash estable más alto |
+| `elegirModelo(List<String> nombres)` *(static)* | `Optional<String>` | Elige entre los nombres de modelo el Flash-Lite (o si no, el Flash) estable más nuevo |
+| `textoComoContenido(String rol, String texto)` *(static)* | `JsonObject` | Un contenido de Gemini con un solo texto |
 
 ##### LanguageModel
 
 | Campo | Valor |
 |---|---|
-| Clase | `LanguageModel` |
-| Paquete | `sistemainventario.ia` |
 | Tipo | Interfaz |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Contrato de un modelo de lenguaje en la nube: recibe instrucciones, historial y funciones y devuelve texto o llamadas a funciones. |
+| Herencia | — |
+| Responsabilidad | Modelo de lenguaje en la nube que usa el asistente. |
 | Archivo | [LanguageModel.java](../src/main/java/sistemainventario/ia/LanguageModel.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `generar(String instrucciones, List<JsonObject> contenidos, JsonArray funciones)` | `ModelReply` | Pide la siguiente respuesta del modelo |
+| `generar(String instrucciones, List<JsonObject> contenidos, JsonArray funciones)` *(abstracto)* | `ModelReply` | Pide la siguiente respuesta del modelo |
 
 ##### SecureConnection
 
 | Campo | Valor |
 |---|---|
-| Clase | `SecureConnection` |
-| Paquete | `sistemainventario.ia` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Crea el cliente HTTP del asistente con el proxy y los certificados de Windows además de los de Java. |
+| Herencia | — |
+| Responsabilidad | Prepara el cliente HTTP del asistente para que se conecte como lo hace Edge en el mismo computador. |
 | Archivo | [SecureConnection.java](../src/main/java/sistemainventario/ia/SecureConnection.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `crearCliente()` *(static)* | `HttpClient` | Crea el cliente HTTP con el proxy y los certificados del sistema |
+| `crearCliente()` *(static)* | `HttpClient` | Un cliente HTTP con el proxy del sistema y los certificados de Java y de Windows |
 
 #### Paquete `service`
 
@@ -1361,11 +2236,9 @@ No tiene atributos.
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantProposal` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Cambio propuesto por el asistente (venta, entrada, salida, precio o producto nuevo) que solo se ejecuta si el usuario lo confirma. |
+| Herencia | — |
+| Responsabilidad | Cambio que el asistente propone y que solo se hace si el usuario lo confirma (registrar una venta, una entrada de mercancía, cambiar un precio...). |
 | Archivo | [AssistantProposal.java](../src/main/java/sistemainventario/service/AssistantProposal.java) |
 
 **Atributos**
@@ -1373,553 +2246,827 @@ No tiene atributos.
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `id` | `String` | Identificador |
-| `tipo` | `String` | venta, entrada, salida, precio o producto |
-| `titulo` | `String` | Título de la tarjeta |
-| `lineas` | `List<String>` | Detalle que ve el usuario |
-| `total` | `Double` | Total, si aplica |
-| `accion` | `Runnable` | Cambio que se hace al confirmar |
+| `tipo` | `String` | Tipo |
+| `titulo` | `String` | Titulo |
+| `lineas` | `List<String>` | Lineas |
+| `total` | `Double` | Total |
+| `accion` | `Runnable` | Accion |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `AssistantProposal(String id, String tipo, String titulo, List<String> lineas, Double total, Runnable accion)` | — (constructor) | Constructor |
+| `AssistantProposal(String id, String tipo, String titulo, List<String> lineas, Double total, Runnable accion)` | — | Constructor |
 | `ejecutar()` | `void` | Hace el cambio propuesto |
-| Getters | — | `getId()`, `getTipo()`, `getTitulo()`, `getLineas()`, `getTotal()` |
+| Getters y setters | — | `getId()`, `getLineas()`, `getTipo()`, `getTitulo()`, `getTotal()` |
 
 ##### AssistantService
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Conversación con el asistente: envía el historial al modelo, ejecuta las funciones que pide y guarda los cambios propuestos hasta que el usuario los confirme. |
+| Herencia | — |
+| Responsabilidad | Maneja la conversación con el asistente y guarda lo que propone hasta que el usuario confirma. |
 | Archivo | [AssistantService.java](../src/main/java/sistemainventario/service/AssistantService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `modelo` | `LanguageModel` | Modelo de lenguaje (GeminiClient) |
-| `servicios` | `Supplier<ProfileServices>` | Servicios del perfil activo |
-| `perfil` | `Supplier<Profile>` | Perfil activo (nombre y tipo de negocio) |
-| `hiloDeDatos` | `Executor` | Ejecuta el acceso a los datos sin cruzarse con la interfaz |
-| `historial` | `List<JsonObject>` | Mensajes de la conversación |
-| `pendientes` | `Map<String, AssistantProposal>` | Propuestas por confirmar, por ID |
-| `notas` | `List<String>` | Avisos para el modelo en el siguiente mensaje (por ejemplo, lo confirmado) |
-| Constantes (`static final`) | — | `MAXIMO_PASOS`, `MAXIMO_MENSAJES` |
+| `modelo` | `LanguageModel` | Modelo (LanguageModel) |
+| `servicios` | `Supplier<ProfileServices>` | Servicios |
+| `perfil` | `Supplier<Profile>` | Perfil |
+| `hiloDeDatos` | `Executor` | Hilo de datos |
+| `permisos` | `Supplier<Set<Permiso>>` | Permisos |
+| `historial` | `List<JsonObject>` | Historial |
+| `pendientes` | `Map<String, AssistantProposal>` | Se consultan desde dos hilos (la conversación y la confirmación), por eso son colecciones seguras |
+| `notas` | `List<String>` | Notas |
+
+**Constantes:** `MAXIMO_PASOS`, `MAXIMO_MENSAJES`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `AssistantService(LanguageModel modelo, Supplier<ProfileServices> servicios, Supplier<Profile> perfil, Executor hiloDeDatos)` | — (constructor) | Constructor |
-| `conversar(String mensaje)` | `Reply` | Envía el mensaje al modelo, ejecuta las funciones que pide y devuelve la respuesta con las propuestas |
-| `confirmar(String id)` | `String` | Ejecuta la propuesta y avisa al modelo en el siguiente mensaje |
-| `descartar(String id)` | `void` | Descarta la propuesta |
+| `conversar(String mensaje)` | `Reply` | La respuesta del asistente |
+| `confirmar(String id)` | `String` | Hace el cambio propuesto |
+| `descartar(String id)` | `void` | Descarta |
 | `reiniciar()` | `void` | Empieza una conversación nueva |
+| `loQuePuedeHacer(Set<Permiso> permisos)` *(static)* | `String` | Regla con lo que el rol de quien conversa puede y no puede hacer, para que el asistente no ofrezca lo que después Java va a rechazar |
 
 ##### AssistantSettingsService
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantSettingsService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Configuración del asistente: guarda la clave y el modelo, crea el cliente del modelo de lenguaje y prueba la conexión. |
+| Herencia | — |
+| Responsabilidad | Guarda y prueba la configuración del asistente. |
 | Archivo | [AssistantSettingsService.java](../src/main/java/sistemainventario/service/AssistantSettingsService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `repositorio` | `AssistantConfigRepository` | Archivo de configuración |
+| `repositorio` | `AssistantConfigRepository` | Repositorio (AssistantConfigRepository) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `AssistantSettingsService(AssistantConfigRepository repositorio)` | — (constructor) | Constructor |
-| `leer()` | `Optional<AssistantSettings>` | Configuración guardada, si hay clave |
-| `modeloActual()` | `String` | Modelo guardado o el de por defecto |
-| `configurar(String clave, String modelo)` | `void` | Guarda la clave y el modelo; con la clave vacía la borra |
-| `requerir()` | `AssistantSettings` | Configuración guardada; error si no hay clave |
-| `crearModelo(Consumer<String> alCambiarModelo)` | `LanguageModel` | Crea el cliente del modelo; si Google retira el modelo guarda el nuevo |
-| `probarConexion(Consumer<String> alCambiarModelo)` | `ConnectionTest` | Envía un mensaje corto y devuelve qué modelo respondió |
+| `AssistantSettingsService(AssistantConfigRepository repositorio)` | — | Constructor |
+| `leer()` | `Optional<AssistantSettings>` | La configuración guardada, si hay una clave |
+| `modeloActual()` | `String` | El modelo guardado o, si no hay, el modelo por defecto |
+| `configurar(String clave, String modelo)` | `void` | Guarda la clave y el modelo; con la clave vacía borra la configuración |
+| `requerir()` | `AssistantSettings` | La configuración guardada |
+| `crearModelo(Consumer<String> alCambiarModelo)` | `LanguageModel` | Crea el cliente del modelo con la configuración guardada |
+| `probarConexion(Consumer<String> alCambiarModelo)` | `ConnectionTest` | Envía un mensaje corto para comprobar la clave y la conexión |
+| `probarClave(String clave, String modelo)` | `ConnectionTest` | Prueba una clave escrita en la pantalla, sin guardarla |
 
 ##### AssistantTools
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantTools` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Funciones del inventario que el asistente puede usar: consultas (productos, por reponer, proveedores, ventas, vencimientos) y propuestas de cambios. |
+| Herencia | — |
+| Responsabilidad | Funciones del inventario que el asistente puede usar. |
 | Archivo | [AssistantTools.java](../src/main/java/sistemainventario/service/AssistantTools.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `servicios` | `ProfileServices` | Servicios del perfil activo |
-| `alProponer` | `Consumer<AssistantProposal>` | Recibe cada propuesta creada |
-| `contador` | `int` | Consecutivo de las propuestas |
-| Constantes (`static final`) | — | `OBSERVACION` |
+| `servicios` | `ProfileServices` | Servicios (ProfileServices) |
+| `permisos` | `Set<Permiso>` | Permisos |
+| `alProponer` | `Consumer<AssistantProposal>` | Al proponer |
+| `contador` | `int` | Contador |
+
+**Constantes:** `OBSERVACION`, `MAXIMO_PRODUCTOS_VENDIDOS`, `MAXIMO_VENTAS_DETALLE`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `AssistantTools(ProfileServices servicios, Consumer<AssistantProposal> alProponer)` | — (constructor) | Constructor |
-| `declaraciones()` *(static)* | `JsonArray` | Declaraciones de las funciones para el modelo (nombre, descripción y parámetros) |
-| `ejecutar(String nombre, JsonObject argumentos)` | `JsonObject` | Ejecuta la función pedida por el modelo y devuelve el resultado en JSON |
-| `normalizar(String texto)` *(static)* | `String` | Texto en minúsculas y sin tildes para comparar nombres |
-| `dinero(double valor)` *(static)* | `String` | Formatea un valor en pesos |
+| `AssistantTools(ProfileServices servicios, Consumer<AssistantProposal> alProponer)` / `AssistantTools(ProfileServices servicios, Consumer<AssistantProposal> alProponer, Set<Permiso> permisos)` | — | Constructores |
+| `permisoParaConfirmar(String tipo)` *(static)* | `Permiso` | Permiso que se necesita para confirmarla |
+| `declaraciones()` *(static)* | `JsonArray` | Todas las funciones, en el formato de declaraciones de Gemini |
+| `declaraciones(Set<Permiso> permisos)` *(static)* | `JsonArray` | El modelo solo conoce las funciones que el rol puede usar: así no ofrece, por ejemplo, registrar mercancía a un cajero (y Java igual lo rechazaría al confirmar) |
+| `ejecutar(String nombre, JsonObject argumentos)` | `JsonObject` | Resultado en JSON para devolverle al modelo |
+| `normalizar(String texto)` *(static)* | `String` | Normalizar |
+| `dinero(double valor)` *(static)* | `String` | Dinero |
+
+##### AuditService
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Anota acciones en el historial y las lista con filtros (persona, fechas, negocio). |
+| Archivo | [AuditService.java](../src/main/java/sistemainventario/service/AuditService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `historial` | `Repository<AuditEntry>` | Historial |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `AuditService(Repository<AuditEntry> historial)` | — | Constructor |
+| `registrar(AuditEntry entrada)` | `void` | Registra |
 
 ##### BackupService
 
 | Campo | Valor |
 |---|---|
-| Clase | `BackupService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Crea, lista, restaura (con copia automática previa) y elimina copias de seguridad. |
+| Herencia | — |
+| Responsabilidad | Crea, lista, restaura y elimina las copias de seguridad. |
 | Archivo | [BackupService.java](../src/main/java/sistemainventario/service/BackupService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `directorioDatos` | `Path` | Carpeta data que se respalda |
-| `respaldos` | `BackupRepository` | Repositorio de respaldos |
-| `archivador` | `ZipArchiver` | Compresor .zip |
-| Constantes (`static final`) | — | `PREFIJO`, `PREFIJO_SEGURIDAD`, `FORMATO_NOMBRE` |
+| `archivador` | `ZipArchiver` | Archivador (ZipArchiver) |
+| `almacen` | `BackupStore` | Almacen (BackupStore) |
+| `datos` | `DataSnapshot` | Datos (DataSnapshot) |
+
+**Constantes:** `PREFIJO`, `PREFIJO_SEGURIDAD`, `FORMATO_NOMBRE`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `BackupService(Path directorioDatos, BackupRepository respaldos, ZipArchiver archivador)` | — (constructor) | Constructor |
-| `listar()` | `List<Backup>` | Copias disponibles |
-| `crear()` | `Backup` | Comprime la carpeta data |
-| `restaurar(String nombre)` | `Backup` | Valida la copia, guarda una copia previa y reemplaza los datos |
-| `eliminar(String nombre)` | `void` | Borra una copia |
-| `getCarpetaRespaldos()` | `Path` | Ruta de la carpeta de respaldos |
+| `BackupService(BackupStore almacen, DataSnapshot datos, ZipArchiver archivador)` | — | Constructor |
+| `usar(BackupStore almacen, DataSnapshot datos)` | `void` | Cambia el destino de las copias al cambiar de almacenamiento: con base de datos las copias quedan en la misma base; con archivos, en la carpeta |
+| `listar()` | `List<Backup>` | Copias guardadas, de la más reciente a la más antigua |
+| `crear()` | `Backup` | La copia creada |
+| `restaurar(String nombre)` | `Backup` | Restaura una copia |
+| `eliminar(String nombre)` | `void` | Elimina |
+| `getCarpetaRespaldos()` | `Path` | La carpeta de las copias, o null si están en la base de datos |
+| `getUbicacion()` | `String` | Dónde están las copias, para mostrarlo |
 
 ##### CategoryService
 
 | Campo | Valor |
 |---|---|
-| Clase | `CategoryService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | `EntityService<Category>` |
-| Responsabilidad principal | Reglas de las categorías; crea las categorías predefinidas del tipo de negocio y asigna ID a las que no tienen. |
+| Herencia | hereda de `EntityService` |
+| Responsabilidad | Casos de uso de las categorías de un perfil. |
 | Archivo | [CategoryService.java](../src/main/java/sistemainventario/service/CategoryService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| Constantes (`static final`) | — | `PREFIJO_ID` |
+| `productos` | `Supplier<List<Product>>` | Productos habilitados del negocio, para no deshabilitar una categoría en uso |
+
+**Constantes:** `PREFIJO_ID`, `SIN_CATEGORIA_ID`, `SIN_CATEGORIA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `CategoryService(Repository<Category> repositorio)` | — (constructor) | Constructor |
-| `validar(Category categoria)` *(protected)* | `void` | Valida la categoría (sobrescribe) `@Override` |
-| `generarId()` *(protected)* | `String` | ID con prefijo CAT (sobrescribe) `@Override` |
-| `nombreEntidad()` *(protected)* | `String` | Devuelve “categoría” (sobrescribe) `@Override` |
-| `crearPredefinidas(BusinessType tipoNegocio)` | `void` | Crea las categorías del tipo de negocio |
+| `CategoryService(Repository<Category> repositorio)` | — | Constructor |
+| `usarProductos(Supplier<List<Product>> productos)` | `void` | Usar productos |
+| `resolverCategoria(Product producto)` | `void` | Completa la categoría de un producto: con el ID busca el nombre, y con solo el nombre busca el ID |
+| `sinCategoria()` | `Category` | La categoría "Sin categoría", creándola si no existe |
+| `buscarPorNombre(String nombre)` | `Optional<Category>` | La categoría con ese nombre, habilitada o no |
+| `validarDeshabilitar(Category categoria)` | `void` | Reglas extra antes de deshabilitar |
+| `validar(Category categoria)` | `void` | Paso variable: reglas de validación propias de la entidad |
+| `generarId()` | `String` | Paso variable: estrategia de generación de ID de la entidad |
+| `nombreEntidad()` | `String` | Nombre legible de la entidad para mensajes de error |
+| `crearPredefinidas(BusinessType tipoNegocio)` | `void` | Crea las categorías iniciales de un tipo de negocio |
+
+##### CostService
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Costos del negocio por sus productos: cuánto cuesta cada producto, cuánto costó todo lo que hay en inventario y cuánto se ha comprado (entradas) en un periodo. |
+| Archivo | [CostService.java](../src/main/java/sistemainventario/service/CostService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `inventario` | `InventoryService` | Inventario (InventoryService) |
+| `movimientos` | `MovementService` | Movimientos (MovementService) |
+| `proveedores` | `SupplierService` | Proveedores (SupplierService) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CostService(InventoryService inventario, MovementService movimientos, SupplierService proveedores)` | — | Constructor |
+| `resumen(LocalDate desde, LocalDate hasta)` | `Summary` | Costos del inventario y compras del periodo |
+
+##### CreditService
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Calcula quién debe y cuánto (ventas fiadas menos abonos) y registra y anula abonos. |
+| Archivo | [CreditService.java](../src/main/java/sistemainventario/service/CreditService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `ventas` | `SaleService` | Ventas (SaleService) |
+| `abonos` | `Repository<CreditPayment>` | Abonos |
+
+**Constantes:** `TOLERANCIA`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CreditService(SaleService ventas, Repository<CreditPayment> abonos)` | — | Constructor |
+| `listarCuentas()` | `List<CustomerDebt>` | Las cuentas de todos los clientes con fiados: primero los que deben más; al final los que ya están al día |
+| `obtenerCuenta(String clave)` | `CustomerDebt` | La cuenta con sus ventas fiadas y sus abonos |
+| `totalPorCobrar()` | `double` | Lo que deben entre todos los clientes |
+| `registrarAbono(CreditPayment abono)` | `CreditPayment` | Registra un abono |
+| `anularAbono(String id, String motivo, String quien)` | `CreditPayment` | Anula un abono registrado por error; el saldo del cliente vuelve a subir |
+| `listarAbonos()` | `List<CreditPayment>` | Todos los abonos del negocio, también los anulados |
+| `claveCliente(Sale venta)` *(static)* | `String` | Clave con la que se agrupan los fiados de un cliente: su cédula, o su nombre (sin tildes ni mayúsculas) en ventas fiadas viejas sin cédula |
+
+##### DataSnapshot
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | — |
+| Responsabilidad | Cómo se sacan y se reponen los datos para las copias de seguridad. |
+| Archivo | [DataSnapshot.java](../src/main/java/sistemainventario/service/DataSnapshot.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `prepararCarpeta()` *(abstracto)* | `Path` | Carpeta con los datos en JSON, lista para comprimir |
+| `liberarCarpeta(Path carpeta)` *(abstracto)* | `void` | Liberar carpeta |
+| `restaurarDesde(Path carpeta)` *(abstracto)* | `void` | Reemplaza los datos actuales por los de una copia |
+
+##### DataTransferService
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Copia todos los negocios de un almacenamiento a otro: de los archivos JSON a PostgreSQL u Oracle la primera vez que se conecta, y de la base a los archivos para las copias de seguridad. |
+| Archivo | [DataTransferService.java](../src/main/java/sistemainventario/service/DataTransferService.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `copiar(StorageProvider origen, StorageProvider destino)` | `Resumen` | Cuánto se copió |
+| `copiarUsuarios(List<User> usuarios, StorageProvider destino)` | `void` | Copia personas al almacenamiento, dejando solo los accesos a negocios que existen ahí |
+| `vaciar(StorageProvider almacen)` | `void` | Borra todos los negocios del almacenamiento |
+
+##### DatabaseSnapshot
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `DataSnapshot` |
+| Responsabilidad | Copias de seguridad cuando los datos están en PostgreSQL u Oracle. |
+| Archivo | [DatabaseSnapshot.java](../src/main/java/sistemainventario/service/DatabaseSnapshot.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `base` | `StorageProvider` | Base (StorageProvider) |
+| `copiador` | `DataTransferService` | Copiador (DataTransferService) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `DatabaseSnapshot(StorageProvider base, DataTransferService copiador)` | — | Constructor |
+| `prepararCarpeta()` | `Path` | Carpeta con los datos en JSON, lista para comprimir |
+| `liberarCarpeta(Path carpeta)` | `void` | Liberar carpeta |
+| `restaurarDesde(Path carpeta)` | `void` | Reemplaza los datos actuales por los de una copia |
 
 ##### EntityService
 
 | Campo | Valor |
 |---|---|
-| Clase | `EntityService<T extends IdentifiedEntity>` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Abstracta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Servicio base abstracto con el CRUD común; guardar() es un método plantilla (Template Method). |
+| Herencia | — |
+| Responsabilidad | Servicio base para las entidades con CRUD simple (productos, categorías y proveedores). |
 | Archivo | [EntityService.java](../src/main/java/sistemainventario/service/EntityService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `repositorio` | `Repository<T>` | Repositorio de la entidad (inyectado) |
+| `repositorio` | `Repository<T>` | Repositorio |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `EntityService(Repository<T> repositorio)` | — (constructor) | Constructor |
-| `listarTodos()` | `List<T>` | Todas las entidades |
-| `buscarPorId(String id)` | `Optional<T>` | Busca por ID |
-| `obtener(String id)` | `T` | Busca por ID o lanza error |
-| `guardar(T entidad)` *(final)* | `T` | Plantilla: validar → generar ID → agregar o actualizar (final) |
-| `eliminar(String id)` | `boolean` | Elimina por ID |
-| `validar(T entidad)` *(abstract, protected)* | `void` | Reglas de la entidad (abstracto) |
-| `generarId()` *(abstract, protected)* | `String` | Genera el ID (abstracto) |
-| `nombreEntidad()` *(abstract, protected)* | `String` | Nombre para los mensajes (abstracto) |
+| `EntityService(Repository<T> repositorio)` | — | Constructor |
+| `refrescar()` | `void` | Si otro equipo cambió los datos en la base, los vuelve a leer |
+| `listarTodos()` | `List<T>` | Todas las entidades del perfil activo |
+| `listarDeshabilitados()` | `List<T>` | Los registros deshabilitados (borrado lógico), para poder volver a habilitarlos |
+| `buscarPorId(String id)` | `Optional<T>` | La entidad, o vacío si no existe |
+| `obtener(String id)` | `T` | La entidad encontrada |
+| `guardar(T entidad)` | `T` | Crea o actualiza una entidad (método plantilla) |
+| `cambiarEstado(String id, boolean activo)` | `T` | Borrado lógico: deshabilita o vuelve a habilitar el registro |
+| `validarDeshabilitar(T entidad)` | `void` | Reglas extra antes de deshabilitar |
+| `validar(T entidad)` *(abstracto)* | `void` | Paso variable: reglas de validación propias de la entidad |
+| `generarId()` *(abstracto)* | `String` | Paso variable: estrategia de generación de ID de la entidad |
+| `nombreEntidad()` *(abstracto)* | `String` | Nombre legible de la entidad para mensajes de error |
+
+##### FileSnapshot
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `DataSnapshot` |
+| Responsabilidad | Copias de seguridad cuando los datos están en archivos JSON. |
+| Archivo | [FileSnapshot.java](../src/main/java/sistemainventario/service/FileSnapshot.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `directorioDatos` | `Path` | Directorio datos |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `FileSnapshot(Path directorioDatos)` | — | Constructor |
+| `prepararCarpeta()` | `Path` | Carpeta con los datos en JSON, lista para comprimir |
+| `liberarCarpeta(Path carpeta)` | `void` | Liberar carpeta |
+| `restaurarDesde(Path carpeta)` | `void` | Reemplaza los datos actuales por los de una copia |
 
 ##### GlobalConfigService
 
 | Campo | Valor |
 |---|---|
-| Clase | `GlobalConfigService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Lee y actualiza la configuración global (perfil activo y lista de perfiles). |
+| Herencia | — |
+| Responsabilidad | Lectura y actualización de la GlobalConfig. |
 | Archivo | [GlobalConfigService.java](../src/main/java/sistemainventario/service/GlobalConfigService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `repositorio` | `GlobalConfigRepository` | Repositorio de la configuración |
+| `repositorio` | `GlobalConfigRepository` | Repositorio (GlobalConfigRepository) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `GlobalConfigService(GlobalConfigRepository repositorio)` | — (constructor) | Constructor |
-| `esPrimerArranque()` | `boolean` | Si no hay configuración |
-| `getPerfilActivoId()` | `Optional<String>` | ID del perfil activo |
-| `establecerPerfilActivo(String perfilId)` | `void` | Guarda el perfil activo |
-| `sincronizarPerfiles(List<Profile> perfiles)` | `void` | Copia la lista de perfiles al archivo |
+| `GlobalConfigService(GlobalConfigRepository repositorio)` | — | Constructor |
+| `esPrimerArranque()` | `boolean` | True si aún no se ha creado ningún perfil |
+| `getPerfilActivoId()` | `Optional<String>` | ID del perfil activo, si hay uno |
+| `establecerPerfilActivo(String perfilId)` | `void` | Establecer perfil activo |
+| `sincronizarPerfiles(List<Profile> perfiles)` | `void` | Copia la lista de perfiles al archivo de configuración (estructura de P2) |
 
 ##### InventoryService
 
 | Campo | Valor |
 |---|---|
-| Clase | `InventoryService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | `EntityService<Product>` |
-| Responsabilidad principal | Reglas del catálogo de productos: validación, búsqueda, filtros y alertas de stock y vencimiento. |
+| Herencia | hereda de `EntityService` |
+| Responsabilidad | Casos de uso del catálogo de productos: CRUD, búsqueda, filtros y alertas de stock y vencimiento. |
 | Archivo | [InventoryService.java](../src/main/java/sistemainventario/service/InventoryService.java) |
 
 **Atributos**
 
-No tiene atributos.
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `categorias` | `CategoryService` | Categorias (CategoryService) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `InventoryService(Repository<Product> repositorio)` | — (constructor) | Constructor |
-| `validar(Product producto)` *(protected)* | `void` | Valida el producto (sobrescribe) `@Override` |
-| `generarId()` *(protected)* | `String` | Siguiente ID numérico (sobrescribe) `@Override` |
-| `nombreEntidad()` *(protected)* | `String` | Devuelve “producto” (sobrescribe) `@Override` |
-| `registrarCambioDeStock(Product producto)` | `void` | Guarda un cambio de stock |
-| `buscarPorTexto(String texto)` | `List<Product>` | Busca productos |
-| `filtrarPorCategoria(String categoria)` | `List<Product>` | Filtra por categoría |
-| `getUtilidadEstimadaInventario()` | `double` | Suma la utilidad del stock de los productos con precio de compra |
-| `getSinPrecioCompra()` | `List<Product>` | Productos sin precio de compra |
-| `getBajoStock()` | `List<Product>` | Productos en bajo stock |
-| `getAgotados()` | `List<Product>` | Productos agotados |
-| `getVencidos()` | `List<Product>` | Productos vencidos |
-| `getPorVencer(int dias)` | `List<Product>` | Productos que vencen en N días |
-| `getCategorias()` | `Set<String>` | Nombres de categorías usadas |
+| `InventoryService(Repository<Product> repositorio)` | — | Constructor |
+| `usarCategorias(CategoryService categorias)` | `void` | Conecta las categorías del mismo negocio: la categoría del producto es obligatoria y debe existir |
+| `validar(Product producto)` | `void` | Paso variable: reglas de validación propias de la entidad |
+| `normalizarCategorias()` | `int` | Deja cada producto con una categoría válida: si tenía solo el nombre, le pone el ID de esa categoría; si no tenía ninguna, lo pasa a "Sin categoría" |
+| `generarId()` | `String` | Paso variable: estrategia de generación de ID de la entidad |
+| `nombreEntidad()` | `String` | Nombre legible de la entidad para mensajes de error |
+| `obtenerHabilitado(String id)` | `Product` | El producto, si está habilitado |
+| `registrarCambioDeStock(Product producto)` | `void` | Persiste un cambio de stock sin volver a validar la ficha completa; así un producto ya vencido puede seguir recibiendo movimientos |
+| `buscarPorTexto(String texto)` | `List<Product>` | Productos que coinciden por nombre, descripción, código o ID |
+| `filtrarPorCategoria(String categoria)` | `List<Product>` | Productos de la categoría |
+| `getUtilidadEstimadaInventario()` | `double` | Utilidad estimada del inventario: lo que se ganaría vendiendo todo el stock de los productos que tienen precio de compra |
+| `getSinPrecioCompra()` | `List<Product>` | Productos sin precio de compra, cuya utilidad no se puede estimar |
+| `getBajoStock()` | `List<Product>` | Productos con stock en el mínimo o por debajo (sin estar agotados) |
+| `getAgotados()` | `List<Product>` | Productos sin unidades |
+| `getVencidos()` | `List<Product>` | Productos cuya fecha de vencimiento ya pasó |
+| `getPorVencer(int dias)` | `List<Product>` | Productos que vencen dentro de los próximos dias días |
+| `getCategorias()` | `Set<String>` | Nombres de categorías usadas por los productos, ordenados |
 
 ##### LabelService
 
 | Campo | Valor |
 |---|---|
-| Clase | `LabelService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Dibuja la etiqueta QR de un producto y arma hojas tamaño carta de 18 etiquetas. |
+| Herencia | — |
+| Responsabilidad | Genera etiquetas con código QR para los productos: una etiqueta individual (vista previa o imagen) y hojas listas para imprimir. |
 | Archivo | [LabelService.java](../src/main/java/sistemainventario/service/LabelService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `generadorQR` | `QrGenerator` | Genera el código QR |
-| `etiquetas` | `LabelRepository` | Guarda las imágenes |
-| Constantes (`static final`) | — | `ANCHO_ETIQUETA`, `ALTO_ETIQUETA`, `ANCHO_HOJA`, `ALTO_HOJA`, `COLUMNAS`, `FILAS`, `MARGEN_HOJA`, `TAMANO_QR`, `COLOR_MARCA`, `COLOR_TEXTO`, `COLOR_SECUNDARIO`, `COLOR_BORDE`, `FORMATO_NOMBRE` |
+| `generadorQR` | `QrGenerator` | Generador qr (QrGenerator) |
+| `etiquetas` | `LabelRepository` | Etiquetas (LabelRepository) |
+
+**Constantes:** `ANCHO_ETIQUETA`, `ALTO_ETIQUETA`, `ANCHO_HOJA`, `ALTO_HOJA`, `COLUMNAS`, `FILAS`, `MARGEN_HOJA`, `TAMANO_QR`, `COLOR_MARCA`, `COLOR_TEXTO`, `COLOR_SECUNDARIO`, `COLOR_BORDE`, `FORMATO_NOMBRE`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `LabelService(QrGenerator generadorQR, LabelRepository etiquetas)` | — (constructor) | Constructor |
-| `vistaPrevia(Product producto)` | `String` | Etiqueta como data URI para la vista |
-| `guardarEtiqueta(Product producto)` | `Path` | Guarda la etiqueta en PNG |
-| `guardarHojas(List<Product> productos)` | `List<Path>` | Guarda hojas carta de 18 etiquetas |
-| `dibujarEtiqueta(Product producto)` | `BufferedImage` | Dibuja QR, nombre, precio, ID y categoría |
-| Getters | — | `getCarpeta()` |
+| `LabelService(QrGenerator generadorQR, LabelRepository etiquetas)` | — | Constructor |
+| `vistaPrevia(Product producto, String perfilId)` | `String` | La etiqueta como imagen Base64 para mostrarla en la vista |
+| `guardarEtiqueta(Product producto, String perfilId)` | `Path` | Guarda la etiqueta de un producto como imagen PNG |
+| `guardarHojas(List<Product> productos, String perfilId)` | `List<Path>` | Genera hojas tamaño carta con 18 etiquetas cada una, listas para imprimir |
+| `getCarpeta()` | `Path` | Carpeta donde se guardan las etiquetas |
+| `dibujarEtiqueta(Product producto, String perfilId)` | `BufferedImage` | Dibuja una etiqueta: código QR a la izquierda; nombre, precio, ID y categoría a la derecha |
 
 ##### MovementService
 
 | Campo | Valor |
 |---|---|
-| Clase | `MovementService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Registra entradas y salidas aplicando cada movimiento sobre el producto. |
+| Herencia | — |
+| Responsabilidad | Registro de entradas y salidas de inventario. |
 | Archivo | [MovementService.java](../src/main/java/sistemainventario/service/MovementService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `inventario` | `InventoryService` | Gestor de productos compartido |
-| `entradas` | `Repository<StockEntry>` | Repositorio de entradas |
-| `salidas` | `Repository<StockExit>` | Repositorio de salidas |
+| `inventario` | `InventoryService` | Inventario (InventoryService) |
+| `entradas` | `Repository<StockEntry>` | Entradas |
+| `salidas` | `Repository<StockExit>` | Salidas |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `MovementService(InventoryService inventario, Repository<StockEntry> entradas, Repository<StockExit> salidas)` | — (constructor) | Constructor |
-| `listarEntradas()` | `List<StockEntry>` | Todas las entradas |
-| `listarSalidas()` | `List<StockExit>` | Todas las salidas |
-| `registrarEntrada(StockEntry entrada)` | `StockEntry` | Valida, aplica y guarda una entrada |
-| `registrarSalida(StockExit salida)` | `StockExit` | Valida, aplica y guarda una salida |
+| `listarEntradas()` | `List<StockEntry>` | Entradas vigentes (sin las anuladas) |
+| `listarSalidas()` | `List<StockExit>` | Salidas vigentes (sin las anuladas) |
+| `listarEntradasAnuladas()` | `List<StockEntry>` | Entradas anuladas |
+| `listarSalidasAnuladas()` | `List<StockExit>` | Salidas anuladas |
+| `anularEntrada(String id, String motivo)` | `StockEntry` | Anula una entrada y quita del stock las unidades que había sumado |
+| `anularEntrada(String id, String motivo, String quien)` | `StockEntry` | Igual que la anulación sin nombre, dejando anotado quién anuló |
+| `anularSalida(String id, String motivo)` | `StockExit` | Anula una salida y devuelve al stock las unidades que había quitado |
+| `anularSalida(String id, String motivo, String quien)` | `StockExit` | Igual que la anulación sin nombre, dejando anotado quién anuló |
+| `registrarEntrada(StockEntry entrada)` | `StockEntry` | La entrada registrada |
+| `registrarSalida(StockExit salida)` | `StockExit` | La salida registrada |
 
 ##### ProfileService
 
 | Campo | Valor |
 |---|---|
-| Clase | `ProfileService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Ciclo de vida de los perfiles: crear, editar, eliminar y seleccionar. |
+| Herencia | — |
+| Responsabilidad | Crea, edita, deshabilita, habilita y abre negocios. |
 | Archivo | [ProfileService.java](../src/main/java/sistemainventario/service/ProfileService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `perfiles` | `Repository<Profile>` | Repositorio de perfiles |
-| `configuracion` | `GlobalConfigService` | Configuración global |
-| `directorios` | `ProfileDirectory` | Carpetas de perfiles |
-| `fabricaServicios` | `ProfileServicesFactory` | Crea los servicios de un perfil |
+| `perfiles` | `Repository<Profile>` | Perfiles |
+| `configuracion` | `GlobalConfigService` | Configuracion (GlobalConfigService) |
+| `directorios` | `ProfileDirectory` | Directorios (ProfileDirectory) |
+| `fabricaServicios` | `ProfileServicesFactory` | Fabrica servicios (ProfileServicesFactory) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ProfileService(Repository<Profile> perfiles, GlobalConfigService configuracion, ProfileDirectory directorios, ProfileServicesFactory fabricaServicios)` | — (constructor) | Constructor |
-| `listarTodos()` | `List<Profile>` | Todos los perfiles |
-| `buscarPorId(String id)` | `Optional<Profile>` | Busca un perfil |
-| `getPerfilActivo()` | `Optional<Profile>` | Profile activo |
-| `esPrimerArranque()` | `boolean` | Si no hay perfiles |
-| `resolverPerfilInicial()` | `Optional<String>` | Profile a cargar al iniciar |
-| `crear(Profile datos)` | `Profile` | Crea perfil, carpeta y categorías |
-| `actualizar(Profile cambios)` | `Profile` | Cambia nombre, descripción y color |
-| `eliminar(String id)` | `void` | Elimina el perfil y sus datos |
-| `seleccionar(String id)` | `Optional<ProfileServices>` | Activa un perfil y crea sus servicios |
-| `crearServicios(String id)` | `ProfileServices` | Servicios de un perfil |
+| `listarTodos()` | `List<Profile>` | Lista todos |
+| `buscarPorId(String id)` | `Optional<Profile>` | Busca por id |
+| `getPerfilActivo()` | `Optional<Profile>` | El perfil activo, si existe |
+| `esPrimerArranque()` | `boolean` | True si aún no se ha creado ningún perfil |
+| `resolverPerfilInicial()` | `Optional<String>` | Determina qué perfil cargar al iniciar: el activo guardado o, si no hay, el primero de la lista (comportamiento de P2) |
+| `crear(Profile datos)` | `Profile` | Crea el perfil, su carpeta y, si el tipo de negocio lo indica, sus categorías predefinidas |
+| `actualizar(Profile cambios)` | `Profile` | Actualiza nombre, descripción y color; conserva el resto de datos |
+| `deshabilitar(String id)` | `void` | Deshabilita un negocio (borrado lógico): sus productos, ventas y demás datos se conservan y se puede volver a habilitar |
+| `habilitar(String id)` | `void` | Vuelve a habilitar un negocio deshabilitado |
+| `seleccionar(String id)` | `Optional<ProfileServices>` | Servicios del perfil activado, o vacío si se desactivó |
+| `crearServicios(String id)` | `ProfileServices` | Servicios para operar sobre los datos de ese perfil |
+| `normalizarCategorias()` | `int` | Revisa la categoría de los productos de todos los negocios (los datos de versiones en que era opcional quedan en "Sin categoría") |
+| `sincronizarConfiguracion()` | `void` | Copia la lista de perfiles al archivo de configuración |
 
 ##### ProfileServices
 
 | Campo | Valor |
 |---|---|
-| Clase | `ProfileServices` |
-| Paquete | `sistemainventario.service` |
-| Tipo | Record (concreta) |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Record que agrupa los cinco gestores que trabajan sobre los datos de un perfil. |
+| Tipo | Registro |
+| Herencia | — |
+| Responsabilidad | Agrupa los servicios de un negocio: inventario, categorías, proveedores, movimientos, ventas y fiados. |
 | Archivo | [ProfileServices.java](../src/main/java/sistemainventario/service/ProfileServices.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| `inventario` | `InventoryService` | Componente del record |
-| `categorias` | `CategoryService` | Componente del record |
-| `proveedores` | `SupplierService` | Componente del record |
-| `movimientos` | `MovementService` | Componente del record |
-| `ventas` | `SaleService` | Componente del record |
-
-**Métodos**
-
-No declara métodos propios.
+**Datos:** `(InventoryService inventario, public record ProfileServices(InventoryService inventario, CategoryService categorias, SupplierService proveedores, MovementService movimientos, SaleService ventas, CreditService fiados)`
 
 ##### ProfileServicesFactory
 
 | Campo | Valor |
 |---|---|
-| Clase | `ProfileServicesFactory` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Crea los repositorios y servicios de un perfil a partir de su carpeta. |
+| Herencia | — |
+| Responsabilidad | Construye los repositorios y servicios de un perfil. |
 | Archivo | [ProfileServicesFactory.java](../src/main/java/sistemainventario/service/ProfileServicesFactory.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `directorios` | `ProfileDirectory` | Ubica la carpeta de cada perfil |
+| `almacen` | `StorageProvider` | Almacen (StorageProvider) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ProfileServicesFactory(ProfileDirectory directorios)` | — (constructor) | Constructor |
-| `crear(String perfilId)` | `ProfileServices` | Crea los repositorios y los cinco gestores del perfil |
+| `ProfileServicesFactory(StorageProvider almacen)` | — | Constructor |
+| `crear(String perfilId)` | `ProfileServices` | Servicios listos para operar sobre los datos de ese perfil |
+| `normalizarCategorias(String perfilId)` | `int` | Deja todos los productos del negocio con una categoría válida (ver normalizarCategorias), sin cargar sus ventas |
 
 ##### QrSaleScanner
 
 | Campo | Valor |
 |---|---|
-| Clase | `QrSaleScanner` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Convierte un cuadro de la cámara en el producto de la etiqueta y evita contar dos veces la misma etiqueta quieta. |
+| Herencia | — |
+| Responsabilidad | Convierte lo que ve la cámara en productos para la venta por QR. |
 | Archivo | [QrSaleScanner.java](../src/main/java/sistemainventario/service/QrSaleScanner.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `lector` | `QrReader` | Lector de códigos QR |
-| `reloj` | `LongSupplier` | Fuente de la hora en milisegundos |
-| `ultimoContenido` | `String` | Último texto leído |
-| `ultimaLectura` | `long` | Momento de la última lectura |
-| Constantes (`static final`) | — | `ESPERA_REPETIDO_MS` |
+| `lector` | `QrReader` | Lector (QrReader) |
+| `reloj` | `LongSupplier` | Reloj |
+| `nombreNegocio` | `Function<String, Optional<String>>` | Nombre negocio |
+| `ultimoContenido` | `String` | Ultimo contenido |
+| `ultimaLectura` | `long` | Ultima lectura |
+
+**Constantes:** `ESPERA_REPETIDO_MS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `QrSaleScanner(QrReader lector)` | — (constructor) | Constructor |
-| `QrSaleScanner(QrReader lector, LongSupplier reloj)` | — (constructor) | Constructor |
-| `procesar(BufferedImage cuadro, InventoryService inventario)` | `Optional<Product>` | Devuelve el producto si hay una etiqueta nueva en el cuadro |
+| `QrSaleScanner(QrReader lector)` / `QrSaleScanner(QrReader lector, LongSupplier reloj)` | — | Constructores |
+| `conNombresDeNegocio(Function<String, Optional<String>> nombres)` | `QrSaleScanner` | Este escáner |
+| `procesar(BufferedImage cuadro, InventoryService inventario, String perfilActivo)` | `Optional<Lectura>` | Valida la etiqueta antes de agregar el producto a la venta: que sea de TBalance, que esté completa, que sea del negocio abierto, que el producto exista, esté habilitado y tenga unidades |
+| `validar(String texto, InventoryService inventario, String perfilActivo)` | `Lectura` | Interpreta y valida el texto de una etiqueta (separado de la cámara para probarlo) |
 
 ##### ReportExportService
 
 | Campo | Valor |
 |---|---|
-| Clase | `ReportExportService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Exporta un informe a Excel: decide la carpeta (Documentos/TBalance) y el nombre del archivo y usa ReportExcelWriter. |
+| Herencia | — |
+| Responsabilidad | Exporta un informe de ventas a un libro de Excel en la carpeta Documentos/TBalance. |
 | Archivo | [ReportExportService.java](../src/main/java/sistemainventario/service/ReportExportService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `excel` | `ReportExcelWriter` | Escritor del archivo .xlsx |
-| `carpeta` | `Path` | Carpeta donde se guardan los informes |
+| `excel` | `ReportExcelWriter` | Excel (ReportExcelWriter) |
+| `carpeta` | `Path` | Carpeta |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ReportExportService(ReportExcelWriter excel, Path carpeta)` | — (constructor) | Constructor |
-| `exportarExcel(SalesReport informe, String negocio)` | `Path` | Guarda el informe como .xlsx y devuelve la ruta |
-| `carpetaPorDefecto(Path usuario)` *(static)* | `Path` | Documentos/TBalance, o la carpeta del usuario si no hay Documentos |
+| `ReportExportService(ReportExcelWriter excel, Path carpeta)` | — | Constructor |
+| `exportarExcel(SalesReport informe, String negocio)` | `Path` | Guarda el informe como .xlsx |
+| `carpetaPorDefecto(Path usuario)` *(static)* | `Path` | Documentos/TBalance si existe la carpeta Documentos; si no, /TBalance |
 
 ##### ReportService
 
 | Campo | Valor |
 |---|---|
-| Clase | `ReportService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Calcula el informe de ventas de un período: totales, comparación, agrupación por día, semana o mes, ranking de productos, métodos de pago y utilidad real. |
+| Herencia | — |
+| Responsabilidad | Calcula los informes de ventas de un período. |
 | Archivo | [ReportService.java](../src/main/java/sistemainventario/service/ReportService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `ventas` | `SaleService` | Servicio de ventas del perfil |
-| `inventario` | `InventoryService` | Servicio de inventario (costo actual) |
-| Constantes (`static final`) | — | `MESES`, `DIAS_MAX_POR_DIA`, `DIAS_MAX_POR_SEMANA`, `TOPE_PRODUCTOS` |
+| `ventas` | `SaleService` | Ventas (SaleService) |
+| `inventario` | `InventoryService` | Inventario (InventoryService) |
+
+**Constantes:** `DIAS_MAX_POR_DIA`, `DIAS_MAX_POR_SEMANA`, `TOPE_PRODUCTOS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ReportService(SaleService ventas, InventoryService inventario)` | — (constructor) | Constructor |
-| `generar(String desdeIso, String hastaIso)` | `SalesReport` | Calcula el informe del período (y del período de comparación) |
-| `generar(String desdeIso, String hastaIso, String anteriorDesdeIso, String anteriorHastaIso)` | `SalesReport` | Calcula el informe del período (y del período de comparación) |
+| `ReportService(SaleService ventas, InventoryService inventario)` | — | Constructor |
+| `generar(String desdeIso, String hastaIso)` | `SalesReport` | El informe del período |
+| `generar(String desdeIso, String hastaIso, String anteriorDesdeIso, String anteriorHastaIso)` | `SalesReport` | El informe del período |
 
 ##### SaleService
 
 | Campo | Valor |
 |---|---|
-| Clase | `SaleService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Registra ventas verificando el stock de todos los productos antes de descontarlo. |
+| Herencia | — |
+| Responsabilidad | Registro y consulta de ventas. |
 | Archivo | [SaleService.java](../src/main/java/sistemainventario/service/SaleService.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `inventario` | `InventoryService` | Gestor de productos compartido |
-| `ventas` | `Repository<Sale>` | Repositorio de ventas |
+| `inventario` | `InventoryService` | Inventario (InventoryService) |
+| `ventas` | `Repository<Sale>` | Ventas |
+| `medioPermitido` | `Predicate<String>` | Medios de pago que acepta el negocio; por defecto, todos |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `SaleService(InventoryService inventario, Repository<Sale> ventas)` | — (constructor) | Constructor |
-| `registrar(Sale venta)` | `Sale` | Valida, verifica stock de todo, descuenta y guarda |
-| `listarTodas()` | `List<Sale>` | Todas las ventas |
-| `getTotalVentas()` | `double` | Suma de los totales |
-| `getTotalTransacciones()` | `int` | Número de ventas |
+| `SaleService(InventoryService inventario, Repository<Sale> ventas)` | — | Constructor |
+| `usarMediosDePago(Predicate<String> medioPermitido)` | `void` | Usar medios de pago |
+| `aceptaMedioPago(String metodo)` | `boolean` | True si el negocio acepta ese medio |
+| `registrar(Sale venta)` | `Sale` | La venta registrada con ID, fecha, estado y total |
+| `listarTodas()` | `List<Sale>` | Ventas vigentes (sin las anuladas), de la más reciente a la más antigua |
+| `listarAnuladas()` | `List<Sale>` | Ventas anuladas, de la más reciente a la más antigua |
+| `anular(String id, String motivo)` | `Sale` | Anula una venta: queda en el historial con el motivo, deja de contar en los totales y el stock de sus productos se devuelve |
+| `obtener(String id)` | `Sale` | La venta (vigente o anulada) |
+| `anular(String id, String motivo, String quien)` | `Sale` | Igual que anularString,, dejando anotado quién anuló |
+| `getTotalVentas()` | `double` | Suma de los totales de las ventas completadas |
+| `getTotalTransacciones()` | `int` | Cantidad de ventas completadas |
+
+##### SessionService
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Guarda quién inició sesión y cierra la sesión después de 30 minutos sin uso. |
+| Archivo | [SessionService.java](../src/main/java/sistemainventario/service/SessionService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `reloj` | `LongSupplier` | Reloj |
+| `usuario` | `User` | Usuario (User) |
+| `ultimaActividad` | `long` | Ultima actividad |
+
+**Constantes:** `MINUTOS_INACTIVIDAD`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `SessionService()` / `SessionService(LongSupplier reloj)` | — | Constructores |
+| `abrir(User persona)` | `void` | Abre |
+| `cerrar()` | `void` | Cierra la sesión |
+| `refrescar(User persona)` | `void` | Refrescar |
+| `registrarActividad()` | `boolean` | Anota que la persona sigue usando TBalance |
+| `actual()` | `Optional<User>` | La persona con sesión abierta (vacío si nadie o si venció por inactividad) |
+| `requerir()` | `User` | La persona con sesión abierta |
+| `rolEn(String perfilId)` | `Optional<Rol>` | Rol de la persona en ese negocio, si tiene acceso |
+| `puede(String perfilId, Permiso permiso)` | `boolean` | True si la persona puede hacerla en ese negocio |
+
+##### StorageService
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Decide dónde se guardan los datos (archivos JSON, PostgreSQL u Oracle) y prepara ese almacenamiento. |
+| Archivo | [StorageService.java](../src/main/java/sistemainventario/service/StorageService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `ajustes` | `DatabaseSettingsRepository` | Ajustes (DatabaseSettingsRepository) |
+| `directorioDatos` | `Path` | Directorio datos |
+| `copiador` | `DataTransferService` | Copiador (DataTransferService) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `StorageService(DatabaseSettingsRepository ajustes, Path directorioDatos, DataTransferService copiador)` | — | Constructor |
+| `leer()` | `DatabaseSettings` | La configuración guardada en este computador |
+| `abrir()` | `Apertura` | Abre el almacenamiento configurado |
+| `probar(DatabaseSettings config)` | `String` | Prueba una configuración sin guardarla |
+| `guardar(DatabaseSettings config)` | `void` | Prueba (si es una base) y guarda la configuración |
+| `exportarAArchivos(StorageProvider base)` | `void` | Copia los datos de la base a los archivos JSON de este computador |
 
 ##### SupplierService
 
 | Campo | Valor |
 |---|---|
-| Clase | `SupplierService` |
-| Paquete | `sistemainventario.service` |
 | Tipo | Concreta |
-| Hereda de / implementa | `EntityService<Supplier>` |
-| Responsabilidad principal | Reglas y búsqueda de proveedores. |
+| Herencia | hereda de `EntityService` |
+| Responsabilidad | Casos de uso de los proveedores de un perfil. |
 | Archivo | [SupplierService.java](../src/main/java/sistemainventario/service/SupplierService.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `SupplierService(Repository<Supplier> repositorio)` | — (constructor) | Constructor |
-| `validar(Supplier proveedor)` *(protected)* | `void` | Valida el proveedor (sobrescribe) `@Override` |
-| `generarId()` *(protected)* | `String` | Siguiente ID numérico (sobrescribe) `@Override` |
-| `nombreEntidad()` *(protected)* | `String` | Devuelve “proveedor” (sobrescribe) `@Override` |
-| `buscar(String texto)` | `List<Supplier>` | Busca proveedores |
+| `SupplierService(Repository<Supplier> repositorio)` | — | Constructor |
+| `validar(Supplier proveedor)` | `void` | Paso variable: reglas de validación propias de la entidad |
+| `generarId()` | `String` | Paso variable: estrategia de generación de ID de la entidad |
+| `nombreEntidad()` | `String` | Nombre legible de la entidad para mensajes de error |
+| `buscar(String texto)` | `List<Supplier>` | Proveedores que coinciden |
+
+##### UserService
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Casos de uso de las personas que usan TBalance: la primera cuenta (el dueño), iniciar sesión, crear usuarios de un negocio, deshabilitarlos y cambiar contraseñas. |
+| Archivo | [UserService.java](../src/main/java/sistemainventario/service/UserService.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `repositorio` | `Repository<User>` | Repositorio |
+| `ficticio (static)` | `String` | Ficticio |
+
+**Constantes:** `INTENTOS_PERMITIDOS`, `MINUTOS_BLOQUEO`, `LARGO_MINIMO_CLAVE`, `FORMATO_USUARIO`, `MENSAJE_INGRESO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `UserService(Repository<User> repositorio)` | — | Constructor |
+| `esPrimeraVez()` | `boolean` | True si todavía no hay ninguna cuenta (primera vez que se abre TBalance) |
+| `crearPrimerDueno(String nombre, String usuario, String clave, Collection<String> negocios)` | `User` | Crea la primera cuenta, la del dueño, con acceso a todos los negocios que ya existan |
+| `iniciarSesion(String usuario, String clave)` | `User` | La persona, si la contraseña es correcta |
+| `usuariosDe(String perfilId)` | `List<User>` | Personas con acceso a ese negocio (habilitadas y deshabilitadas), por nombre |
+| `crear(User quien, String perfilId, String nombre, String usuario, String clave, Rol rol)` | `User` | Crea una persona con acceso a un negocio, o le da acceso si ya existe ese usuario |
+| `editar(User quien, String perfilId, String id, String nombre, Rol rol)` | `User` | Cambia el nombre y el rol de una persona en un negocio |
+| `cambiarEstado(User quien, String perfilId, String id, boolean activo)` | `void` | Deshabilita o vuelve a habilitar una persona (no se borra: sus ventas quedan con su nombre) |
+| `restablecerClave(User quien, String perfilId, String id, String nueva)` | `void` | Pone una contraseña nueva a otra persona (por ejemplo, si la olvidó) |
+| `cambiarMiClave(User quien, String actual, String nueva)` | `void` | Cambia mi clave |
+| `hacerDueno(User quien, String perfilId)` | `void` | Da acceso de dueño a quien crea un negocio nuevo |
+| `obtener(String id)` | `User` | La persona con los datos guardados más recientes |
 
 #### Paquete `bridge`
+
+##### AccessPolicy
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Revisa en Java, antes de cada llamada de la página, que la persona tenga la sesión abierta y el permiso que pide esa acción en el negocio abierto. |
+| Archivo | [AccessPolicy.java](../src/main/java/sistemainventario/bridge/AccessPolicy.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `historial` | `AuditTrail` | Historial (AuditTrail) |
+
+**Constantes:** `CAMPOS_COSTO`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `AccessPolicy(AppContext contexto)` | — | Constructor |
+| `antesDeLlamar()` | `AuditTrail.Momento` | Quién y dónde, justo antes de una llamada (para el historial) |
+| `revisar(String metodo)` | `Optional<String>` | Mensaje de rechazo, o vacío si se puede llamar |
+| `filtrar(String metodo, Object resultado)` | `Object` | Quita precios de compra y ganancias de la respuesta si el rol no los puede ver (el cajero ve precios de venta, pero no cuánto costó la mercancía) |
 
 ##### AssistantController
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador del asistente: configuración, prueba de conexión y conversación en segundo plano; confirma o descarta lo que propone. |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones del asistente: configurar la clave, conversar y confirmar o descartar lo que propone. |
 | Archivo | [AssistantController.java](../src/main/java/sistemainventario/bridge/AssistantController.java) |
 
 **Atributos**
@@ -1927,367 +3074,457 @@ No tiene atributos.
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `contexto` | `AppContext` | Contexto de la aplicación |
-| `notificador` | `ViewNotifier` | Avisa las respuestas a la vista |
-| `hiloDeDatos` | `Executor` | Acceso a los datos desde el hilo del asistente |
-| `ajustes` | `AssistantSettingsService` | Configuración del asistente (AssistantSettingsService) |
-| `segundoPlano` | `ExecutorService` | Hilo donde se consulta al modelo |
-| `asistente` | `AssistantService` | Conversación actual |
-| `perfilDeLaConversacion` | `String` | Perfil con el que empezó la conversación |
+| `notificador` | `ViewNotifier` | Notificador (ViewNotifier) |
+| `hiloDeDatos` | `Executor` | Hilo de datos |
+| `ajustes` | `AssistantSettingsService` | Ajustes (AssistantSettingsService) |
+| `asistente` | `AssistantService` | Asistente (AssistantService) |
+| `perfilDeLaConversacion` | `String` | Perfil de la conversacion |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `AssistantController(AppContext contexto, ViewNotifier notificador, Executor hiloDeDatos)` | — (constructor) | Constructor |
-| `asistenteEstado()` | `String` | Si el asistente está configurado y con qué modelo |
-| `asistenteConfigurar(String clave, String modelo)` | `String` | Guarda o borra la clave y el modelo |
-| `asistenteEnviar(String mensaje)` | `String` | Envía un mensaje en segundo plano; la respuesta llega con onAsistenteRespuesta |
-| `asistenteProbar()` | `String` | Prueba la clave con un mensaje corto; el resultado llega con onAsistentePrueba |
-| `asistenteConfirmar(String propuestaId)` | `String` | Confirma una propuesta y la ejecuta |
-| `asistenteDescartar(String propuestaId)` | `String` | Descarta una propuesta |
-| `asistenteReiniciar()` | `String` | Empieza una conversación nueva |
+| `AssistantController(AppContext contexto, ViewNotifier notificador, Executor hiloDeDatos)` | — | Constructor |
+| `asistenteEstado()` | `String` | {"configurado":bool,"modelo":"..."} |
+| `asistenteConfigurar(String clave, String modelo)` | `String` | "OK" o "ERROR: ..." |
+| `asistenteEnviar(String mensaje)` | `String` | Envía un mensaje; la respuesta llega después con onAsistenteRespuesta |
+| `asistenteProbar()` | `String` | Prueba la clave y la conexión con un mensaje corto; el resultado llega con onAsistentePrueba({"ok":bool,"mensaje":"...")} |
+| `asistenteProbarClave(String clave, String modelo)` | `String` | Prueba la clave escrita en la pantalla sin guardarla; el resultado llega con onAsistentePrueba(...) igual que asistenteProbar |
+| `asistenteConfirmar(String propuestaId)` | `String` | Descripción de lo registrado o "ERROR: ..." |
+| `asistenteDescartar(String propuestaId)` | `String` | "OK" |
+| `asistenteReiniciar()` | `String` | "OK" |
+
+##### AuditTrail
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Decide qué llamadas del puente quedan en el historial y arma el texto de cada una. |
+| Archivo | [AuditTrail.java](../src/main/java/sistemainventario/bridge/AuditTrail.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `AuditTrail(AppContext contexto)` | — | Constructor |
+| `antes()` | `Momento` | Quién está y en qué negocio, justo antes de una llamada |
+| `anotar(String metodo, JsonArray argumentos, Object resultado, String rechazo, Momento momento)` | `void` | Anota la llamada si es de las que cambian datos y salió bien, o si fue un intento sin permiso o un ingreso fallido |
 
 ##### BackupController
 
 | Campo | Valor |
 |---|---|
-| Clase | `BackupController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de los casos de uso de copias de seguridad. |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de la pantalla copias de seguridad. |
 | Archivo | [BackupController.java](../src/main/java/sistemainventario/bridge/BackupController.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `contexto` | `AppContext` | Acceso al servicio de respaldos |
-| `notificador` | `ViewNotifier` | Avisa a la vista que recargue tras restaurar |
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `notificador` | `ViewNotifier` | Notificador (ViewNotifier) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `BackupController(AppContext contexto, ViewNotifier notificador)` | — (constructor) | Constructor |
-| `listarRespaldos()` | `String` | Devuelve las copias en JSON |
-| `crearRespaldo()` | `String` | Crea una copia nueva |
-| `restaurarRespaldo(String nombre)` | `String` | Restaura una copia y pide a la vista recargar |
-| `eliminarRespaldo(String nombre)` | `String` | Elimina una copia |
-| `obtenerCarpetaRespaldos()` | `String` | Ruta de la carpeta de respaldos |
+| `BackupController(AppContext contexto, ViewNotifier notificador)` | — | Constructor |
+| `listarRespaldos()` | `String` | Lista respaldos |
+| `crearRespaldo()` | `String` | Crea respaldo |
+| `restaurarRespaldo(String nombre)` | `String` | Restaura un respaldo y pide a la vista que recargue todos los datos |
+| `eliminarRespaldo(String nombre)` | `String` | Elimina respaldo |
+| `obtenerCarpetaRespaldos()` | `String` | La carpeta de las copias o, con base de datos, en qué base están |
 
 ##### BridgeInvoker
 
 | Campo | Valor |
 |---|---|
-| Clase | `BridgeInvoker` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Llama por nombre a un método público del JavaBridge con argumentos en JSON; lo usa el servidor local de la ventana de Edge. |
+| Herencia | — |
+| Responsabilidad | Ejecuta un método público de JavaBridge a partir de su nombre y de sus argumentos en JSON, y devuelve el resultado también en JSON. |
 | Archivo | [BridgeInvoker.java](../src/main/java/sistemainventario/bridge/BridgeInvoker.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `puente` | `Object` | Objeto cuyos métodos se llaman (JavaBridge) |
-| `gson` | `Gson` | Convierte los argumentos JSON |
-| `metodos` | `Map<String, List<Method>>` | Métodos públicos agrupados por nombre |
+| `puente` | `Object` | Puente |
+| `politica` | `AccessPolicy` | Politica (AccessPolicy) |
+| `gson` | `Gson` | Gson |
+| `metodos` | `Map<String, List<Method>>` | Métodos públicos del puente agrupados por nombre (puede haber sobrecargas) |
+
+**Constantes:** `LOTE`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `BridgeInvoker(Object puente)` | — (constructor) | Constructor |
-| `invocar(String nombre, String argumentosJson)` | `String` | Llama al método por nombre con los argumentos JSON y devuelve su resultado |
+| `BridgeInvoker(Object puente)` / `BridgeInvoker(Object puente, AccessPolicy politica)` | — | Constructores |
+| `invocar(String nombre, String argumentosJson)` | `String` | Objeto JSON {"ok":true,"v":resultado} o {"ok":false,"error":"..."} |
 
 ##### BridgeResponse
 
 | Campo | Valor |
 |---|---|
-| Clase | `BridgeResponse` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Da formato a las respuestas para JavaScript (OK, JSON o “ERROR: …”) y centraliza el manejo de excepciones del bridge. |
+| Herencia | — |
+| Responsabilidad | Formato de las respuestas que el bridge devuelve a JavaScript. |
 | Archivo | [BridgeResponse.java](../src/main/java/sistemainventario/bridge/BridgeResponse.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `OK`, `PREFIJO_ERROR` |
+**Constantes:** `OK`, `PREFIJO_ERROR`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `json(Object objeto)` *(static)* | `String` | Convierte un objeto a JSON |
-| `error(String mensaje)` *(static)* | `String` | Arma el texto “ERROR: mensaje” |
-| `ejecutar(Supplier<String> accion)` *(static)* | `String` | Ejecuta una acción y traduce las excepciones a ERROR |
-| `ejecutarOk(Runnable accion)` *(static)* | `String` | Ejecuta una acción sin resultado y responde OK |
-| `literalJs(String texto)` *(static)* | `String` | Escapa un texto para usarlo en JavaScript |
+| `json(Object objeto)` *(static)* | `String` | El objeto serializado como JSON |
+| `error(String mensaje)` *(static)* | `String` | Mensaje de error en el formato que entiende la vista |
+| `ejecutar(Supplier<String> accion)` *(static)* | `String` | Ejecuta una acción y traduce cualquier excepción a "ERROR: ..." |
+| `ejecutarOk(Runnable accion)` *(static)* | `String` | Ejecuta una acción sin resultado y responde "OK" si no falla |
+| `literalJs(String texto)` *(static)* | `String` | Escapa un texto para insertarlo como literal en un script JavaScript |
 
 ##### CatalogController
 
 | Campo | Valor |
 |---|---|
-| Clase | `CatalogController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de los casos de uso de categorías y proveedores: convierte el JSON de la vista y delega en los gestores. |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de la pantalla categorías y proveedores. |
 | Archivo | [CatalogController.java](../src/main/java/sistemainventario/bridge/CatalogController.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `contexto` | `AppContext` | Acceso a los servicios del perfil activo |
-| Constantes (`static final`) | — | `LISTA_VACIA` |
+| `contexto` | `AppContext` | Contexto de la aplicación |
+
+**Constantes:** `LISTA_VACIA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `CatalogController(AppContext contexto)` | — (constructor) | Constructor |
-| `obtenerCategorias()` | `String` | Devuelve en JSON: categorias |
-| `guardarCategoria(String jsonCategoria)` | `String` | Convierte el JSON y guarda (crea o actualiza): categoria |
-| `eliminarCategoria(String id)` | `String` | Elimina por ID: categoria |
-| `obtenerProveedores()` | `String` | Devuelve en JSON: proveedores |
-| `guardarProveedor(String jsonProveedor)` | `String` | Convierte el JSON y guarda (crea o actualiza): proveedor |
-| `eliminarProveedor(String id)` | `String` | Elimina por ID: proveedor |
+| `CatalogController(AppContext contexto)` | — | Constructor |
+| `obtenerCategorias()` | `String` | Devuelve categorias |
+| `guardarCategoria(String jsonCategoria)` | `String` | Guarda categoria |
+| `obtenerCategoriasDeshabilitadas()` | `String` | Categorías deshabilitadas del perfil activo |
+| `cambiarEstadoCategoria(String id, String activa)` | `String` | "OK" o "ERROR: ..." |
+| `obtenerProveedores()` | `String` | Devuelve proveedores |
+| `guardarProveedor(String jsonProveedor)` | `String` | Guarda proveedor |
+| `obtenerProveedoresDeshabilitados()` | `String` | Proveedores deshabilitados del perfil activo |
+| `cambiarEstadoProveedor(String id, String activo)` | `String` | "OK" o "ERROR: ..." |
+
+##### CostController
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Entrega a la pantalla los datos de la sección Costos. |
+| Archivo | [CostController.java](../src/main/java/sistemainventario/bridge/CostController.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CostController(AppContext contexto)` | — | Constructor |
+| `obtenerCostos(String desde, String hasta)` | `String` | JSON con el costo del inventario por producto y las compras del periodo |
+
+##### CreditController
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de la sección Fiados: ver quién debe, ver la cuenta de un cliente, registrar y anular abonos. |
+| Archivo | [CreditController.java](../src/main/java/sistemainventario/bridge/CreditController.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `CreditController(AppContext contexto)` | — | Constructor |
+| `listarFiados()` | `String` | Cuentas de los clientes con fiados (lo que deben y lo abonado) |
+| `resumenFiados()` | `String` | Solo lo que la pantalla Hoy necesita: cliente, lo que debe y la fecha de la primera compra fiada |
+| `obtenerFiado(String clave)` | `String` | La cuenta del cliente con sus ventas fiadas y sus abonos |
+| `registrarAbono(String jsonAbono)` | `String` | El abono registrado |
+| `anularAbono(String id, String motivo)` | `String` | OK o el error |
 
 ##### DesktopFileOpener
 
 | Campo | Valor |
 |---|---|
-| Clase | `DesktopFileOpener` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | `FileOpener` |
-| Responsabilidad principal | Implementación de FileOpener con java.awt.Desktop. |
+| Herencia | implementa `FileOpener` |
+| Responsabilidad | Implementación de FileOpener con Desktop. |
 | Archivo | [DesktopFileOpener.java](../src/main/java/sistemainventario/bridge/DesktopFileOpener.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `abrir(Path ruta)` | `void` | Abre la ruta con Desktop en un hilo aparte `@Override` |
+| `abrir(Path ruta)` | `void` | Abre |
 
 ##### FileOpener
 
 | Campo | Valor |
 |---|---|
-| Clase | `FileOpener` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Interfaz |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Contrato para abrir un archivo o carpeta con el programa predeterminado del sistema operativo. |
+| Herencia | — |
+| Responsabilidad | Abre un archivo o carpeta con el programa predeterminado del sistema operativo (visor de imágenes, explorador de archivos...). |
 | Archivo | [FileOpener.java](../src/main/java/sistemainventario/bridge/FileOpener.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `abrir(Path ruta)` | `void` | Abre la ruta con el programa del sistema |
+| `abrir(Path ruta)` *(abstracto)* | `void` | Abre |
 
 ##### InventoryController
 
 | Campo | Valor |
 |---|---|
-| Clase | `InventoryController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de los casos de uso de productos y de las estadísticas del inventario. |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de la pantalla productos y del dashboard. |
 | Archivo | [InventoryController.java](../src/main/java/sistemainventario/bridge/InventoryController.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `contexto` | `AppContext` | Acceso a los servicios del perfil activo |
-| Constantes (`static final`) | — | `LISTA_VACIA` |
+| `contexto` | `AppContext` | Contexto de la aplicación |
+
+**Constantes:** `LISTA_VACIA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `InventoryController(AppContext contexto)` | — (constructor) | Constructor |
-| `obtenerProductos()` | `String` | Devuelve en JSON: productos |
-| `buscarProductos(String texto)` | `String` | Busca y devuelve en JSON: productos |
-| `filtrarProductosPorCategoria(String categoria)` | `String` | Filtra y devuelve en JSON: productos por categoria |
-| `obtenerProductosVencidos()` | `String` | Devuelve en JSON: productos vencidos |
-| `obtenerProductosPorVencer(int dias)` | `String` | Devuelve en JSON: productos por vencer |
-| `guardarProducto(String jsonProducto)` | `String` | Convierte el JSON y guarda (crea o actualiza): producto |
-| `eliminarProducto(String id)` | `String` | Elimina por ID: producto |
-| `obtenerEstadisticas(boolean incluirVencimientos)` | `String` | Devuelve en JSON: estadisticas |
+| `InventoryController(AppContext contexto)` | — | Constructor |
+| `obtenerProductos()` | `String` | Devuelve productos |
+| `buscarProductos(String texto)` | `String` | Busca productos |
+| `filtrarProductosPorCategoria(String categoria)` | `String` | Filtra productos por categoria |
+| `obtenerProductosVencidos()` | `String` | Devuelve productos vencidos |
+| `obtenerProductosPorVencer(int dias)` | `String` | Devuelve productos por vencer |
+| `guardarProducto(String jsonProducto)` | `String` | Guarda producto |
+| `obtenerProductosDeshabilitados()` | `String` | Productos deshabilitados del perfil activo |
+| `cambiarEstadoProducto(String id, String activo)` | `String` | "OK" o "ERROR: ..." |
+| `obtenerEstadisticas(boolean incluirVencimientos)` | `String` | Indicadores clave del perfil activo en JSON |
 
 ##### JavaBridge
 
 | Campo | Valor |
 |---|---|
-| Clase | `JavaBridge` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Fachada que la vista web usa como window.javaBridge; no tiene lógica, delega cada método en su controlador. |
+| Herencia | — |
+| Responsabilidad | Objeto que la página web llama como window.javaBridge; pasa cada pedido al controlador que le corresponde. |
 | Archivo | [JavaBridge.java](../src/main/java/sistemainventario/bridge/JavaBridge.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `perfiles` | `ProfileController` | Controlador de perfiles |
-| `inventario` | `InventoryController` | Controlador de productos y estadísticas |
-| `catalogo` | `CatalogController` | Controlador de categorías y proveedores |
-| `transacciones` | `TransactionController` | Controlador de entradas, salidas y ventas |
-| `respaldos` | `BackupController` | Controlador de copias de seguridad |
-| `etiquetas` | `LabelController` | Controlador de etiquetas QR |
-| `informes` | `ReportController` | Controlador de Informes |
-| `asistente` | `AssistantController` | Controlador del asistente |
-| `escaneo` | `ScanController` | Controlador de la venta por QR |
-| `notificador` | `ViewNotifier` | Canal para avisar a la vista |
-| `transicion` | `ScreenTransition` | Transiciones de la ventana (null si la vista no las ofrece) |
-| Constantes (`static final`) | — | `CANDADO_DATOS` |
+| `perfiles` | `ProfileController` | Perfiles (ProfileController) |
+| `inventario` | `InventoryController` | Inventario (InventoryController) |
+| `catalogo` | `CatalogController` | Catalogo (CatalogController) |
+| `transacciones` | `TransactionController` | Transacciones (TransactionController) |
+| `respaldos` | `BackupController` | Respaldos (BackupController) |
+| `almacenamiento` | `StorageController` | Almacenamiento (StorageController) |
+| `etiquetas` | `LabelController` | Etiquetas (LabelController) |
+| `informes` | `ReportController` | Informes (ReportController) |
+| `asistente` | `AssistantController` | Asistente (AssistantController) |
+| `escaneo` | `ScanController` | Escaneo (ScanController) |
+| `costos` | `CostController` | Costos (CostController) |
+| `fiados` | `CreditController` | Fiados (CreditController) |
+| `sesion` | `SessionController` | Sesion (SessionController) |
+| `notificador` | `ViewNotifier` | Notificador (ViewNotifier) |
+| `transicion` | `ScreenTransition` | Transiciones grandes de la ventana; es null si la vista no las ofrece |
+
+**Constantes:** `CANDADO_DATOS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `JavaBridge(AppContext contexto, ViewNotifier notificador)` | — (constructor) | Constructor |
-| `JavaBridge(AppContext contexto, ViewNotifier notificador, ScreenTransition transicion, Executor hiloDeDatos)` | — (constructor) | Constructor |
-| `transicionPantalla(double x, double y, double ancho, double alto, int milisegundos)` | `String` | Pide a la ventana desvanecer una zona; responde NO si la vista no lo ofrece |
-| `obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Delega en `ReportController` |
-| `exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Delega en `ReportController` |
-| `asistenteEstado()` | `String` | Delega en `AssistantController` |
-| `asistenteConfigurar(String clave, String modelo)` | `String` | Delega en `AssistantController` |
-| `asistenteEnviar(String mensaje)` | `String` | Delega en `AssistantController` |
-| `asistenteProbar()` | `String` | Delega en `AssistantController` |
-| `asistenteConfirmar(String propuestaId)` | `String` | Delega en `AssistantController` |
-| `asistenteDescartar(String propuestaId)` | `String` | Delega en `AssistantController` |
-| `asistenteReiniciar()` | `String` | Delega en `AssistantController` |
-| `listarPerfiles()` | `String` | Delega en `ProfileController` |
-| `obtenerPerfilActivo()` | `String` | Delega en `ProfileController` |
-| `obtenerSugerencias()` | `String` | Delega en `ProfileController` |
-| `requiereControlVencimiento()` | `boolean` | Delega en `ProfileController` |
-| `obtenerTiposNegocio()` | `String` | Delega en `ProfileController` |
-| `crearPerfil(String jsonPerfil)` | `String` | Delega en `ProfileController` |
-| `editarPerfil(String jsonPerfil)` | `String` | Delega en `ProfileController` |
-| `eliminarPerfil(String id)` | `String` | Delega en `ProfileController` |
-| `seleccionarPerfil(String id)` | `String` | Delega en `ProfileController` |
-| `obtenerEstadisticas()` | `String` | Delega en `InventoryController` |
-| `obtenerProductosVencidos()` | `String` | Delega en `InventoryController` |
-| `obtenerProductosPorVencer(int dias)` | `String` | Delega en `InventoryController` |
-| `obtenerProductos()` | `String` | Delega en `InventoryController` |
-| `buscarProductos(String texto)` | `String` | Delega en `InventoryController` |
-| `filtrarProductosPorCategoria(String categoria)` | `String` | Delega en `InventoryController` |
-| `guardarProducto(String jsonProducto)` | `String` | Delega en `InventoryController` |
-| `eliminarProducto(String id)` | `String` | Delega en `InventoryController` |
-| `obtenerCategorias()` | `String` | Delega en `CatalogController` |
-| `guardarCategoria(String jsonCategoria)` | `String` | Delega en `CatalogController` |
-| `eliminarCategoria(String id)` | `String` | Delega en `CatalogController` |
-| `obtenerProveedores()` | `String` | Delega en `CatalogController` |
-| `guardarProveedor(String jsonProveedor)` | `String` | Delega en `CatalogController` |
-| `eliminarProveedor(String id)` | `String` | Delega en `CatalogController` |
-| `obtenerEntradas()` | `String` | Delega en `TransactionController` |
-| `registrarEntrada(String jsonEntrada)` | `String` | Delega en `TransactionController` |
-| `obtenerSalidas()` | `String` | Delega en `TransactionController` |
-| `registrarSalida(String jsonSalida)` | `String` | Delega en `TransactionController` |
-| `obtenerVentas()` | `String` | Delega en `TransactionController` |
-| `crearVenta(String jsonVenta)` | `String` | Delega en `TransactionController` |
-| `listarRespaldos()` | `String` | Delega en `BackupController` |
-| `crearRespaldo()` | `String` | Delega en `BackupController` |
-| `restaurarRespaldo(String nombre)` | `String` | Delega en `BackupController` |
-| `eliminarRespaldo(String nombre)` | `String` | Delega en `BackupController` |
-| `obtenerCarpetaRespaldos()` | `String` | Delega en `BackupController` |
-| `obtenerEtiquetaQR(String productoId)` | `String` | Delega en `LabelController` |
-| `guardarEtiquetaQR(String productoId)` | `String` | Delega en `LabelController` |
-| `generarHojaEtiquetas()` | `String` | Delega en `LabelController` |
-| `iniciarEscaneoQR()` | `String` | Delega en `ScanController` |
-| `detenerEscaneoQR()` | `String` | Delega en `ScanController` |
-| `recargarEstado()` | `void` | Pide a la vista recargar el estado (`cargarEstadoDesdeJava()`) |
-| `mostrarToast(String mensaje, String tipo)` | `void` | Muestra una notificación en la vista (`showToast`) |
+| `JavaBridge(AppContext contexto, ViewNotifier notificador)` / `JavaBridge(AppContext contexto, ViewNotifier notificador, ScreenTransition transicion, Executor hiloDeDatos)` | — | Constructores |
+| `transicionPantalla(double x, double y, double ancho, double alto, int milisegundos)` | `String` | Pide a la ventana que desvanezca una imagen de la zona indicada por encima de la página (ver ScreenTransition) |
+| `obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | El informe en JSON o "ERROR: ..." |
+| `exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Guarda el informe como .xlsx en la carpeta Documentos/TBalance y lo abre |
+| `asistenteEstado()` | `String` | {"configurado":bool,"modelo":"..."} |
+| `asistenteConfigurar(String clave, String modelo)` | `String` | "OK" o "ERROR: ..." |
+| `asistenteEnviar(String mensaje)` | `String` | Envía un mensaje; la respuesta llega después con onAsistenteRespuesta |
+| `asistenteProbar()` | `String` | Prueba la clave y la conexión con un mensaje corto; el resultado llega con onAsistentePrueba({"ok":bool,"mensaje":"...")} |
+| `asistenteProbarClave(String clave, String modelo)` | `String` | "OK" o "ERROR: ..." |
+| `asistenteConfirmar(String propuestaId)` | `String` | Descripción de lo registrado o "ERROR: ..." |
+| `asistenteDescartar(String propuestaId)` | `String` | "OK" |
+| `asistenteReiniciar()` | `String` | "OK" |
+| `estadoSesion()` | `String` | JSON con primeraVez y la sesión abierta (o null) |
+| `iniciarSesion(String usuario, String clave)` | `String` | Estado de la sesión, o "ERROR: ..." |
+| `listarHistorial(String filtrosJson)` | `String` | Historial de acciones visible para quien consulta |
+| `crearPrimerDueno(String nombre, String usuario, String clave)` | `String` | Estado de la sesión, o "ERROR: ..." |
+| `cerrarSesion()` | `String` | "OK" |
+| `cambiarMiClave(String actual, String nueva)` | `String` | "OK" o "ERROR: ..." |
+| `listarUsuarios()` | `String` | Personas del negocio abierto |
+| `guardarUsuario(String json)` | `String` | La persona, o "ERROR: ..." |
+| `cambiarEstadoUsuario(String id, String activo)` | `String` | "OK" o "ERROR: ..." |
+| `restablecerClaveUsuario(String id, String nueva)` | `String` | "OK" o "ERROR: ..." |
+| `listarPerfiles()` | `String` | Negocios a los que entra la persona con sesión (también los deshabilitados, para el dueño) |
+| `obtenerPerfilActivo()` | `String` | Devuelve perfil activo |
+| `obtenerSugerencias()` | `String` | Devuelve sugerencias |
+| `requiereControlVencimiento()` | `boolean` | True si los productos de este negocio manejan fecha de vencimiento |
+| `obtenerTiposNegocio()` | `String` | Devuelve tipos negocio |
+| `crearPerfil(String jsonPerfil)` | `String` | Crea perfil |
+| `editarPerfil(String jsonPerfil)` | `String` | Edita perfil |
+| `deshabilitarPerfil(String id)` | `String` | "OK" o "ERROR: ..." |
+| `habilitarPerfil(String id)` | `String` | "OK" o "ERROR: ..." |
+| `seleccionarPerfil(String id)` | `String` | Selecciona perfil |
+| `obtenerEstadisticas()` | `String` | Indicadores clave del perfil activo en JSON |
+| `obtenerProductosVencidos()` | `String` | Devuelve productos vencidos |
+| `obtenerProductosPorVencer(int dias)` | `String` | Devuelve productos por vencer |
+| `obtenerProductos()` | `String` | Devuelve productos |
+| `buscarProductos(String texto)` | `String` | Busca productos |
+| `filtrarProductosPorCategoria(String categoria)` | `String` | Filtra productos por categoria |
+| `guardarProducto(String jsonProducto)` | `String` | Guarda producto |
+| `obtenerProductosDeshabilitados()` | `String` | Productos deshabilitados |
+| `cambiarEstadoProducto(String id, String activo)` | `String` | "OK" o "ERROR: ..." |
+| `obtenerCategorias()` | `String` | Devuelve categorias |
+| `guardarCategoria(String jsonCategoria)` | `String` | Guarda categoria |
+| `obtenerCategoriasDeshabilitadas()` | `String` | Categorías deshabilitadas |
+| `cambiarEstadoCategoria(String id, String activa)` | `String` | "OK" o "ERROR: ..." |
+| `obtenerProveedores()` | `String` | Devuelve proveedores |
+| `guardarProveedor(String jsonProveedor)` | `String` | Guarda proveedor |
+| `obtenerProveedoresDeshabilitados()` | `String` | Proveedores deshabilitados |
+| `cambiarEstadoProveedor(String id, String activo)` | `String` | "OK" o "ERROR: ..." |
+| `obtenerEntradas()` | `String` | Devuelve entradas |
+| `registrarEntrada(String jsonEntrada)` | `String` | La entrada registrada |
+| `obtenerSalidas()` | `String` | Devuelve salidas |
+| `registrarSalida(String jsonSalida)` | `String` | La salida registrada |
+| `obtenerVentas()` | `String` | Devuelve ventas |
+| `crearVenta(String jsonVenta)` | `String` | Crea venta |
+| `obtenerVentasAnuladas()` | `String` | Ventas anuladas |
+| `obtenerEntradasAnuladas()` | `String` | Entradas anuladas |
+| `obtenerSalidasAnuladas()` | `String` | Salidas anuladas |
+| `anularVenta(String id, String motivo)` | `String` | "OK" o "ERROR: ..." |
+| `anularEntrada(String id, String motivo)` | `String` | "OK" o "ERROR: ..." |
+| `anularSalida(String id, String motivo)` | `String` | "OK" o "ERROR: ..." |
+| `listarRespaldos()` | `String` | Lista respaldos |
+| `crearRespaldo()` | `String` | Crea respaldo |
+| `restaurarRespaldo(String nombre)` | `String` | Restaura un respaldo y pide a la vista que recargue todos los datos |
+| `eliminarRespaldo(String nombre)` | `String` | Elimina respaldo |
+| `obtenerCarpetaRespaldos()` | `String` | La carpeta de las copias o, con base de datos, en qué base están |
+| `obtenerCostos(String desde, String hasta)` | `String` | Costos del inventario y compras del periodo |
+| `conectarBaseExistente(String datosJson)` | `String` | Mensaje o "ERROR: ..." (solo funciona antes de que existan usuarios en este computador) |
+| `revisarCambios()` | `String` | Número que cambia cuando otro equipo guardó algo en la misma base |
+| `guardarQrCobro(String perfilId, String dataUrl)` | `String` | OK o el error |
+| `obtenerQrCobro(String perfilId)` | `String` | La imagen del QR de cobro o vacío |
+| `resumenFiados()` | `String` | Quién debe y cuánto, sin el detalle (para la pantalla Hoy) |
+| `listarFiados()` | `String` | Quién debe, cuánto y lo abonado |
+| `obtenerFiado(String clave)` | `String` | Su cuenta con las ventas fiadas y los abonos |
+| `registrarAbono(String jsonAbono)` | `String` | El abono registrado |
+| `anularAbono(String id, String motivo)` | `String` | OK o el error |
+| `obtenerAlmacenamiento()` | `String` | Configuración del almacenamiento (sin la clave) |
+| `probarAlmacenamiento(String datosJson)` | `String` | Resultado de la prueba de conexión |
+| `guardarAlmacenamiento(String datosJson)` | `String` | Mensaje del cambio de almacenamiento |
+| `obtenerEtiquetaQR(String productoId)` | `String` | JSON con la imagen de la etiqueta y el texto que contiene el QR |
+| `guardarEtiquetaQR(String productoId)` | `String` | Guarda la etiqueta como PNG y la abre con el visor de imágenes |
+| `generarHojaEtiquetas()` | `String` | Genera las hojas de etiquetas de todos los productos del perfil activo y abre la carpeta donde quedaron |
+| `iniciarEscaneoQR()` | `String` | Enciende la cámara y empieza a buscar etiquetas QR |
+| `iniciarEscaneoQRCon(String nombre)` | `String` | "OK" o "ERROR: ..." |
+| `listarCamaras()` | `String` | "OK"; la lista llega con tbCamarasDisponibles(...) |
+| `prepararCelular()` | `String` | JSON con la dirección y el QR para conectar el celular, o "ERROR: ..." |
+| `celularConectado()` | `boolean` | True si el celular está enviando imágenes |
+| `detenerEscaneoQR()` | `String` | Apaga la cámara |
+| `recargarEstado()` | `void` | Vuelve a cargar estado |
+| `mostrarToast(String mensaje, String tipo)` | `void` | Muestra toast |
 
 ##### LabelController
 
 | Campo | Valor |
 |---|---|
-| Clase | `LabelController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de los casos de uso de etiquetas QR: vista previa, guardar una etiqueta y generar la hoja de todos los productos. |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de la pantalla etiquetas con código QR. |
 | Archivo | [LabelController.java](../src/main/java/sistemainventario/bridge/LabelController.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `contexto` | `AppContext` | Acceso a los servicios |
-| `abridor` | `FileOpener` | Abre la imagen o la carpeta generada |
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `abridor` | `FileOpener` | Abridor (FileOpener) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `LabelController(AppContext contexto, FileOpener abridor)` | — (constructor) | Constructor |
-| `obtenerEtiquetaQR(String productoId)` | `String` | Devuelve la imagen y el texto de la etiqueta de un producto |
-| `guardarEtiquetaQR(String productoId)` | `String` | Guarda la etiqueta en PNG y la abre |
-| `generarHojaEtiquetas()` | `String` | Genera las hojas de todos los productos y abre la carpeta |
+| `LabelController(AppContext contexto, FileOpener abridor)` | — | Constructor |
+| `obtenerEtiquetaQR(String productoId)` | `String` | JSON con la imagen de la etiqueta y el texto que contiene el QR |
+| `guardarEtiquetaQR(String productoId)` | `String` | Guarda la etiqueta como PNG y la abre con el visor de imágenes |
+| `generarHojaEtiquetas()` | `String` | Genera las hojas de etiquetas de todos los productos del perfil activo y abre la carpeta donde quedaron |
 
 ##### ProfileController
 
 | Campo | Valor |
 |---|---|
-| Clase | `ProfileController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de los casos de uso de perfiles: crear, editar, eliminar, seleccionar y describir los tipos de negocio. |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de la pantalla perfiles: recibe los eventos de la vista, delega en ProfileService y avisa a la vista cuando cambia el estado. |
 | Archivo | [ProfileController.java](../src/main/java/sistemainventario/bridge/ProfileController.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `contexto` | `AppContext` | Acceso a los servicios |
-| `notificador` | `ViewNotifier` | Avisa a la vista que recargue al cambiar de perfil |
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `notificador` | `ViewNotifier` | Notificador (ViewNotifier) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ProfileController(AppContext contexto, ViewNotifier notificador)` | — (constructor) | Constructor |
-| `listarPerfiles()` | `String` | Devuelve en JSON: perfiles |
-| `obtenerPerfilActivo()` | `String` | Devuelve en JSON: perfil activo |
-| `obtenerSugerencias()` | `String` | Devuelve en JSON: sugerencias |
-| `requiereControlVencimiento()` | `boolean` | Si el perfil activo controla vencimientos: control vencimiento |
-| `obtenerTiposNegocio()` | `String` | Devuelve en JSON: tipos negocio |
-| `crearPerfil(String jsonPerfil)` | `String` | Convierte el JSON y crea: perfil |
-| `editarPerfil(String jsonPerfil)` | `String` | Convierte el JSON y actualiza: perfil |
-| `eliminarPerfil(String id)` | `String` | Elimina por ID: perfil |
-| `seleccionarPerfil(String id)` | `String` | Activa el perfil y avisa a la vista: perfil |
+| `ProfileController(AppContext contexto, ViewNotifier notificador)` | — | Constructor |
+| `listarPerfiles()` | `String` | Negocios a los que entra la persona con sesión (también los deshabilitados, para el dueño) |
+| `obtenerPerfilActivo()` | `String` | Devuelve perfil activo |
+| `obtenerSugerencias()` | `String` | Devuelve sugerencias |
+| `requiereControlVencimiento()` | `boolean` | True si los productos de este negocio manejan fecha de vencimiento |
+| `obtenerTiposNegocio()` | `String` | Devuelve tipos negocio |
+| `crearPerfil(String jsonPerfil)` | `String` | Crea perfil |
+| `editarPerfil(String jsonPerfil)` | `String` | Edita perfil |
+| `deshabilitarPerfil(String id)` | `String` | Borrado lógico del negocio: queda deshabilitado con todos sus datos |
+| `habilitarPerfil(String id)` | `String` | "OK" o "ERROR: ..." |
+| `seleccionarPerfil(String id)` | `String` | Selecciona perfil |
+| `guardarQrCobro(String perfilId, String dataUrl)` | `String` | Guarda la imagen del QR de cobro (Bre-B) de un negocio, o la quita si llega vacía |
+| `obtenerQrCobro(String perfilId)` | `String` | La imagen del QR de cobro como data URL, o vacío si no tiene |
 
 ##### ReportController
 
 | Campo | Valor |
 |---|---|
-| Clase | `ReportController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de la sección Informes: devuelve el informe de un período en JSON y lo exporta a Excel. |
+| Herencia | — |
+| Responsabilidad | Entrega a la pantalla los informes de ventas y los exporta a Excel. |
 | Archivo | [ReportController.java](../src/main/java/sistemainventario/bridge/ReportController.java) |
 
 **Atributos**
@@ -2295,170 +3532,223 @@ No tiene atributos.
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `contexto` | `AppContext` | Contexto de la aplicación |
-| `abridor` | `FileOpener` | Abre el Excel generado |
+| `abridor` | `FileOpener` | Abridor (FileOpener) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ReportController(AppContext contexto, FileOpener abridor)` | — (constructor) | Constructor |
-| `obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Devuelve en JSON el informe del período |
-| `exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Guarda el informe en Documentos/TBalance como .xlsx y lo abre |
+| `ReportController(AppContext contexto, FileOpener abridor)` | — | Constructor |
+| `obtenerInforme(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | El informe en JSON o "ERROR: ..." |
+| `exportarInformeExcel(String desde, String hasta, String anteriorDesde, String anteriorHasta)` | `String` | Guarda el informe como .xlsx en la carpeta Documentos/TBalance y lo abre |
 
 ##### ScanController
 
 | Campo | Valor |
 |---|---|
-| Clase | `ScanController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador del caso de uso “venta por QR”: enciende la cámara en un hilo propio, envía la vista previa y avisa a la vista cada producto leído. |
+| Herencia | — |
+| Responsabilidad | Recibe la acción de la pantalla "registrar venta por QR". |
 | Archivo | [ScanController.java](../src/main/java/sistemainventario/bridge/ScanController.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `contexto` | `AppContext` | Acceso a los servicios del perfil activo |
-| `fabricaCamara` | `Supplier<Camera>` | Crea la cámara de cada sesión de escaneo |
-| `vista` | `ViewNotifier` | Canal para avisar a la vista |
-| `sesionActiva` | `AtomicBoolean` | Indica si la sesión actual sigue encendida |
-| `hiloActual` | `Thread` | Hilo que lee la cámara |
-| Constantes (`static final`) | — | `PAUSA_ENTRE_CUADROS_MS`, `ANCHO_VISTA_PREVIA`, `ESPERA_SESION_ANTERIOR_MS` |
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `camaras` | `CameraProvider` | Camaras (CameraProvider) |
+| `camaraElegida` | `String` | Camara elegida |
+| `vista` | `ViewNotifier` | Vista (ViewNotifier) |
+| `celular` | `PhoneLink` | Celular (PhoneLink) |
+| `sesionActiva` | `AtomicBoolean` | Sesion activa |
+| `hiloActual` | `Thread` | Hilo actual |
+
+**Constantes:** `PAUSA_ENTRE_CUADROS_MS`, `ANCHO_VISTA_PREVIA`, `ESPERA_SESION_ANTERIOR_MS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ScanController(AppContext contexto, Supplier<Camera> fabricaCamara, ViewNotifier vista)` | — (constructor) | Constructor |
-| `iniciarEscaneoQR()` | `String` | Enciende la cámara y empieza a buscar etiquetas |
+| `ScanController(AppContext contexto, CameraProvider camaras, ViewNotifier vista, PhoneLink celular)` | — | Constructor |
+| `prepararCelular()` | `String` | Prepara la conexión con el celular: abre el servidor en la red local y devuelve el código QR que el celular debe escanear para conectarse |
+| `celularConectado()` | `boolean` | True si el celular está enviando imágenes |
+| `iniciarEscaneoQR()` | `String` | Enciende la cámara y empieza a buscar etiquetas QR |
+| `iniciarEscaneoQRCon(String nombre)` | `String` | Enciende una cámara concreta (por ejemplo, el celular usado como cámara web) |
+| `listarCamaras()` | `String` | Busca las cámaras en segundo plano (puede tardar unos segundos) y avisa a la vista con tbCamarasDisponibles(["...", ...]) |
 | `detenerEscaneoQR()` | `String` | Apaga la cámara |
-| `estaEscaneando()` | `boolean` | Indica si la cámara está encendida |
+| `estaEscaneando()` | `boolean` | True mientras la cámara está encendida o encendiéndose |
 
 ##### ScreenTransition
 
 | Campo | Valor |
 |---|---|
-| Clase | `ScreenTransition` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Interfaz |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Contrato de una transición visual que la ventana hace por encima de la página (desvanecer una zona). |
+| Herencia | — |
+| Responsabilidad | Transición visual que hace la ventana de JavaFX por encima de la página HTML. |
 | Archivo | [ScreenTransition.java](../src/main/java/sistemainventario/bridge/ScreenTransition.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `desvanecerZona(double x, double y, double ancho, double alto, int milisegundos)` | `void` | Desvanece una imagen de la zona indicada encima de la página |
+| `desvanecerZona(double x, double y, double ancho, double alto, int milisegundos)` *(abstracto)* | `void` | Desvanece una imagen de la zona indicada, encima de la página |
+
+##### SessionController
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones del inicio de sesión y de los usuarios de cada negocio. |
+| Archivo | [SessionController.java](../src/main/java/sistemainventario/bridge/SessionController.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `SessionController(AppContext contexto)` | — | Constructor |
+| `estadoSesion()` | `String` | JSON {primeraVez, sesion}: sesion es null si nadie ha entrado; si no, trae nombre, usuario, rol en el negocio abierto y la lista de permisos |
+| `iniciarSesion(String usuario, String clave)` | `String` | El estado de la sesión, o "ERROR: ..." |
+| `crearPrimerDueno(String nombre, String usuario, String clave)` | `String` | Solo funciona la primera vez, cuando todavía no hay cuentas |
+| `cerrarSesion()` | `String` | "OK" |
+| `cambiarMiClave(String actual, String nueva)` | `String` | "OK" o "ERROR: ..." |
+| `listarUsuarios()` | `String` | Personas del negocio abierto (sin contraseñas) |
+| `guardarUsuario(String json)` | `String` | Crea una persona (sin id) o cambia su nombre y rol (con id) |
+| `cambiarEstadoUsuario(String id, String activo)` | `String` | "OK" o "ERROR: ..." |
+| `restablecerClaveUsuario(String id, String nueva)` | `String` | "OK" o "ERROR: ..." |
+| `listarHistorial(String filtrosJson)` | `String` | Historial de acciones que puede ver quien consulta: el dueño ve el de sus negocios y las acciones generales (ingresos, copias de seguridad); el administrador ve el de los negocios que administra |
 
 ##### SseNotifier
 
 | Campo | Valor |
 |---|---|
-| Clase | `SseNotifier` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | `ViewNotifier` |
-| Responsabilidad principal | Implementación de ViewNotifier para la ventana de Edge: envía cada aviso a la página por una conexión de eventos (Server-Sent Events). |
+| Herencia | implementa `ViewNotifier` |
+| Responsabilidad | Implementación de ViewNotifier para cuando la interfaz se muestra en Edge: envía cada script a la página por un flujo de eventos del servidor (Server-Sent Events) y la página lo ejecuta al recibirlo. |
 | Archivo | [SseNotifier.java](../src/main/java/sistemainventario/bridge/SseNotifier.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `conexiones` | `List<OutputStream>` | Conexiones abiertas de la página |
+| `conexiones` | `List<OutputStream>` | Conexiones abiertas de la página (normalmente una; dos un instante si se recarga) |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `agregar(OutputStream salida)` | `void` | Registra una conexión de la página |
-| `quitar(OutputStream salida)` | `void` | Quita una conexión cerrada |
-| `conectadas()` | `int` | Número de páginas conectadas |
-| `ejecutarScript(String script)` | `void` |  `@Override` |
-| `latido()` | `void` | Mantiene viva la conexión y detecta si se cerró |
-| `formatear(String script)` *(static)* | `String` | Da formato de evento al script |
+| `agregar(OutputStream salida)` | `void` | Registra una conexión nueva de la página |
+| `quitar(OutputStream salida)` | `void` | Quitar |
+| `conectadas()` | `int` | Cuántas páginas están conectadas en este momento |
+| `ejecutarScript(String script)` | `void` | Ejecuta script |
+| `latido()` | `void` | Envía un comentario vacío para mantener viva la conexión y detectar si se cerró |
+| `formatear(String script)` *(static)* | `String` | Da formato de evento al script: cada línea va precedida de data:  |
+
+##### StorageController
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de "Dónde se guardan los datos": probar la conexión y cambiar de almacenamiento. |
+| Archivo | [StorageController.java](../src/main/java/sistemainventario/bridge/StorageController.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `contexto` | `AppContext` | Contexto de la aplicación |
+| `notificador` | `ViewNotifier` | Notificador (ViewNotifier) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `StorageController(AppContext contexto, ViewNotifier notificador)` | — | Constructor |
+| `revisarCambios()` | `String` | Número que cambia cuando otro equipo guardó algo en la misma base; la pantalla lo consulta cada pocos segundos para actualizarse sola |
+| `obtenerAlmacenamiento()` | `String` | JSON con el motor, la URL, el usuario, el almacenamiento en uso, el aviso pendiente y los motores |
+| `probarAlmacenamiento(String datosJson)` | `String` | El resultado de la prueba o "ERROR: ..." |
+| `guardarAlmacenamiento(String datosJson)` | `String` | Guarda la configuración y empieza a usarla (crea tablas y copia datos si hace falta) |
+| `conectarBaseExistente(String datosJson)` | `String` | Desde la pantalla de inicio de un computador nuevo (antes de que exista algún usuario), se conecta a la base que ya usa el negocio, por ejemplo en la nube |
 
 ##### TransactionController
 
 | Campo | Valor |
 |---|---|
-| Clase | `TransactionController` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Controlador de los casos de uso que mueven stock: entradas, salidas y ventas. |
+| Herencia | — |
+| Responsabilidad | Recibe las acciones de la pantalla que mueven stock: entradas, salidas y ventas. |
 | Archivo | [TransactionController.java](../src/main/java/sistemainventario/bridge/TransactionController.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `contexto` | `AppContext` | Acceso a los servicios del perfil activo |
-| Constantes (`static final`) | — | `LISTA_VACIA` |
+| `contexto` | `AppContext` | Contexto de la aplicación |
+
+**Constantes:** `LISTA_VACIA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `TransactionController(AppContext contexto)` | — (constructor) | Constructor |
-| `obtenerEntradas()` | `String` | Devuelve en JSON: entradas |
-| `registrarEntrada(String jsonEntrada)` | `String` | Convierte el JSON y registra: entrada |
-| `obtenerSalidas()` | `String` | Devuelve en JSON: salidas |
-| `registrarSalida(String jsonSalida)` | `String` | Convierte el JSON y registra: salida |
-| `obtenerVentas()` | `String` | Devuelve en JSON: ventas |
-| `crearVenta(String jsonVenta)` | `String` | Convierte el JSON y crea: venta |
+| `TransactionController(AppContext contexto)` | — | Constructor |
+| `obtenerEntradas()` | `String` | Devuelve entradas |
+| `registrarEntrada(String jsonEntrada)` | `String` | La entrada registrada |
+| `obtenerSalidas()` | `String` | Devuelve salidas |
+| `registrarSalida(String jsonSalida)` | `String` | La salida registrada |
+| `obtenerVentas()` | `String` | Devuelve ventas |
+| `crearVenta(String jsonVenta)` | `String` | Crea venta |
+| `obtenerVentasAnuladas()` | `String` | Ventas anuladas del perfil activo |
+| `obtenerEntradasAnuladas()` | `String` | Entradas anuladas del perfil activo |
+| `obtenerSalidasAnuladas()` | `String` | Salidas anuladas del perfil activo |
+| `anularVenta(String id, String motivo)` | `String` | "OK" o "ERROR: ..." |
+| `puedeAnularPropia(User quien, Sale venta)` *(static)* | `boolean` | El cajero se puede equivocar al cobrar: anula su propia venta si no han pasado 10 minutos |
+| `anularEntrada(String id, String motivo)` | `String` | "OK" o "ERROR: ..." |
+| `anularSalida(String id, String motivo)` | `String` | "OK" o "ERROR: ..." |
 
 ##### ViewNotifier
 
 | Campo | Valor |
 |---|---|
-| Clase | `ViewNotifier` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Interfaz |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Contrato para que Java avise a la vista web ejecutando una función de JavaScript. |
+| Herencia | — |
+| Responsabilidad | Canal para que Java avise a la vista web de un cambio de estado. |
 | Archivo | [ViewNotifier.java](../src/main/java/sistemainventario/bridge/ViewNotifier.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `ejecutarScript(String script)` | `void` | Ejecuta un script en la vista |
+| `ejecutarScript(String script)` *(abstracto)* | `void` | Ejecuta script |
 
 ##### WebViewNotifier
 
 | Campo | Valor |
 |---|---|
-| Clase | `WebViewNotifier` |
-| Paquete | `sistemainventario.bridge` |
 | Tipo | Concreta |
-| Hereda de / implementa | `ViewNotifier` |
-| Responsabilidad principal | Implementación de ViewNotifier que ejecuta el script en el WebEngine de JavaFX, en el hilo de la interfaz. |
+| Herencia | implementa `ViewNotifier` |
+| Responsabilidad | Implementación de ViewNotifier sobre el WebEngine de JavaFX. |
 | Archivo | [WebViewNotifier.java](../src/main/java/sistemainventario/bridge/WebViewNotifier.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `motor` | `WebEngine` | Motor web de JavaFX donde se ejecuta el script |
+| `motor` | `WebEngine` | Motor |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `WebViewNotifier(WebEngine motor)` | — (constructor) | Constructor |
-| `ejecutarScript(String script)` | `void` | Ejecuta el script con Platform.runLater `@Override` |
+| `WebViewNotifier(WebEngine motor)` | — | Constructor |
+| `ejecutarScript(String script)` | `void` | Ejecuta script |
 
 #### Paquete `view`
 
@@ -2466,119 +3756,132 @@ No tiene atributos.
 
 | Campo | Valor |
 |---|---|
-| Clase | `BrowserWindow` |
-| Paquete | `sistemainventario.view` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Busca Edge o Chrome y abre la interfaz en modo aplicación (ventana sin barra de direcciones) con una carpeta de perfil propia. |
+| Herencia | — |
+| Responsabilidad | Abre la interfaz en una ventana de aplicación de Microsoft Edge (o de Google Chrome si no hay Edge): una ventana propia, sin pestañas ni barra de direcciones, que dibuja la página con la tarjeta gráfica. |
 | Archivo | [BrowserWindow.java](../src/main/java/sistemainventario/view/BrowserWindow.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `carpetaPerfil` | `Path` | Carpeta del perfil de la ventana (~/.inventariopro/ventana) |
-| `proceso` | `Process` | Proceso del navegador |
-| Constantes (`static final`) | — | `ANCHO`, `ALTO`, `VERSION_ICONO` |
+| `carpetaPerfil` | `Path` | Carpeta perfil |
+| `proceso` | `Process` | Proceso |
+
+**Constantes:** `ANCHO`, `ALTO`, `VERSION_ICONO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `BrowserWindow(Path carpetaPerfil)` | — (constructor) | Constructor |
-| `buscarNavegador()` *(static)* | `Optional<String>` | Busca Edge o Chrome instalado |
-| `abrir(String navegador, String url)` | `void` | Abre la ventana en modo aplicación con la dirección indicada |
+| `BrowserWindow(Path carpetaPerfil)` | — | Constructor |
+| `buscarNavegador()` *(static)* | `Optional<String>` | Ruta del ejecutable de Edge o Chrome, si está instalado |
+| `abrir(String navegador, String url)` | `void` | Abre la ventana con la dirección indicada |
+| `getProceso()` | `Process` | El proceso del navegador, o null si no se ha abierto |
 | `cerrar()` | `void` | Cierra la ventana si sigue abierta |
-| Getters | — | `getProceso()` |
 
 ##### DesktopBrowserApp
 
 | Campo | Valor |
 |---|---|
-| Clase | `DesktopBrowserApp` |
-| Paquete | `sistemainventario.view` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Arranca la aplicación en una ventana de Edge: crea el servidor local, abre la ventana y cierra el programa cuando la ventana se cierra. |
+| Herencia | — |
+| Responsabilidad | Arranca TBalance mostrando la interfaz en una ventana de Edge (modo aplicación) en lugar del visor de JavaFX. |
 | Archivo | [DesktopBrowserApp.java](../src/main/java/sistemainventario/view/DesktopBrowserApp.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `ESPERA_CIERRE` |
+**Constantes:** `ESPERA_CIERRE`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `iniciar(AppContext contexto)` *(static)* | `boolean` | Abre la ventana de Edge; devuelve false para usar el visor de JavaFX |
+| `iniciar(AppContext contexto)` *(static)* | `boolean` | Intenta abrir la interfaz en Edge |
 
 ##### LocalWebServer
 
 | Campo | Valor |
 |---|---|
-| Clase | `LocalWebServer` |
-| Paquete | `sistemainventario.view` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Servidor HTTP solo en 127.0.0.1 con clave aleatoria: entrega la interfaz, atiende las llamadas al bridge y envía los avisos a la página. |
+| Herencia | — |
+| Responsabilidad | Servidor HTTP local (solo en 127.0.0.1) que entrega la interfaz a Edge y conecta la página con Java. |
 | Archivo | [LocalWebServer.java](../src/main/java/sistemainventario/view/LocalWebServer.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `invocador` | `BridgeInvoker` | Llama a los métodos del bridge |
-| `notificador` | `SseNotifier` | Avisos hacia la página |
-| `clave` | `String` | Clave aleatoria de la sesión |
-| `servidor` | `HttpServer` | Servidor HTTP del JDK |
-| `hilos` | `ExecutorService` | Hilos que atienden las peticiones |
-| Constantes (`static final`) | — | `RAIZ_RECURSOS`, `TIPOS` |
+| `invocador` | `BridgeInvoker` | Invocador (BridgeInvoker) |
+| `notificador` | `SseNotifier` | Notificador (SseNotifier) |
+| `clave` | `String` | Clave |
+| `servidor` | `HttpServer` | Servidor |
+| `hilos` | `ExecutorService` | Hilos |
+
+**Constantes:** `RAIZ_RECURSOS`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `LocalWebServer(BridgeInvoker invocador, SseNotifier notificador)` | — (constructor) | Constructor |
-| `iniciar()` | `String` | Arranca el servidor en un puerto libre y devuelve la dirección de la interfaz |
+| `LocalWebServer(BridgeInvoker invocador, SseNotifier notificador)` | — | Constructor |
+| `iniciar()` | `String` | Arranca el servidor en un puerto libre |
 | `detener()` | `void` | Detiene el servidor |
 
 ##### SnapshotTransition
 
 | Campo | Valor |
 |---|---|
-| Clase | `SnapshotTransition` |
-| Paquete | `sistemainventario.view` |
 | Tipo | Concreta |
-| Hereda de / implementa | `ScreenTransition` |
-| Responsabilidad principal | Implementación de ScreenTransition con JavaFX: toma una imagen de la zona y la desvanece con la tarjeta gráfica. |
+| Herencia | implementa `ScreenTransition` |
+| Responsabilidad | Hace las transiciones grandes de la ventana de JavaFX con animaciones de JavaFX. |
 | Archivo | [SnapshotTransition.java](../src/main/java/sistemainventario/view/SnapshotTransition.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `raiz` | `StackPane` | Contenedor donde se pone la imagen |
-| `vista` | `WebView` | Visor del que se toma la imagen |
-| Constantes (`static final`) | — | `DESENFOQUE_FINAL`, `DESPLAZAMIENTO_FINAL`, `DURACION_MAXIMA` |
+| `raiz` | `StackPane` | Raiz |
+| `vista` | `WebView` | Vista |
+
+**Constantes:** `DESENFOQUE_FINAL`, `DESPLAZAMIENTO_FINAL`, `DURACION_MAXIMA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `SnapshotTransition(StackPane raiz, WebView vista)` | — (constructor) | Constructor |
-| `desvanecerZona(double x, double y, double ancho, double alto, int milisegundos)` | `void` |  `@Override` |
+| `SnapshotTransition(StackPane raiz, WebView vista)` | — | Constructor |
+| `desvanecerZona(double x, double y, double ancho, double alto, int milisegundos)` | `void` | Desvanece una imagen de la zona indicada, encima de la página |
+
+##### WebViewBridgeAdapter
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Conecta la página con JavaBridge cuando se usa la ventana de JavaFX. |
+| Archivo | [WebViewBridgeAdapter.java](../src/main/java/sistemainventario/view/WebViewBridgeAdapter.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `invocador` | `BridgeInvoker` | Invocador (BridgeInvoker) |
+
+**Constantes:** `SCRIPT_PUENTE`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `WebViewBridgeAdapter(BridgeInvoker invocador)` | — | Constructor |
+| `llamar(String metodo, String argumentosJson)` | `String` | Respuesta JSON {ok, v} o {ok:false, error} |
 
 ##### WebViewMain
 
 | Campo | Valor |
 |---|---|
-| Clase | `WebViewMain` |
-| Paquete | `sistemainventario.view` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Ventana de respaldo con el visor de JavaFX: carga la interfaz HTML, registra el JavaBridge, hace las transiciones grandes y apaga la cámara al cerrar. |
+| Herencia | — |
+| Responsabilidad | Ventana de JavaFX que muestra la interfaz cuando no hay Edge. |
 | Archivo | [WebViewMain.java](../src/main/java/sistemainventario/view/WebViewMain.java) |
 
 **Atributos**
@@ -2586,42 +3889,38 @@ No tiene atributos.
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `contexto` | `AppContext` | Contexto de la aplicación |
-| `motor` | `WebEngine` | Motor web del WebView |
-| `webView` | `WebView` | Visor web de JavaFX |
-| `raiz` | `StackPane` | Contenedor del visor y de las imágenes de las transiciones |
-| `bridge` | `JavaBridge` | Puente expuesto a JavaScript |
-| Constantes (`static final`) | — | `RECURSO_HTML`, `ANCHO_INICIAL`, `ALTO_INICIAL`, `ANCHO_MINIMO`, `ALTO_MINIMO` |
+| `motor` | `WebEngine` | Motor |
+| `webView` | `WebView` | Web view |
+| `raiz` | `StackPane` | Contenedor de la ventana: el visor web y, encima, las imágenes de las transiciones |
+| `bridge` | `JavaBridge` | Se conserva como atributo para que el recolector de basura no lo elimine |
+| `puenteJs` | `WebViewBridgeAdapter` | Se guarda en un campo para que JavaFX no lo libere mientras la página lo usa |
+
+**Constantes:** `RECURSO_HTML`, `ANCHO_INICIAL`, `ALTO_INICIAL`, `ANCHO_MINIMO`, `ALTO_MINIMO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `WebViewMain(AppContext contexto)` | — (constructor) | Constructor |
-| `show(Stage ventana)` | `void` | Construye y muestra la ventana |
-| `actualizarTitulo(Stage ventana)` | `void` | Pone el perfil activo en el título |
+| `WebViewMain(AppContext contexto)` | — | Constructor |
+| `show(Stage ventana)` | `void` | Construye y muestra la ventana principal |
+| `actualizarTitulo(Stage ventana)` | `void` | Actualiza titulo |
 
 ##### WindowsTaskbarIcon
 
 | Campo | Valor |
 |---|---|
-| Clase | `WindowsTaskbarIcon` |
-| Paquete | `sistemainventario.view` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Asigna el ícono de alta resolución a la ventana de Edge en la barra de tareas de Windows (con PowerShell y la API de Windows). |
+| Herencia | — |
+| Responsabilidad | Pone el ícono de TBalance en alta resolución en la ventana de Edge (barra de tareas y barra de título de Windows). |
 | Archivo | [WindowsTaskbarIcon.java](../src/main/java/sistemainventario/view/WindowsTaskbarIcon.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `RECURSO`, `SCRIPT` |
+**Constantes:** `RECURSO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `aplicar(Path carpeta)` *(static)* | `void` | Pone el ícono en la ventana (solo en Windows) |
+| `aplicar(Path carpeta)` *(static)* | `void` | Empieza a aplicar el ícono (solo en Windows; en otros sistemas no hace nada) |
 
 #### Paquete `dispositivo`
 
@@ -2629,50 +3928,128 @@ No tiene atributos.
 
 | Campo | Valor |
 |---|---|
-| Clase | `Camera` |
-| Paquete | `sistemainventario.dispositivo` |
 | Tipo | Interfaz |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Contrato de una cámara de la que se toman cuadros para leer códigos QR. |
+| Herencia | — |
+| Responsabilidad | Cámara de la que se toman cuadros para leer códigos QR. |
 | Archivo | [Camera.java](../src/main/java/sistemainventario/dispositivo/Camera.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
+| `abrir()` *(abstracto)* | `void` | Enciende la cámara |
+| `capturar()` *(abstracto)* | `BufferedImage` | El cuadro actual, o null si todavía no hay imagen |
+| `cerrar()` *(abstracto)* | `void` | Apaga la cámara; no falla si ya estaba apagada |
+| `avisar(String mensaje, boolean correcto)` | `void` | Avisa en la cámara lo que pasó con la última lectura |
+
+##### CameraProvider
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | — |
+| Responsabilidad | Cámaras disponibles en el computador. |
+| Archivo | [CameraProvider.java](../src/main/java/sistemainventario/dispositivo/CameraProvider.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `listar()` *(abstracto)* | `List<String>` | Nombres de las cámaras conectadas, la predeterminada primero |
+| `crear(String nombre)` *(abstracto)* | `Camera` | La cámara, sin abrir |
+
+##### PhoneCamera
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `Camera` |
+| Responsabilidad | Camera que toma las imágenes del celular conectado por Wi-Fi (PhoneLink). |
+| Archivo | [PhoneCamera.java](../src/main/java/sistemainventario/dispositivo/PhoneCamera.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `enlace` | `PhoneLink` | Enlace (PhoneLink) |
+
+**Constantes:** `NOMBRE`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `PhoneCamera(PhoneLink enlace)` | — | Constructor |
 | `abrir()` | `void` | Enciende la cámara |
-| `capturar()` | `BufferedImage` | Devuelve el cuadro actual |
-| `cerrar()` | `void` | Apaga la cámara |
+| `capturar()` | `BufferedImage` | El cuadro actual, o null si todavía no hay imagen |
+| `cerrar()` | `void` | Apaga la cámara; no falla si ya estaba apagada |
+| `avisar(String mensaje, boolean correcto)` | `void` | Avisa en la cámara lo que pasó con la última lectura |
+
+##### PhoneLink
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Conexión con el celular por el Wi-Fi del local, para usarlo como lector de etiquetas sin instalar aplicaciones ni usar internet. |
+| Archivo | [PhoneLink.java](../src/main/java/sistemainventario/dispositivo/PhoneLink.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `carpeta` | `Path` | Carpeta |
+| `servidor` | `HttpsServer` | Servidor |
+| `clave` | `String` | Clave |
+| `direccion` | `String` | Dirección |
+| `ultimaFoto` | `byte[]` | Ultima foto |
+| `fotoNueva` | `boolean` | Foto nueva |
+| `ultimaFotoMs` | `long` | Ultima foto ms |
+| `avisos` | `List<String>` | Avisos |
+
+**Constantes:** `PUERTO_PREFERIDO`, `MAXIMO_BYTES_FOTO`, `DESCONECTADO_MS`, `ALIAS`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `PhoneLink(Path carpeta)` | — | Constructor |
+| `iniciar()` | `String` | Abre el servidor si no estaba abierto |
+| `detener()` | `void` | Cierra el servidor; la dirección anterior deja de servir |
+| `prepararCertificado()` | `void` | Crea el certificado en segundo plano si todavía no existe, para que la primera conexión con el celular no tenga que esperarlo |
+| `estaActivo()` | `boolean` | True si el servidor está abierto |
+| `celularConectado()` | `boolean` | True si el celular envió una foto hace poco |
+| `tomarFotoNueva()` | `BufferedImage` | La foto más reciente si no se había entregado antes, o null |
+| `avisar(String mensaje, boolean correcto)` | `void` | Deja un aviso para el celular; se entrega con la respuesta a la próxima foto |
+| `direccionLocal()` *(static)* | `Optional<String>` | Dirección IPv4 del computador en la red local (Wi-Fi o cable), sin contar adaptadores virtuales (VirtualBox, VMware, Hyper-V, WSL, Docker) |
 
 ##### WebcamCamera
 
 | Campo | Valor |
 |---|---|
-| Clase | `WebcamCamera` |
-| Paquete | `sistemainventario.dispositivo` |
 | Tipo | Concreta |
-| Hereda de / implementa | `Camera` |
-| Responsabilidad principal | Implementación de Camera con la webcam del computador (librería webcam-capture). |
+| Herencia | implementa `Camera` |
+| Responsabilidad | Camera implementada con la webcam del computador mediante la librería webcam-capture. |
 | Archivo | [WebcamCamera.java](../src/main/java/sistemainventario/dispositivo/WebcamCamera.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `webcam` | `Webcam` | Cámara de la librería webcam-capture |
-| Constantes (`static final`) | — | `ESPERA_DETECCION_MS`, `ANCHO_MAXIMO` |
+| `nombre` | `String` | Nombre |
+| `webcam` | `Webcam` | Webcam |
+
+**Constantes:** `ESPERA_DETECCION_MS`, `ANCHO_MAXIMO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `abrir()` | `void` | Detecta la webcam, elige resolución y la enciende `@Override` |
-| `capturar()` | `BufferedImage` | Devuelve el cuadro actual de la webcam `@Override` |
-| `cerrar()` | `void` | Apaga la webcam si está abierta `@Override` |
+| `WebcamCamera()` / `WebcamCamera(String nombre)` | — | Constructores |
+| `disponibles()` *(static)* | `List<String>` | Nombres de las cámaras conectadas, la predeterminada primero |
+| `abrir()` | `void` | Enciende la cámara |
+| `capturar()` | `BufferedImage` | El cuadro actual, o null si todavía no hay imagen |
+| `cerrar()` | `void` | Apaga la cámara; no falla si ya estaba apagada |
 
 #### Paquete `util`
 
@@ -2680,246 +4057,211 @@ No tiene atributos.
 
 | Campo | Valor |
 |---|---|
-| Clase | `AssistantLog` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Escribe los errores del asistente en ~/.inventariopro/asistente.log para poder revisar por qué no respondió. |
+| Herencia | — |
+| Responsabilidad | Registro de errores del asistente en ~/.inventariopro/asistente.log, para poder ver qué pasó si no responde. |
 | Archivo | [AssistantLog.java](../src/main/java/sistemainventario/util/AssistantLog.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `ARCHIVO`, `TAMANO_MAXIMO` |
+**Constantes:** `ARCHIVO`, `TAMANO_MAXIMO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `registrar(String mensaje)` *(static)* | `void` | Agrega una línea con fecha al registro |
+| `registrar(String mensaje)` *(static)* | `void` | Registra |
 | `archivo()` *(static)* | `Path` | Ruta del archivo de registro |
 
 ##### DateUtil
 
 | Campo | Valor |
 |---|---|
-| Clase | `DateUtil` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Utilidades de fecha: fecha actual, conversión y formato. |
+| Herencia | — |
+| Responsabilidad | Utilidades de fecha usadas por todo el sistema. |
 | Archivo | [DateUtil.java](../src/main/java/sistemainventario/util/DateUtil.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `FORMATO_FECHA`, `FORMATO_FECHA_HORA`, `FORMATO_VISUAL` |
+**Constantes:** `FORMATO_FECHA`, `FORMATO_FECHA_HORA`, `FORMATO_VISUAL`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `hoy()` *(static)* | `String` | Fecha actual (ISO) |
-| `ahora()` *(static)* | `String` | Fecha y hora actual |
-| `parsear(String fechaIso)` *(static)* | `Optional<LocalDate>` | Texto ISO a LocalDate sin excepciones |
-| `formatearFecha(String fechaIso)` *(static)* | `String` | Fecha en formato dd/MM/yyyy |
+| `hoy()` *(static)* | `String` | La fecha actual en formato yyyy-MM-dd |
+| `ahora()` *(static)* | `String` | La fecha y hora actual en formato ISO |
+| `parsear(String fechaIso)` *(static)* | `Optional<LocalDate>` | Convierte un texto ISO en LocalDate sin lanzar excepciones |
+| `formatearFecha(String fechaIso)` *(static)* | `String` | La fecha en formato dd/MM/yyyy, o el texto original si no es válida |
+| `parsearMomento(String momentoIso)` *(static)* | `Optional<LocalDateTime>` | El momento, o empty si es nulo o inválido |
+
+##### FileUtil
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Operaciones con carpetas que usan las copias de seguridad. |
+| Archivo | [FileUtil.java](../src/main/java/sistemainventario/util/FileUtil.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `carpetaTemporal(String prefijo)` *(static)* | `Path` | Una carpeta temporal nueva |
+| `borrarCarpeta(Path carpeta)` *(static)* | `void` | Borrar carpeta |
+| `copiarCarpeta(Path origen, Path destino)` *(static)* | `void` | Copia carpeta |
 
 ##### IdGenerator
 
 | Campo | Valor |
 |---|---|
-| Clase | `IdGenerator` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Genera identificadores con prefijo o numéricos consecutivos. |
+| Herencia | — |
+| Responsabilidad | Generador de identificadores únicos. |
 | Archivo | [IdGenerator.java](../src/main/java/sistemainventario/util/IdGenerator.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `BASE_NUMERICA`, `ULTIMA_MARCA` |
+**Constantes:** `BASE_NUMERICA`, `ULTIMA_MARCA`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `conPrefijo(String prefijo)` *(static)* | `String` | ID PREFIJO-marcaDeTiempo |
-| `siguienteNumerico(Collection<String> idsExistentes)` *(static)* | `String` | Siguiente ID numérico (desde 1001) |
+| `conPrefijo(String prefijo)` *(static)* | `String` | Genera un ID con el formato PREFIJO-marcaDeTiempo |
+| `siguienteNumerico(Collection<String> idsExistentes)` *(static)* | `String` | Calcula el siguiente ID numérico a partir de los existentes |
 
 ##### ImageEncoder
 
 | Campo | Valor |
 |---|---|
-| Clase | `ImageEncoder` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Convierte una imagen en JPEG codificado en Base64 para mostrarla en la vista. |
+| Herencia | — |
+| Responsabilidad | Convierte imágenes en texto para mostrarlas en la página. |
 | Archivo | [ImageEncoder.java](../src/main/java/sistemainventario/util/ImageEncoder.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `aJpegDataUri(BufferedImage imagen, int anchoMaximo)` *(static)* | `String` | Reduce la imagen y la devuelve como JPEG Base64 |
+| `aJpegDataUri(BufferedImage imagen, int anchoMaximo)` *(static)* | `String` | Reduce la imagen si es más ancha que el máximo y la codifica en JPEG, un formato liviano para enviar varios cuadros de cámara por segundo |
+| `aPngDataUri(BufferedImage imagen)` *(static)* | `String` | La imagen como data:image/png;base64, |
 
 ##### JsonUtil
 
 | Campo | Valor |
 |---|---|
-| Clase | `JsonUtil` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Configuración única de Gson para convertir objetos a JSON y viceversa. |
+| Herencia | — |
+| Responsabilidad | Punto único de configuración de Gson para todo el sistema. |
 | Archivo | [JsonUtil.java](../src/main/java/sistemainventario/util/JsonUtil.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `GSON` |
+**Constantes:** `GSON`, `GSON_COMPACTO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `toJson(Object objeto)` *(static)* | `String` | Objeto a JSON |
-| `fromJson(String json, Class<T> clase)` *(static)* | `T` | JSON a objeto |
-| `fromJsonList(String json, Class<T> clase)` *(static)* | `List<T>` | JSON a lista |
-| `getGson()` *(static)* | `Gson` | Instancia de Gson configurada |
+| `toJsonCompacto(Object objeto)` *(static)* | `String` | Representación JSON compacta (sin formato) |
+| `toJson(Object objeto)` *(static)* | `String` | Representación JSON con formato legible |
+| `fromJson(String json, Class<T> clase)` *(static)* | `T` | La instancia deserializada |
+| `fromJsonList(String json, Class<T> clase)` *(static)* | `List<T>` | Lista deserializada; vacía si el texto está vacío |
+| `getGson()` *(static)* | `Gson` | Get gson |
+
+##### PasswordHasher
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | — |
+| Responsabilidad | Cifra las contraseñas antes de guardarlas y las comprueba al iniciar sesión. |
+| Archivo | [PasswordHasher.java](../src/main/java/sistemainventario/util/PasswordHasher.java) |
+
+**Constantes:** `PREFIJO`, `ITERACIONES`, `BYTES_SAL`, `BITS_RESUMEN`, `AZAR`
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `resumir(String clave)` *(static)* | `String` | Texto para guardar (nunca la contraseña misma) |
+| `coincide(String clave, String guardado)` *(static)* | `boolean` | True si coinciden (la comparación tarda lo mismo aunque no coincidan) |
 
 ##### QrGenerator
 
 | Campo | Valor |
 |---|---|
-| Clase | `QrGenerator` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Genera la imagen de un código QR a partir de un texto (ZXing). |
+| Herencia | — |
+| Responsabilidad | Genera imágenes de códigos QR usando la librería ZXing. |
 | Archivo | [QrGenerator.java](../src/main/java/sistemainventario/util/QrGenerator.java) |
 
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| Constantes (`static final`) | — | `NEGRO`, `BLANCO` |
+**Constantes:** `NEGRO`, `BLANCO`
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `generar(String contenido, int tamanoPx)` | `BufferedImage` | Imagen del QR (UTF-8, corrección L) |
+| `generar(String contenido, int tamanoPx)` | `BufferedImage` | Imagen del código QR |
 
 ##### QrReader
 
 | Campo | Valor |
 |---|---|
-| Clase | `QrReader` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Lee el texto de un código QR que aparece en una imagen (ZXing). |
+| Herencia | — |
+| Responsabilidad | Lee el texto de un código QR que aparece en una imagen (por ejemplo, un cuadro de la cámara). |
 | Archivo | [QrReader.java](../src/main/java/sistemainventario/util/QrReader.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `pistas` | `Map<DecodeHintType, Object>` | Opciones de lectura de ZXing (solo QR, UTF-8, búsqueda intensiva) |
+| `pistas` | `Map<DecodeHintType, Object>` | Pistas |
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `QrReader()` | — (constructor) | Constructor sin parámetros (requerido por Gson) |
-| `leer(BufferedImage imagen)` | `Optional<String>` | Texto del QR o vacío si no hay |
+| `QrReader()` | — | Constructor |
+| `leer(BufferedImage imagen)` | `Optional<String>` | El texto del QR, o vacío si la imagen no contiene uno legible |
 
 ##### TextUtil
 
 | Campo | Valor |
 |---|---|
-| Clase | `TextUtil` |
-| Paquete | `sistemainventario.util` |
 | Tipo | Concreta |
-| Hereda de / implementa | — |
-| Responsabilidad principal | Utilidades de texto: vacío, búsqueda sin mayúsculas, normalizar y recortar. |
+| Herencia | — |
+| Responsabilidad | Utilidades puras para el manejo de texto. |
 | Archivo | [TextUtil.java](../src/main/java/sistemainventario/util/TextUtil.java) |
-
-**Atributos**
-
-No tiene atributos.
 
 **Métodos**
 
-| Método | Tipo de retorno | Descripción |
+| Método | Retorna | Descripción |
 |---|---|---|
-| `esVacio(String texto)` *(static)* | `boolean` | Si es nulo o solo espacios |
-| `contieneIgnorandoMayusculas(String campo, String consulta)` *(static)* | `boolean` | Búsqueda sin distinguir mayúsculas |
-| `normalizar(String texto)` *(static)* | `String` | Quita espacios extremos y pasa a minúsculas |
-| `recortar(String texto)` *(static)* | `String` | Quita espacios extremos |
-
+| `esVacio(String texto)` *(static)* | `boolean` | True si es null, vacía o solo contiene espacios |
+| `contieneIgnorandoMayusculas(String campo, String consulta)` *(static)* | `boolean` | Indica si campo contiene consulta ignorando mayúsculas |
+| `normalizar(String texto)` *(static)* | `String` | El texto sin espacios externos y en minúsculas; cadena vacía si es null |
+| `recortar(String texto)` *(static)* | `String` | El texto sin espacios externos, o null si era null |
 
 ## 3. Relaciones entre clases
 
-| Relación | Clase origen / todo | Clase destino / parte | Explicación |
+| Relación | Clase (todo / padre) | Clase (parte / hija) | Explicación |
 |---|---|---|---|
-| Herencia | `IdentifiedEntity` | `Product`, `Category`, `Supplier`, `Profile`, `Sale`, `InventoryMovement` | Todas las entidades guardadas tienen ID; heredan su encapsulamiento y la igualdad por ID. |
-| Herencia | `InventoryMovement` | `StockEntry`, `StockExit` | Cada movimiento sobrescribe `aplicarA(Product)` y `getPrefijoId()`. |
-| Herencia | `JsonRepository<T>` | `ProductRepository`, `CategoryRepository`, `SupplierRepository`, `StockEntryRepository`, `StockExitRepository`, `SaleRepository`, `ProfileRepository` | Cada subclase solo indica el archivo y el tipo de entidad. |
-| Herencia | `EntityService<T>` | `InventoryService`, `CategoryService`, `SupplierService` | Implementan `validar`, `generarId` y `nombreEntidad` del Template Method. |
-| Herencia | `RuntimeException` | `ValidationException`, `PersistenceException` | Excepciones no comprobadas del proyecto. |
-| Herencia | `RuntimeException` | `AssistantException` | Error del asistente con un mensaje para el usuario. |
-| Herencia | `javafx.application.Application` | `Main` | Aplicación JavaFX. |
-| Realización (interfaz) | `Repository<T>` | `JsonRepository<T>` | Contrato de acceso a datos. |
-| Realización (interfaz) | `Camera` | `WebcamCamera` | Contrato de la cámara. |
-| Realización (interfaz) | `ViewNotifier` | `WebViewNotifier`, `SseNotifier` | Contrato para avisar a la vista: en el visor de JavaFX o por eventos a la ventana de Edge. |
-| Realización (interfaz) | `LanguageModel` | `GeminiClient` | Contrato del modelo de lenguaje del asistente. |
-| Realización (interfaz) | `ScreenTransition` | `SnapshotTransition` | Contrato de las transiciones de la ventana JavaFX. |
-| Realización (interfaz) | `FileOpener` | `DesktopFileOpener` | Contrato para abrir archivos con el sistema. |
-| Composición | `Sale` | `SaleItem (1..*)` | `Sale.agregarItem` crea los ítems; no existen sin la venta. |
-| Composición | `JavaBridge` | `ProfileController`, `InventoryController`, `CatalogController`, `TransactionController`, `BackupController`, `LabelController`, `ReportController`, `AssistantController`, `ScanController` | El bridge crea sus nueve controladores en su constructor. |
-| Composición | `AppContext` | `ProfileService`, `BackupService`, `LabelService`, `AssistantSettingsService`, `ReportExportService` | El contexto crea estos servicios y los mantiene durante toda la ejecución. |
-| Composición | `JsonRepository<T>`, `GlobalConfigRepository` | `JsonFileStore` | Cada repositorio crea su propio almacén de archivo. |
-| Composición | `ProfileServices` | `InventoryService`, `CategoryService`, `SupplierService`, `MovementService`, `SaleService` | Los cinco gestores de un perfil se crean juntos en `ProfileServicesFactory.crear` y se reemplazan juntos al cambiar de perfil. |
-| Composición | `WebViewMain` | `JavaBridge`, `SnapshotTransition` | La ventana JavaFX crea el bridge, lo registra en JavaScript y le da sus transiciones. |
-| Composición | `DesktopBrowserApp` | `JavaBridge`, `SseNotifier`, `LocalWebServer`, `BrowserWindow` | Al arrancar en Edge crea el bridge, el canal de avisos, el servidor local y la ventana. |
-| Composición | `AssistantController` | `AssistantService` | Crea la conversación con el modelo y la reinicia al cambiar de perfil. |
-| Composición | `AssistantService` | `AssistantTools` | Crea las herramientas en cada llamada a funciones del modelo. |
-| Composición | `AssistantTools` | `AssistantProposal` | Crea cada cambio propuesto; el servicio lo guarda hasta que el usuario lo confirma. |
-| Composición | `ReportService` | `SalesReport` | Arma el informe del período con sus totales, serie, ranking y detalle. |
-| Agregación | `EntityService<T>` | `Repository<T>` | Recibe el repositorio por constructor. |
-| Agregación | `MovementService`, `SaleService` | `InventoryService y sus repositorios` | Reciben por constructor el gestor de inventario y los repositorios de entradas, salidas o ventas. |
-| Agregación | `ProfileService` | `ProfileServicesFactory`, `GlobalConfigService`, `ProfileDirectory`, `Repository<Profile>` | Recibe sus colaboradores por constructor. |
-| Agregación | `BackupService` | `BackupRepository`, `ZipArchiver` | Recibe sus colaboradores por constructor. |
-| Agregación | `LabelService` | `QrGenerator`, `LabelRepository` | Recibe sus colaboradores por constructor. |
-| Agregación | `QrSaleScanner` | `QrReader` | Recibe el lector por constructor. |
-| Agregación | `ScanController` | `Camera (Supplier<Camera>)`, `ViewNotifier` | La cámara se obtiene de una fábrica recibida por constructor. |
-| Agregación | `ProfileController`, `BackupController`, `LabelController` | `ViewNotifier`, `FileOpener` | Reciben las interfaces por constructor. |
-| Agregación | `GlobalConfig` | `Profile (*)` | Guarda la lista de perfiles; los perfiles también se guardan en `perfiles.json`. |
-| Agregación | `AppContext` | `ProfileServices` | Servicios del perfil activo; se reemplazan al activar otro perfil. |
-| Agregación | `ReportService` | `SaleService`, `InventoryService` | Recibe por constructor las ventas y el inventario del perfil. |
-| Agregación | `ReportExportService` | `ReportExcelWriter` | Recibe el escritor del archivo por constructor. |
-| Agregación | `AssistantSettingsService` | `AssistantConfigRepository` | Recibe el repositorio de la configuración por constructor. |
-| Agregación | `AssistantService` | `LanguageModel`, `ProfileServices` | Recibe el modelo y los servicios del perfil activo por constructor. |
-| Agregación | `LocalWebServer` | `BridgeInvoker`, `SseNotifier` | Recibe quién atiende las llamadas y el canal de avisos por constructor. |
-| Agregación | `AssistantController` | `ViewNotifier`, `AssistantSettingsService` | Avisa las respuestas a la vista y usa la configuración que le da el contexto. |
-| Dependencia (uso) | `InventoryMovement` | `Product` | `aplicarA(Product)` modifica el stock del producto recibido. |
-| Dependencia (uso) | `Sale` | `Product` | `agregarItem(Product, int, double)` toma los datos del producto. |
-| Dependencia (uso) | `Profile` | `BusinessType` | `getPerfilNegocio()` convierte el tipo guardado en el enum. |
-| Dependencia (uso) | `QrSaleScanner` | `InventoryService`, `Product` | `procesar` busca el producto cuyo ID sale del QR. |
-| Dependencia (uso) | `Sale` | `PaymentMethod` | `normalizarPago()` valida el método y si admite comprobante. |
-| Dependencia (uso) | `AssistantSettingsService` | `GeminiClient` | Crea el cliente con la clave y el modelo guardados. |
-| Dependencia (uso) | `ReportExcelWriter` | `SalesReport` | `escribir` recorre el informe para armar las hojas. |
+| Herencia | `IdentifiedEntity` | `Product`, `Category`, `Supplier`, `Profile`, `Sale`, `InventoryMovement`, `User`, `AuditEntry`, `CreditPayment` | Todo lo que se guarda tiene un ID; lo heredan de esta clase. |
+| Herencia | `InventoryMovement` | `StockEntry`, `StockExit` | Una entrada suma stock y una salida lo resta; cada una sobrescribe `aplicarA(Product)`. |
+| Herencia | `JsonRepository<T>` | `ProductRepository`, `CategoryRepository`, `SupplierRepository`, `StockEntryRepository`, `StockExitRepository`, `SaleRepository`, `ProfileRepository`, `UserRepository`, `AuditRepository`, `CreditPaymentRepository` | Cada una solo dice en qué archivo guarda; leer y escribir lo hace la clase padre. |
+| Herencia | `JdbcRepository<T>` | `ProductJdbcRepository`, `CategoryJdbcRepository`, `SupplierJdbcRepository`, `StockEntryJdbcRepository`, `StockExitJdbcRepository`, `SaleJdbcRepository`, `ProfileJdbcRepository`, `UserJdbcRepository`, `AuditJdbcRepository`, `CreditPaymentJdbcRepository` | Cada una dice su tabla y sus columnas; consultar, insertar y actualizar lo hace la clase padre. |
+| Herencia | `EntityService<T>` | `InventoryService`, `CategoryService`, `SupplierService` | Comparten el paso a paso de guardar; cada una pone su validación. |
+| Herencia | `RuntimeException` | `ValidationException`, `PersistenceException`, `AssistantException` | Los errores propios del proyecto. |
+| Composición | `Sale` | `SaleItem` | La venta crea sus renglones; un renglón no existe sin su venta. |
+| Composición | `User` | `Acceso` | Los accesos (negocio y rol) son parte de la persona y se guardan con ella. |
+| Composición | `JavaBridge` | los controladores (`InventoryController`, `TransactionController`, `CreditController`, `SessionController` y los demás) | El puente crea sus controladores y viven mientras él vive. |
+| Composición | `ProfileServices` | `InventoryService`, `CategoryService`, `SupplierService`, `MovementService`, `SaleService`, `CreditService` | Los servicios de un negocio se crean juntos y se reemplazan juntos al abrir otro negocio. |
+| Composición | `ReportService` | `SalesReport` | El servicio arma el informe completo de un período. |
+| Agregación | `CustomerDebt` | `Sale`, `CreditPayment` | La cuenta de un cliente reúne sus ventas fiadas y sus abonos, que existen por su cuenta. |
+| Agregación | `CreditService` | `SaleService`, `Repository<CreditPayment>` | Recibe las ventas y los abonos del negocio por el constructor. |
+| Agregación | `EntityService<T>`, `MovementService`, `SaleService` | `Repository<T>` | Reciben el repositorio por el constructor; no saben si es de archivos o de base de datos. |
+| Agregación | `AppContext` | `StorageProvider`, `ProfileService`, `BackupService`, `UserService`, `AuditService`, `SessionService` | El contexto guarda estos objetos y los cambia cuando se cambia de base de datos. |
+| Agregación | `ProfileServicesFactory` | `StorageProvider` | Pide los repositorios de cada negocio al almacenamiento que esté en uso. |
+| Agregación | `JdbcRepository<T>` | `Database` | Todos los repositorios de la base comparten una conexión. |
+| Agregación | `BackupService` | `BackupStore`, `DataSnapshot` | Recibe dónde guardar las copias y cómo sacar los datos. |
+| Agregación | `AssistantService` | `LanguageModel`, `ProfileServices` | Recibe el modelo de lenguaje y los servicios del negocio abierto. |
 
 ## 4. Herencia, interfaces y clases abstractas
 
@@ -2927,94 +4269,88 @@ No tiene atributos.
 
 | Clase | Métodos abstractos | Subclases | Para qué sirve |
 |---|---|---|---|
-| `IdentifiedEntity` | ninguno (solo comparte el `id`, `equals` y `hashCode`) | Product, Category, Supplier, Profile, Sale, InventoryMovement | Evita repetir el manejo del ID y permite que `Repository<T extends IdentifiedEntity>` funcione con cualquier entidad. |
-| `InventoryMovement` | `aplicarA(Product)`, `getPrefijoId()` | StockEntry, StockExit | Cada movimiento define cómo cambia el stock; el servicio no pregunta de qué tipo es (polimorfismo). |
-| `JsonRepository<T>` | ninguno (las subclases solo pasan el archivo y el tipo) | 7 repositorios de entidades | Implementa una sola vez el CRUD sobre JSON. |
-| `EntityService<T>` | `validar(T)`, `generarId()`, `nombreEntidad()` | InventoryService, CategoryService, SupplierService | Template Method: `guardar(T)` es `final` y cada gestor completa los pasos propios. |
+| `IdentifiedEntity` | ninguno | 9 entidades (Product, Sale, User…) | Da a todo lo que se guarda su ID y la comparación por ID. |
+| `InventoryMovement` | `aplicarA(Product)`, `getPrefijoId()` | `StockEntry`, `StockExit` | Cada movimiento dice cómo cambia el stock; el servicio no pregunta de qué tipo es. |
+| `JsonRepository<T>` | ninguno | 10 repositorios de archivos | Escribe una sola vez cómo se guarda una lista en un archivo JSON. |
+| `JdbcRepository<T>` | `tabla()`, `columnas()`, `valores(T)`, `leer(ResultSet)` | 10 repositorios de base de datos | Escribe una sola vez cómo se consulta y se guarda en una tabla. |
+| `EntityService<T>` | `validar(T)`, `generarId()`, `nombreEntidad()` | `InventoryService`, `CategoryService`, `SupplierService` | Guardar sigue siempre los mismos pasos; cada servicio completa los suyos. |
 
 ### 4.2 Interfaces
 
-| Interfaz | Métodos | Implementación | Quién la usa |
+| Interfaz | Métodos principales | La implementan | Para qué sirve |
 |---|---|---|---|
-| `Repository<T>` | listarTodos, buscarPorId, existe, filtrar, agregar, actualizar, eliminar, siguienteIdNumerico | `JsonRepository<T>` | Los gestores del paquete `service`. |
-| `Camera` | abrir, capturar, cerrar | WebcamCamera | `ScanController`. |
-| `ViewNotifier` | ejecutarScript | WebViewNotifier, SseNotifier | `JavaBridge`, `ProfileController`, `BackupController`, `ScanController`, `AssistantController`. |
-| `FileOpener` | abrir | DesktopFileOpener | `LabelController`, `ReportController`. |
-| `LanguageModel` | generar | GeminiClient | `AssistantService`. |
-| `ScreenTransition` | desvanecerZona | SnapshotTransition | `JavaBridge` (solo en la ventana JavaFX). |
+| `Repository<T>` | listarTodos, buscarPorId, agregar, actualizar, eliminar | `JsonRepository<T>`, `JdbcRepository<T>` | Los servicios guardan igual sin importar si es archivo o base de datos. |
+| `StorageProvider` | perfiles, usuarios, productos, ventas, abonos… | `JsonStorageProvider`, `DatabaseStorageProvider` | Entrega todos los repositorios del almacenamiento elegido. |
+| `SqlDialect` | motor, tablaExiste, separarSentencias | `PostgresDialect`, `OracleDialect` | Guarda lo poco que cambia entre PostgreSQL y Oracle. |
+| `BackupStore` | listar, guardar, leer, eliminar | `BackupRepository`, `DatabaseBackupRepository` | Las copias se guardan en una carpeta o dentro de la base. |
+| `DataSnapshot` | prepararCarpeta, restaurarDesde | `FileSnapshot`, `DatabaseSnapshot` | Saca y repone los datos para una copia de seguridad. |
+| `Deshabilitable` | isActivo, setActivo | `Product`, `Category`, `Supplier`, `Profile`, `User` | Lo que se deshabilita en lugar de borrarse. |
+| `Anulable` | anular, isAnulada | `Sale`, `InventoryMovement`, `CreditPayment` | Lo que se anula con motivo en lugar de borrarse. |
+| `Camera` | abrir, capturar, cerrar | `WebcamCamera`, `PhoneCamera` | La venta por QR funciona igual con la webcam o con el celular. |
+| `CameraProvider` | listar, crear | clase anónima en `JavaBridge` | Dice qué cámaras hay en el computador. |
+| `ViewNotifier` | ejecutarScript | `WebViewNotifier`, `SseNotifier` | Avisarle a la pantalla, en la ventana de JavaFX o en la de Edge. |
+| `FileOpener` | abrir | `DesktopFileOpener` | Abrir un archivo o una carpeta con el programa del sistema. |
+| `LanguageModel` | generar | `GeminiClient` | El asistente no depende de un proveedor de IA en particular. |
+| `ScreenTransition` | desvanecerZona | `SnapshotTransition` | Transiciones de la ventana de JavaFX. |
 
 ## 5. Diseño de la interfaz (mockups)
 
-Las pantallas siguientes son capturas de la interfaz real del proyecto (v3.4.0) con datos de ejemplo.
+Las imágenes son capturas de la interfaz real de la versión v3.5.0 con datos de ejemplo de una ferretería.
 
 | Pantalla | Imagen |
 |---|---|
+| Inicio de sesión | ![Inicio de sesión](img/login.png) |
 | Hoy (resumen del día) | ![Hoy](img/dashboard.png) |
-| Mis negocios (perfiles, cada uno con su color) | ![Mis negocios](img/perfiles.png) |
 | Productos | ![Productos](img/productos.png) |
-| Formulario de producto (precio de compra, de venta y utilidad) | ![Formulario de producto](img/producto-form.png) |
+| Formulario de producto | ![Formulario de producto](img/producto-form.png) |
 | Etiqueta QR de un producto | ![Etiqueta QR](img/etiqueta-qr.png) |
 | Entradas | ![Entradas](img/entradas.png) |
 | Ventas (cuaderno de caja por día) | ![Ventas](img/ventas.png) |
-| Nueva venta con método de pago | ![Nueva venta](img/nueva-venta.png) |
+| Nueva venta | ![Nueva venta](img/nueva-venta.png) |
 | Venta por QR | ![Venta por QR](img/venta-por-qr.png) |
+| Fiados | ![Fiados](img/fiados.png) |
+| Cuenta de un cliente con sus abonos | ![Cuenta de un cliente](img/fiado-cliente.png) |
 | Informes | ![Informes](img/informes.png) |
 | Informe en PDF | ![Informe en PDF](img/informe-pdf.png) |
+| Costos | ![Costos](img/costos.png) |
+| Mis negocios | ![Mis negocios](img/perfiles.png) |
+| Usuarios | ![Usuarios](img/usuarios.png) |
+| Historial | ![Historial](img/historial.png) |
+| Copias de seguridad y base de datos | ![Copias de seguridad](img/respaldos.png) |
 | Asistente | ![Asistente](img/asistente.png) |
-| Copias de seguridad | ![Copias de seguridad](img/respaldos.png) |
 
-Distribución común: menú lateral con el logo de la T y las secciones (Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Informes, Mis negocios y Copias de seguridad) y el interruptor de modo oscuro; una barra del color del negocio marca la sección activa. Arriba van la búsqueda (solo en Productos), los botones Venta por QR y Nueva venta (en Ventas) y el perfil activo. El diseño es plano, sobre una base neutra, y el color de acento cambia según el tipo de negocio del perfil activo (en las capturas, naranja de ferretería; en la del asistente, amarillo de tienda de barrio). Cada sección empieza con una frase que dice lo importante ("Hoy van $ 477.500 en 6 ventas", "8 productos, 4 piden atención"). Hoy muestra lo que está por resolver, las ventas del día y los pedidos por proveedor; Ventas agrupa las ventas por día con los totales de efectivo, digital, fiado y total. Las tablas y los formularios en ventanas modales conservan los mismos campos; abajo a la derecha está el botón del asistente. Las capturas están en modo claro.
+Todas las pantallas comparten la misma distribución: a la izquierda, el menú con las secciones que permite el rol y el interruptor de modo oscuro; arriba, el asistente y el negocio abierto. El color de los botones cambia según el tipo de negocio (en las capturas, naranja de ferretería). Cada sección empieza con una frase que dice lo importante ("Hoy van $ 32.900 en 1 venta", "Por cobrar: $ 6.835.100"). Los formularios se abren en ventanas con fondo desenfocado.
 
 ## 6. Patrones GRASP aplicados
 
-| Patrón | Clase / método | Razón |
+| Patrón | Clase | Razón |
 |---|---|---|
-| **Creador** | `Sale.agregarItem(Product`, `int`, `double)` | La venta contiene sus `SaleItem`, por eso es quien los crea. El constructor con datos de `SaleItem` tiene visibilidad de paquete. |
-| **Creador** | `ProfileServicesFactory.crear(String)` | Tiene el dato para inicializarlos (la carpeta del perfil) y crea los repositorios y los cinco gestores del perfil. |
-| **Creador** | `CategoryService.crearPredefinidas(BusinessType)` | Administra las categorías del perfil y crea las predefinidas del tipo de negocio. |
-| **Creador** | `AppContext (constructor)` | Raíz de composición: crea los repositorios y servicios globales y los conecta por constructor. |
-| **Creador** | `ReportService.generar` | Tiene las ventas y los costos del período, por eso crea el `SalesReport` con todas sus partes. |
-| **Creador** | `AssistantTools.proponer` | Las herramientas tienen los datos validados del cambio (productos, cantidades, precios), por eso crean el `AssistantProposal`. |
-| **Controlador** | `JavaBridge` | Controlador fachada: es el único objeto que recibe los eventos de la interfaz (`window.javaBridge`) y delega cada uno. |
-| **Controlador** | `ProfileController`, `InventoryController`, `CatalogController`, `TransactionController`, `BackupController`, `LabelController`, `ReportController`, `AssistantController`, `ScanController` | Controladores de caso de uso: cada uno atiende un grupo de operaciones y delega en los servicios. |
-| **Experto en información** | `Product.getUtilidadUnitaria`, `getMargen`, `getUtilidadEstimadaStock` | El producto tiene el precio de compra, el de venta y el stock; por eso calcula su propia utilidad. `InventoryService.getUtilidadEstimadaInventario` solo suma lo que cada producto responde. |
-| **Experto en información** | `Product.disminuirStock`, `aumentarStock`, `verificarStockDisponible`, `getEstado`, `estaVencido`, `venceDentroDe` | El producto tiene el stock, el stock mínimo y la fecha de vencimiento; él decide su estado y si puede descontar unidades. |
-| **Experto en información** | `Sale.calcularTotal`, `cantidadesPorProducto / SaleItem.getSubtotal` | La venta conoce sus ítems y cada ítem su cantidad y precio. |
-| **Experto en información** | `Product.contenidoEtiquetaQR`, `idDesdeEtiquetaQR` | El producto define el texto de su QR y, como conoce el formato, también lo interpreta. |
-| **Experto en información** | `GlobalConfig.getPerfilActivo`, `BackupRepository.listar` | Cada clase responde con la información que ella misma tiene. |
-| **Experto en información** | `SaleItem.utilidadCon`, `tieneCosto / Sale.normalizarPago` | El ítem guarda el costo con el que se vendió y calcula su utilidad; la venta valida su propio método de pago (un fiado necesita cliente). |
-| **Experto en información** | `PaymentMethod.desdeTexto`, `esDigital` | El enum conoce los nombres de cada método y cuáles admiten comprobante. |
-| **Bajo acoplamiento** | `EntityService(Repository<T>)`, `MovementService`, `SaleService` | Los servicios dependen de la interfaz `Repository<T>` y reciben sus dependencias por constructor. |
-| **Bajo acoplamiento** | `ViewNotifier`, `Camera`, `FileOpener` | Los controladores no dependen de `WebEngine`, de la librería de la cámara ni de `java.awt.Desktop`. |
-| **Bajo acoplamiento** | `QrGenerator`, `QrReader`, `WebcamCamera` | Solo estas clases importan ZXing o webcam-capture. |
-| **Bajo acoplamiento** | `AssistantService(LanguageModel)` | El asistente depende de la interfaz `LanguageModel`, no de Gemini; solo `GeminiClient` conoce la API de Google. |
-| **Polimorfismo** | `ViewNotifier: WebViewNotifier`, `SseNotifier` | Los controladores llaman `ejecutarScript` sin saber si la vista es el visor de JavaFX o la ventana de Edge. |
-| **Variaciones protegidas** | `LanguageModel`, `GeminiClient.buscarModeloDisponible` | El cambio de proveedor o de modelo queda dentro de `GeminiClient`; si Google retira el modelo, el cliente elige otro y el resto del sistema no cambia. |
-| **Fabricación pura** | `BridgeInvoker`, `LocalWebServer`, `ReportExcelWriter` | Clases que no son del dominio, creadas para conectar la ventana de Edge con Java y para escribir el Excel, y así no cargar esas tareas al dominio ni a los controladores. |
-| **Alta cohesión** | `Controladores del paquete bridge` | Cada controlador atiende un único grupo de casos de uso (en P2 un solo `JavaBridge` hacía todo). |
-| **Alta cohesión** | `JsonFileStore`, `ProfileDirectory`, `BridgeResponse`, `ZipArchiver` | Clases pequeñas con un solo propósito. |
-| **Alta cohesión** | `QrSaleScanner` | Solo coordina leer el QR, interpretar el texto y buscar el producto. |
-| **Alta cohesión** | `ReportService / ReportExportService / ReportExcelWriter` | Calcular el informe, decidir dónde se guarda y escribir el archivo están en clases distintas. |
+| **Creador** | `Sale.agregarItem(...)` | La venta contiene sus renglones, por eso es ella la que crea cada `SaleItem`. |
+| **Creador** | `ProfileServicesFactory` | Tiene lo necesario (el negocio y el almacenamiento) para crear los servicios de un negocio. |
+| **Creador** | `CreditService.listarCuentas()` | Tiene las ventas fiadas y los abonos, por eso arma la cuenta (`CustomerDebt`) de cada cliente. |
+| **Controlador** | `JavaBridge` | Es el único objeto que recibe lo que el usuario hace en la página y se lo pasa al controlador indicado. |
+| **Controlador** | `InventoryController`, `TransactionController`, `CreditController`, `SessionController` y los demás del paquete `bridge` | Cada uno atiende un grupo de acciones (productos, ventas, fiados, sesión…) y llama a los servicios; no tiene reglas del negocio. |
+| **Experto en información** | `Product` | Tiene el stock, el mínimo y la fecha de vencimiento: él decide si está agotado, si está por vencer y si puede vender cierta cantidad. |
+| **Experto en información** | `Sale` | Conoce sus renglones: calcula su total y revisa su medio de pago (un fiado necesita nombre y cédula). |
+| **Experto en información** | `CustomerDebt` | Tiene lo fiado y lo abonado de un cliente: calcula cuánto debe. |
+| **Experto en información** | `Rol` | Sabe qué permisos tiene cada rol y responde si una persona puede hacer algo. |
+| **Bajo acoplamiento** | `Repository<T>` | Los servicios dependen de esta interfaz y no saben si los datos van a archivos, a PostgreSQL o a Oracle. Por eso se agregó la base de datos sin tocar los servicios. |
+| **Bajo acoplamiento** | `Camera`, `LanguageModel`, `ViewNotifier` | La venta por QR, el asistente y los controladores no dependen de una cámara, de un proveedor de IA ni de una ventana en particular. |
+| **Alta cohesión** | Controladores del paquete `bridge` | Cada controlador se ocupa de un solo tema; en Programación II un solo `JavaBridge` hacía todo. |
+| **Alta cohesión** | `AccessPolicy` y `AuditTrail` | Uno solo revisa permisos y el otro solo anota el historial; ningún controlador tiene que hacerlo. |
+| **Alta cohesión** | `CreditService` | Todo lo de fiados y abonos está en un solo servicio. |
 
 ## 7. Principios SOLID aplicados
 
-| Principio | Clase / relación | Argumento |
+| Principio | Clase | Argumento |
 |---|---|---|
-| **SRP** | `JsonFileStore / JsonRepository<T> / Gestor*` | Tres razones de cambio separadas: cómo se escribe en disco, cómo se maneja la colección en memoria y qué reglas de negocio aplican. |
-| **SRP** | `GlobalConfigService, ProfileDirectory` | Salieron de `ProfileService`: uno maneja `configuracion-global.json` y el otro las carpetas de los perfiles. |
-| **SRP** | `ZipArchiver / BackupRepository / BackupService` | Comprimir, administrar la carpeta de copias y coordinar el caso de uso están separados. |
-| **SRP** | `QrGenerator / LabelService / LabelRepository` | Generar el código, dibujar la etiqueta y guardar la imagen están separados. |
-| **SRP** | `BridgeResponse.ejecutar(Supplier<String>)` | Un solo lugar traduce las excepciones a `ERROR: …`. |
-| **SRP** | `ReportService / ReportExportService / ReportExcelWriter` | Calcular, nombrar y guardar, y escribir el formato `.xlsx` son tres razones de cambio separadas. |
-| **SRP** | `AssistantSettingsService / AssistantService / AssistantTools` | Configurar la clave, conversar con el modelo y ejecutar las funciones del inventario están separados. |
-| **OCP** | `JsonRepository<T> y sus subclases` | Una entidad nueva se guarda creando una subclase corta, sin modificar la clase base. |
-| **OCP** | `EntityService<T>.guardar(T) (final)` | El algoritmo de guardar está cerrado; cada gestor lo extiende con `validar()` y `generarId()`. |
-| **OCP** | `InventoryMovement.aplicarA(Product)` | `MovementService` trabaja con el tipo abstracto; un movimiento nuevo sería otra subclase. |
-| **OCP** | `Repository<T>` | Una implementación con base de datos relacional se podrá agregar sin cambiar los servicios. |
-| **OCP** | `ViewNotifier` | La ventana de Edge se agregó con una implementación nueva (`SseNotifier`) sin modificar los controladores. |
-| **LSP** | `StockEntry / StockExit` | Se pueden usar donde se espera `InventoryMovement`; ambas cumplen el contrato de `aplicarA`. |
-| **LSP** | `WebViewNotifier / SseNotifier` | Cualquiera de las dos funciona donde se espera un `ViewNotifier`. |
-| **ISP** | `Camera, ViewNotifier, FileOpener, LanguageModel, ScreenTransition` | Interfaces pequeñas: cada una tiene solo los métodos que su cliente necesita. |
-| **DIP** | `service → Repository<T>, LanguageModel; bridge → ViewNotifier, Camera, FileOpener, ScreenTransition` | Los módulos de alto nivel dependen de abstracciones; `AppContext`, `ProfileServicesFactory` y las ventanas eligen las implementaciones. |
+| **SRP** (una sola responsabilidad) | `Product` / `InventoryService` / `ProductRepository` | El producto cumple sus reglas, el servicio coordina el caso de uso y el repositorio guarda. Cada uno cambia por una sola razón. |
+| **SRP** | `AccessPolicy` / `AuditTrail` / controladores | Revisar permisos, anotar el historial y atender la acción del usuario están en clases distintas. |
+| **SRP** | `ReportService` / `ReportExportService` / `ReportExcelWriter` | Calcular el informe, decidir dónde se guarda y escribir el archivo de Excel están separados. |
+| **SRP** | `UserService` / `SessionService` / `PasswordHasher` | Administrar usuarios, recordar quién inició sesión y cifrar contraseñas están separados. |
+| **OCP** (abierto a extensión, cerrado a modificación) | `Repository<T>` con `JsonRepository<T>` y `JdbcRepository<T>` | Para guardar en base de datos se agregaron clases nuevas; los servicios no se modificaron. |
+| **OCP** | `StorageProvider` con `JsonStorageProvider` y `DatabaseStorageProvider` | Otro motor de base de datos sería otra implementación (más un `SqlDialect`), sin cambiar el resto. |
+| **OCP** | `InventoryMovement.aplicarA(Product)` | Un tipo de movimiento nuevo sería otra subclase; `MovementService` no cambia. |
+| **OCP** | `Camera` con `WebcamCamera` y `PhoneCamera` | El celular como lector se agregó con una clase nueva; la venta por QR no cambió. |
 
-La trazabilidad completa con enlaces al código está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
+La tabla completa con enlaces al código está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
