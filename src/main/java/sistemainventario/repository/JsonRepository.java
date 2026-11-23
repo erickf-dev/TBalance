@@ -126,6 +126,6 @@ public abstract class JsonRepository<T extends IdentifiedEntity> implements Repo
     }
 
     private void persistir() {
-        almacen.escribir(JsonUtil.toJson(cache));
+        almacen.escribir(JsonUtil.toJsonCompacto(cache));
     }
 }

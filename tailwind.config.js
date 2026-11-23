@@ -8,7 +8,7 @@
  *               -o src/main/resources/html/css/tailwind.css --minify
  */
 module.exports = {
-  content: ['./src/main/resources/html/**/*.html'],
+  content: ['./src/main/resources/html/**/*.html', './src/main/resources/html/js/**/*.js'],
   darkMode: 'class',
   theme: {
     extend: {

@@ -11,6 +11,8 @@ import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import netscape.javascript.JSObject;
 import sistemainventario.AppContext;
+import sistemainventario.bridge.AccessPolicy;
+import sistemainventario.bridge.BridgeInvoker;
 import sistemainventario.bridge.JavaBridge;
 import sistemainventario.bridge.WebViewNotifier;
 import sistemainventario.model.Profile;
@@ -41,6 +43,8 @@ public class WebViewMain {
     private StackPane raiz;
     /** Se conserva como atributo para que el recolector de basura no lo elimine. */
     private JavaBridge bridge;
+    /** Se guarda en un campo para que JavaFX no lo libere mientras la página lo usa. */
+    private WebViewBridgeAdapter puenteJs;
 
     public WebViewMain(AppContext contexto) {
         this.contexto = contexto;
@@ -105,8 +109,10 @@ public class WebViewMain {
     private void registrarBridge() {
         bridge = new JavaBridge(contexto, new WebViewNotifier(motor), new SnapshotTransition(raiz, webView),
                 WebViewMain::enHiloDeInterfaz);
+        puenteJs = new WebViewBridgeAdapter(new BridgeInvoker(bridge, new AccessPolicy(contexto)));
         JSObject ventanaJs = (JSObject) motor.executeScript("window");
-        ventanaJs.setMember("javaBridge", bridge);
+        ventanaJs.setMember("__tbPuente", puenteJs);
+        motor.executeScript(WebViewBridgeAdapter.SCRIPT_PUENTE);
     }
 
     /**
@@ -131,7 +137,8 @@ public class WebViewMain {
 
     private void inicializarEstadoHtml() {
         try {
-            motor.executeScript("if (typeof cargarEstadoDesdeJava === 'function') cargarEstadoDesdeJava();");
+            // tbArrancar muestra el inicio de sesión o carga los datos si ya hay sesión
+            motor.executeScript("if (typeof tbArrancar === 'function') tbArrancar();");
         } catch (RuntimeException e) {
             System.err.println("[WebViewMain] Error en inicializacion: " + e.getMessage());
         }

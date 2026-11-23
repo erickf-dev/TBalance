@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111311">
+<title>TBalance · Lector</title>
+<!--
+  Página que abre el celular para usarlo como lector de etiquetas de TBalance.
+  La entrega el propio PC por la red local (PhoneLink): no usa internet ni
+  librerías externas. Toma fotos de la cámara y las envía al PC, que lee el QR
+  y responde con avisos (producto agregado, etiqueta de otro negocio...).
+-->
+<style>
+  :root {
+    --fondo: #111311;
+    --texto: #f4f2ee;
+    --suave: rgba(244, 242, 238, .72);
+    --ok: #2f9e5b;
+    --error: #d1453b;
+    --acento: #e29d38;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--fondo); color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  video { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+  .barra { position: fixed; top: 0; left: 0; right: 0; padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    display: flex; align-items: center; gap: 10px; background: linear-gradient(rgba(0,0,0,.65), rgba(0,0,0,0)); }
+  .marca { font-weight: 700; font-size: 17px; letter-spacing: .2px; }
+  .estado { margin-left: auto; display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--suave); }
+  .punto { width: 9px; height: 9px; border-radius: 50%; background: #888; }
+  .punto.ok { background: var(--ok); box-shadow: 0 0 0 4px rgba(47,158,91,.25); }
+  .punto.mal { background: var(--error); }
+  .visor { position: fixed; left: 50%; top: 46%; width: min(68vw, 68vh); aspect-ratio: 1; transform: translate(-50%, -50%);
+    border-radius: 22px; box-shadow: 0 0 0 9999px rgba(0,0,0,.38); transition: box-shadow .15s; }
+  .visor::after { content: ""; position: absolute; inset: 0; border-radius: 22px;
+    border: 3px solid rgba(255,255,255,.85); transition: border-color .15s; }
+  .visor.ok::after { border-color: var(--ok); }
+  .visor.mal::after { border-color: var(--error); }
+  .ayuda { position: fixed; left: 0; right: 0; top: calc(46% + min(34vw, 34vh) + 18px); text-align: center;
+    font-size: 14px; color: var(--suave); padding: 0 24px; }
+  .pie { position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(18px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    background: linear-gradient(rgba(0,0,0,0), rgba(0,0,0,.7)); }
+  .aviso { min-height: 48px; max-width: 520px; width: 100%; padding: 12px 16px; border-radius: 14px; font-size: 16px;
+    font-weight: 600; text-align: center; line-height: 1.3; opacity: 0; transform: translateY(8px);
+    transition: opacity .15s, transform .15s; }
+  .aviso.visible { opacity: 1; transform: none; }
+  .aviso.ok { background: var(--ok); }
+  .aviso.mal { background: var(--error); }
+  .botones { display: flex; gap: 10px; }
+  button { font: inherit; font-size: 15px; font-weight: 600; color: var(--texto); background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 11px 18px; }
+  button:active { background: rgba(255,255,255,.26); }
+  button.activo { background: var(--acento); border-color: var(--acento); color: #1d1405; }
+  .pantalla { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 32px; text-align: center; background: var(--fondo); }
+  .pantalla.visible { display: flex; }
+  .pantalla h1 { font-size: 21px; }
+  .pantalla p { color: var(--suave); font-size: 15px; line-height: 1.45; max-width: 420px; }
+</style>
+</head>
+<body>
+<video id="video" autoplay muted playsinline></video>
+<div class="barra">
+  <span class="marca">TBalance · Lector</span>
+  <span class="estado"><span id="punto" class="punto"></span><span id="estado">Conectando…</span></span>
+</div>
+<div id="visor" class="visor"></div>
+<p class="ayuda">Apunte a la etiqueta QR del producto</p>
+<div class="pie">
+  <div id="aviso" class="aviso"></div>
+  <div class="botones">
+    <button id="btn-linterna" type="button" hidden>Linterna</button>
+    <button id="btn-sonido" type="button">Sonido: sí</button>
+  </div>
+</div>
+
+<div id="pantalla" class="pantalla">
+  <h1 id="pantalla-titulo">Activar la cámara</h1>
+  <p id="pantalla-texto">TBalance necesita la cámara del celular para leer las etiquetas.</p>
+  <button id="pantalla-btn" type="button">Activar cámara</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var clave = new URLSearchParams(location.search).get('t') || '';
+  var video = document.getElementById('video');
+  var lienzo = document.createElement('canvas');
+  var LADO = 720;                 // las fotos se envían recortadas al centro, de 720 x 720
+  var PAUSA_MS = 120;             // pausa entre fotos (unas 4 a 6 por segundo)
+  var pista = null, linterna = false, sonido = true, audio = null, avisoTimer = null, visorTimer = null;
+  var detenido = false, fallos = 0, sinImagen = 0;
+
+  function $(id) { return document.getElementById(id); }
+
+  function estado(texto, clase) {
+    $('estado').textContent = texto;
+    $('punto').className = 'punto' + (clase ? ' ' + clase : '');
+  }
+
+  function pantalla(titulo, texto, boton) {
+    $('pantalla-titulo').textContent = titulo;
+    $('pantalla-texto').textContent = texto;
+    $('pantalla-btn').hidden = !boton;
+    if (boton) $('pantalla-btn').textContent = boton;
+    $('pantalla').classList.add('visible');
+  }
+
+  function pitar(ok) {
+    if (!sonido) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      var tonos = ok ? [[1760, 0, .09]] : [[330, 0, .12], [330, .17, .12]];
+      tonos.forEach(function (t) {
+        var osc = audio.createOscillator(), vol = audio.createGain();
+        osc.type = 'square'; osc.frequency.value = t[0];
+        vol.gain.value = .08;
+        osc.connect(vol); vol.connect(audio.destination);
+        osc.start(audio.currentTime + t[1]); osc.stop(audio.currentTime + t[1] + t[2]);
+      });
+    } catch (e) { /* sin sonido en este navegador */ }
+  }
+
+  function mostrarAviso(texto, ok) {
+    var el = $('aviso');
+    el.textContent = texto;
+    el.className = 'aviso visible ' + (ok ? 'ok' : 'mal');
+    clearTimeout(avisoTimer);
+    avisoTimer = setTimeout(function () { el.className = 'aviso'; }, ok ? 1800 : 3500);
+    var visor = $('visor');
+    visor.className = 'visor ' + (ok ? 'ok' : 'mal');
+    clearTimeout(visorTimer);
+    visorTimer = setTimeout(function () { visor.className = 'visor'; }, 600);
+    pitar(ok);
+    try { if (navigator.vibrate) navigator.vibrate(ok ? 90 : [70, 60, 70]); } catch (e) { /* sin vibración */ }
+  }
+
+  function foto() {
+    var w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) return Promise.resolve(null);
+    var lado = Math.min(w, h);
+    lienzo.width = LADO; lienzo.height = LADO;
+    lienzo.getContext('2d').drawImage(video, (w - lado) / 2, (h - lado) / 2, lado, lado, 0, 0, LADO, LADO);
+    return new Promise(function (listo) {
+      if (lienzo.toBlob) {
+        lienzo.toBlob(function (b) { listo(b || desdeDataUrl()); }, 'image/jpeg', 0.75);
+      } else {
+        listo(desdeDataUrl());
+      }
+    });
+  }
+
+  // Navegadores viejos sin toBlob: se arma la imagen desde el texto Base64.
+  function desdeDataUrl() {
+    try {
+      var b64 = lienzo.toDataURL('image/jpeg', 0.75).split(',')[1];
+      var bin = atob(b64), bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: 'image/jpeg' });
+    } catch (e) { return null; }
+  }
+
+  // Android: abre la misma dirección en Chrome (sirve cuando el lector de QR del
+  // celular abrió la página en su propio navegador, que a veces no da la cámara).
+  function abrirEnChrome() {
+    location.href = 'intent://' + location.host + location.pathname + location.search +
+      '#Intent;scheme=https;package=com.android.chrome;end';
+  }
+
+  var esAndroid = /Android/i.test(navigator.userAgent);
+  var esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  function camaraSinImagen() {
+    detenido = true;
+    estado('Sin imagen', 'mal');
+    pantalla('La cámara no arrancó en este navegador',
+      esAndroid ? 'Ábrala en Chrome: toque el botón. Si no se abre, copie la dirección y péguela en Chrome.'
+                : esIOS ? 'Ábrala en Safari: toque los tres puntos o el ícono de compartir y elija "Abrir en Safari".'
+                        : 'Ábrala en Chrome o Safari.',
+      esAndroid ? 'Abrir en Chrome' : 'Intentar otra vez');
+    $('pantalla-btn').dataset.accion = esAndroid ? 'chrome' : 'reintentar';
+  }
+
+  function enviar() {
+    if (detenido) return;
+    foto().then(function (datos) {
+      if (!datos) {
+        // la cámara todavía no da imagen: se espera un poco sin marcar "conectado"
+        sinImagen++;
+        if (sinImagen > 40) { camaraSinImagen(); return 'parar'; }
+        return 'esperar';
+      }
+      sinImagen = 0;
+      return fetch('/foto?t=' + encodeURIComponent(clave), {
+        method: 'POST', body: datos, headers: { 'Content-Type': 'image/jpeg' }, cache: 'no-store'
+      }).then(function (r) {
+        if (r.status === 403) {
+          detenido = true;
+          estado('Desconectado', 'mal');
+          pantalla('Conexión terminada', 'La cámara del celular se apagó en el computador o el enlace cambió. Vuelva a escanear el código que muestra TBalance.', null);
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      });
+    }).then(function (respuesta) {
+      if (detenido || respuesta === 'parar') return;
+      if (respuesta === 'esperar') { setTimeout(enviar, 150); return; }
+      fallos = 0;
+      estado('Conectado al PC', 'ok');
+      ((respuesta && respuesta.avisos) || []).forEach(function (a) { mostrarAviso(a.texto, a.ok); });
+      setTimeout(enviar, PAUSA_MS);
+    }).catch(function () {
+      fallos++;
+      estado(fallos > 2 ? 'Sin conexión con el PC' : 'Reconectando…', 'mal');
+      if (fallos >= 6) {
+        // El PC apagó la cámara o el celular salió del Wi-Fi: se avisa en vez de reintentar sin fin.
+        detenido = true;
+        pantalla('Sin conexión con el PC',
+          'Revise que el celular siga en el mismo Wi-Fi y que la venta por QR siga abierta en TBalance. Si la cerró, vuelva a escanear el código.',
+          'Reintentar');
+        return;
+      }
+      setTimeout(enviar, 1000);
+    });
+  }
+
+  function pedirPantallaEncendida() {
+    try {
+      if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(function () { /* opcional */ });
+    } catch (e) { /* opcional */ }
+  }
+
+  function encender() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      camaraSinImagen();
+      return;
+    }
+    estado('Encendiendo cámara…', '');
+    var respondio = false;
+    setTimeout(function () { if (!respondio && !detenido) camaraSinImagen(); }, 12000);
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    }).then(function (flujo) {
+      respondio = true; detenido = false; sinImagen = 0;
+      $('pantalla').classList.remove('visible');
+      video.srcObject = flujo;
+      pista = flujo.getVideoTracks()[0];
+      try {
+        var capacidades = pista.getCapabilities ? pista.getCapabilities() : {};
+        if (capacidades.torch) $('btn-linterna').hidden = false;
+        if (capacidades.focusMode && capacidades.focusMode.indexOf('continuous') >= 0) {
+          pista.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(function () {});
+        }
+      } catch (e) { /* el navegador no informa capacidades */ }
+      pedirPantallaEncendida();
+      video.play().catch(function () {});
+      enviar();
+    }).catch(function (error) {
+      respondio = true;
+      var negado = error && (error.name === 'NotAllowedError' || error.name === 'SecurityError');
+      pantalla(negado ? 'Permiso de cámara negado' : 'No se pudo encender la cámara',
+        negado ? 'Permita la cámara para esta página en los ajustes del navegador y vuelva a intentarlo.'
+               : 'Cierre otras aplicaciones que estén usando la cámara y vuelva a intentarlo.',
+        'Intentar otra vez');
+    });
+  }
+
+  $('pantalla-btn').addEventListener('click', function () {
+    if (this.dataset.accion === 'chrome') { abrirEnChrome(); return; }
+    this.dataset.accion = '';
+    if (pista && pista.readyState === 'live' && video.videoWidth) {
+      // la cámara sigue encendida: solo se reintenta la conexión
+      $('pantalla').classList.remove('visible');
+      detenido = false; fallos = 0;
+      enviar();
+    } else {
+      encender();
+    }
+  });
+  $('btn-sonido').addEventListener('click', function () {
+    sonido = !sonido;
+    this.textContent = 'Sonido: ' + (sonido ? 'sí' : 'no');
+    if (sonido) pitar(true);
+  });
+  $('btn-linterna').addEventListener('click', function () {
+    if (!pista) return;
+    linterna = !linterna;
+    var boton = this;
+    pista.applyConstraints({ advanced: [{ torch: linterna }] }).then(function () {
+      boton.classList.toggle('activo', linterna);
+    }).catch(function () { linterna = false; });
+  });
+  // iPhone solo deja sonar después de un toque
+  document.addEventListener('touchstart', function () {
+    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
+  }, { once: true });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) pedirPantallaEncendida(); });
+
+  if (!clave) {
+    pantalla('Enlace incompleto', 'Vuelva a escanear el código que muestra TBalance en el computador.', null);
+  } else {
+    encender();
+  }
+})();
+</script>
+</body>
+</html>

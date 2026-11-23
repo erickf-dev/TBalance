@@ -1,6 +1,7 @@
 package sistemainventario.view;
 
 import sistemainventario.AppContext;
+import sistemainventario.bridge.AccessPolicy;
 import sistemainventario.bridge.BridgeInvoker;
 import sistemainventario.bridge.JavaBridge;
 import sistemainventario.bridge.SseNotifier;
@@ -52,7 +53,7 @@ public final class DesktopBrowserApp {
                 tarea.run();
             }
         });
-        LocalWebServer servidor = new LocalWebServer(new BridgeInvoker(puente), notificador);
+        LocalWebServer servidor = new LocalWebServer(new BridgeInvoker(puente, new AccessPolicy(contexto)), notificador);
         Path carpetaVentana = Path.of(System.getProperty("user.home"), ".inventariopro", "ventana");
         BrowserWindow ventana = new BrowserWindow(carpetaVentana);
         try {
