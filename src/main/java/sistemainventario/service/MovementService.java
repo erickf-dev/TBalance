@@ -37,12 +37,89 @@ public class MovementService {
         this.salidas = Objects.requireNonNull(salidas);
     }
 
+    /** @return entradas vigentes (sin las anuladas) */
     public List<StockEntry> listarEntradas() {
-        return entradas.listarTodos();
+        return entradas.filtrar(e -> !e.isAnulada());
     }
 
+    /** @return salidas vigentes (sin las anuladas) */
     public List<StockExit> listarSalidas() {
-        return salidas.listarTodos();
+        return salidas.filtrar(s -> !s.isAnulada());
+    }
+
+    /** @return entradas anuladas */
+    public List<StockEntry> listarEntradasAnuladas() {
+        return entradas.filtrar(StockEntry::isAnulada);
+    }
+
+    /** @return salidas anuladas */
+    public List<StockExit> listarSalidasAnuladas() {
+        return salidas.filtrar(StockExit::isAnulada);
+    }
+
+    /**
+     * Anula una entrada y quita del stock las unidades que había sumado.
+     *
+     * @param id     ID de la entrada
+     * @param motivo por qué se anula
+     * @return la entrada anulada
+     * @throws ValidationException si ya se vendieron o sacaron esas unidades (el stock quedaría negativo)
+     */
+    public StockEntry anularEntrada(String id, String motivo) {
+        return anularEntrada(id, motivo, null);
+    }
+
+    /**
+     * Igual que la anulación sin nombre, dejando anotado quién anuló.
+     *
+     * @param id     ID
+     * @param motivo por qué se anula
+     * @param quien  nombre de quien anula (puede ser {@code null})
+     * @return el movimiento anulado
+     */
+    public StockEntry anularEntrada(String id, String motivo, String quien) {
+        StockEntry entrada = entradas.buscarPorId(id).orElseThrow(() -> new ValidationException("Entrada no encontrada"));
+        Product producto = inventario.obtener(entrada.getProductoId());
+        if (!entrada.isAnulada() && producto.getStock() < entrada.getCantidad()) {
+            throw new ValidationException("No se puede anular: ya salieron unidades de esa entrada (stock actual "
+                    + producto.getStock() + ", la entrada sumó " + entrada.getCantidad() + ")");
+        }
+        entrada.anular(DateUtil.ahora(), motivo);
+        entrada.setAnuladaPor(quien);
+        producto.disminuirStock(entrada.getCantidad());
+        inventario.registrarCambioDeStock(producto);
+        entradas.actualizar(entrada);
+        return entrada;
+    }
+
+    /**
+     * Anula una salida y devuelve al stock las unidades que había quitado.
+     *
+     * @param id     ID de la salida
+     * @param motivo por qué se anula
+     * @return la salida anulada
+     */
+    public StockExit anularSalida(String id, String motivo) {
+        return anularSalida(id, motivo, null);
+    }
+
+    /**
+     * Igual que la anulación sin nombre, dejando anotado quién anuló.
+     *
+     * @param id     ID
+     * @param motivo por qué se anula
+     * @param quien  nombre de quien anula (puede ser {@code null})
+     * @return el movimiento anulado
+     */
+    public StockExit anularSalida(String id, String motivo, String quien) {
+        StockExit salida = salidas.buscarPorId(id).orElseThrow(() -> new ValidationException("Salida no encontrada"));
+        salida.anular(DateUtil.ahora(), motivo);
+        salida.setAnuladaPor(quien);
+        Product producto = inventario.obtener(salida.getProductoId());
+        producto.aumentarStock(salida.getCantidad());
+        inventario.registrarCambioDeStock(producto);
+        salidas.actualizar(salida);
+        return salida;
     }
 
     /**
@@ -71,11 +148,12 @@ public class MovementService {
         if (movimiento == null) {
             throw new ValidationException("No se recibieron datos del movimiento");
         }
+        inventario.refrescar();
         movimiento.validar();
-        Product producto = inventario.obtener(movimiento.getProductoId());
+        Product producto = inventario.obtenerHabilitado(movimiento.getProductoId());
         movimiento.aplicarA(producto);
         inventario.registrarCambioDeStock(producto);
-        movimiento.registrar(IdGenerator.conPrefijo(movimiento.getPrefijoId()), DateUtil.hoy());
+        movimiento.registrar(IdGenerator.conPrefijo(movimiento.getPrefijoId()), DateUtil.ahora());
         repositorio.agregar(movimiento);
         return movimiento;
     }

@@ -14,7 +14,7 @@ import java.util.Map;
  * <p><b>SRP:</b> solo modela los datos del perfil; su ciclo de vida lo
  * administra {@link sistemainventario.service.ProfileService}.</p>
  */
-public class Profile extends IdentifiedEntity {
+public class Profile extends IdentifiedEntity implements Deshabilitable {
 
     public static final String COLOR_POR_DEFECTO = "#315D53";
 
@@ -24,6 +24,9 @@ public class Profile extends IdentifiedEntity {
     private String tipoNegocio;
     private String fechaCreacion;
     private Map<String, String> configuracion = new LinkedHashMap<>();
+
+    /** {@code null} en los datos de versiones anteriores, que cuentan como habilitados. */
+    private Boolean activo;
 
     /** Constructor vacío requerido por Gson. */
     public Profile() {
@@ -101,6 +104,79 @@ public class Profile extends IdentifiedEntity {
         configuracion.put(clave, valor);
     }
 
+    /**
+     * Cuentas donde el negocio recibe pagos digitales (se muestran al cobrar).
+     * TBalance solo las muestra: no se conecta con los bancos.
+     */
+    public static final java.util.List<String> CLAVES_CUENTAS = java.util.List.of(
+            "cuentaNequi", "cuentaDaviplata", "cuentaBancolombia", "llaveBreB");
+
+    /**
+     * Copia de otro perfil los medios de pago y las cuentas que llegaron al
+     * crear o editar el negocio (solo esas claves, recortadas a 60 caracteres).
+     *
+     * @param datos perfil recibido de la pantalla
+     */
+    public void copiarAjustesDePago(Profile datos) {
+        if (datos == null || datos.getConfiguracion() == null) {
+            return;
+        }
+        String medios = datos.getConfiguracion().get(CLAVE_MEDIOS_PAGO);
+        if (medios != null) {
+            setMediosPago(java.util.Arrays.asList(medios.split(",")));
+        }
+        for (String clave : CLAVES_CUENTAS) {
+            String valor = datos.getConfiguracion().get(clave);
+            if (valor != null) {
+                String limpio = valor.replaceAll("[\\r\\n\\t]", " ").trim();
+                setConfig(clave, limpio.length() > 60 ? limpio.substring(0, 60) : limpio);
+            }
+        }
+    }
+
+    /** Clave de configuración con los medios de pago que acepta el negocio. */
+    public static final String CLAVE_MEDIOS_PAGO = "mediosPago";
+
+    /**
+     * Medios de pago que el negocio acepta. Si nunca se configuró, acepta
+     * todos; el efectivo siempre queda activo.
+     *
+     * @return etiquetas oficiales de los medios activos, en el orden del catálogo
+     */
+    public java.util.Set<String> getMediosPago() {
+        String guardado = getConfig(CLAVE_MEDIOS_PAGO, "");
+        java.util.Set<String> activos = new java.util.LinkedHashSet<>();
+        for (PaymentMethod m : PaymentMethod.values()) {
+            if (guardado.isBlank() || m == PaymentMethod.EFECTIVO
+                    || java.util.Arrays.asList(guardado.split(",")).contains(m.getEtiqueta())) {
+                activos.add(m.getEtiqueta());
+            }
+        }
+        return activos;
+    }
+
+    /**
+     * Guarda los medios de pago activos. Ignora los que no reconoce y siempre
+     * deja el efectivo.
+     *
+     * @param medios etiquetas o nombres de los medios activos
+     */
+    public void setMediosPago(java.util.Collection<String> medios) {
+        java.util.Set<PaymentMethod> elegidos = java.util.EnumSet.of(PaymentMethod.EFECTIVO);
+        if (medios != null) {
+            medios.forEach(t -> PaymentMethod.desdeTexto(t).ifPresent(elegidos::add));
+        }
+        setConfig(CLAVE_MEDIOS_PAGO, String.join(",", elegidos.stream().map(PaymentMethod::getEtiqueta).toList()));
+    }
+
+    /**
+     * @param metodo etiqueta del medio de pago
+     * @return {@code true} si el negocio acepta ese medio
+     */
+    public boolean aceptaMedioPago(String metodo) {
+        return getMediosPago().contains(metodo);
+    }
+
     @Override
     public String getEtiqueta() {
         return nombre != null ? nombre : super.getEtiqueta();
@@ -152,5 +228,15 @@ public class Profile extends IdentifiedEntity {
 
     public void setConfiguracion(Map<String, String> configuracion) {
         this.configuracion = configuracion;
+    }
+
+    @Override
+    public boolean isActivo() {
+        return !Boolean.FALSE.equals(activo);
+    }
+
+    @Override
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

@@ -49,9 +49,18 @@ public class InventoryController {
                 inventario().guardar(JsonUtil.fromJson(jsonProducto, Product.class)));
     }
 
-    public String eliminarProducto(String id) {
-        return BridgeResponse.ejecutar(() ->
-                inventario().eliminar(id) ? BridgeResponse.OK : BridgeResponse.error("Producto no encontrado"));
+    /** @return productos deshabilitados del perfil activo */
+    public String obtenerProductosDeshabilitados() {
+        return consultar(InventoryService::listarDeshabilitados);
+    }
+
+    /**
+     * @param id     ID del producto
+     * @param activo {@code "true"} para habilitar, {@code "false"} para deshabilitar
+     * @return {@code "OK"} o {@code "ERROR: ..."}
+     */
+    public String cambiarEstadoProducto(String id, String activo) {
+        return BridgeResponse.ejecutarOk(() -> inventario().cambiarEstado(id, Boolean.parseBoolean(activo)));
     }
 
     /**

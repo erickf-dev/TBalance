@@ -20,7 +20,7 @@ import java.util.Optional;
  * <p>Los nombres de los atributos no cambian respecto a P2 para mantener la
  * compatibilidad con {@code productos.json}.</p>
  */
-public class Product extends IdentifiedEntity {
+public class Product extends IdentifiedEntity implements Deshabilitable {
 
     public static final String ESTADO_AGOTADO = "Agotado";
     public static final String ESTADO_BAJO_STOCK = "Bajo Stock";
@@ -39,6 +39,9 @@ public class Product extends IdentifiedEntity {
     private String tipo;
     private boolean requiereVencimiento;
     private String fechaVencimiento;
+
+    /** {@code null} en los datos de versiones anteriores, que cuentan como habilitados. */
+    private Boolean activo;
 
     /** Constructor vacío requerido por Gson. */
     public Product() {
@@ -238,42 +241,29 @@ public class Product extends IdentifiedEntity {
     // ── Etiqueta QR (Experto) ───────────────────────────────────────────
 
     /** Primera línea de toda etiqueta QR de TBalance. */
-    public static final String ENCABEZADO_QR = "TBalance";
-    /** Prefijo de la línea que lleva el ID dentro de la etiqueta QR. */
-    private static final String PREFIJO_ID_QR = "ID: ";
+    public static final String ENCABEZADO_QR = QrLabel.ENCABEZADO;
 
     /**
      * <b>GRASP Experto:</b> el producto conoce sus datos, por eso arma el texto
-     * que se codifica en su etiqueta QR. El texto es corto a propósito: un QR
-     * con pocos datos tiene módulos más grandes y la webcam lo lee mejor. El
-     * nombre no va en el código porque ya está impreso al lado.
+     * que se codifica en su etiqueta QR (formato en {@link QrLabel}). El texto
+     * es corto a propósito: un QR con pocos datos tiene módulos más grandes y la
+     * webcam lo lee mejor.
      *
-     * @return texto de tres líneas: {@code TBalance}, el ID y el precio de venta
+     * @param perfilId negocio dueño del producto, para no confundir etiquetas de otro negocio
+     * @return texto de la etiqueta: {@code TBalance}, el ID, el negocio y el precio de venta
      */
-    public String contenidoEtiquetaQR() {
-        return ENCABEZADO_QR + '\n'
-                + PREFIJO_ID_QR + getId() + '\n'
-                + getPrecioVentaFormateado();
+    public String contenidoEtiquetaQR(String perfilId) {
+        return QrLabel.texto(this, perfilId);
     }
 
     /**
-     * Operación inversa de {@link #contenidoEtiquetaQR()}: obtiene el ID del
-     * producto a partir del texto leído de una etiqueta. Como el formato lo
-     * define esta clase, también es la <b>Experta</b> en interpretarlo.
+     * Operación inversa de {@link #contenidoEtiquetaQR(String)}.
      *
      * @param contenido texto leído del código QR
      * @return el ID, o vacío si el texto no es una etiqueta de TBalance
      */
     public static Optional<String> idDesdeEtiquetaQR(String contenido) {
-        if (contenido == null || !contenido.strip().startsWith(ENCABEZADO_QR)) {
-            return Optional.empty();
-        }
-        return contenido.lines()
-                .map(String::strip)
-                .filter(linea -> linea.startsWith(PREFIJO_ID_QR))
-                .map(linea -> linea.substring(PREFIJO_ID_QR.length()).strip())
-                .filter(id -> !id.isEmpty())
-                .findFirst();
+        return QrLabel.leer(contenido).map(QrLabel::productoId);
     }
 
     /** @return precio de venta con separador de miles, por ejemplo {@code $ 2.500} */
@@ -390,5 +380,15 @@ public class Product extends IdentifiedEntity {
 
     public void setFechaVencimiento(String fechaVencimiento) {
         this.fechaVencimiento = fechaVencimiento;
+    }
+
+    @Override
+    public boolean isActivo() {
+        return !Boolean.FALSE.equals(activo);
+    }
+
+    @Override
+    public void setActivo(boolean activo) {
+        this.activo = activo;
     }
 }

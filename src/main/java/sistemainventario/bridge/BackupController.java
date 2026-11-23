@@ -44,8 +44,10 @@ public class BackupController {
         return BridgeResponse.ejecutarOk(() -> respaldos().eliminar(nombre));
     }
 
+    /** @return la carpeta de las copias o, con base de datos, en qué base están */
     public String obtenerCarpetaRespaldos() {
-        return respaldos().getCarpetaRespaldos().toAbsolutePath().toString();
+        return respaldos().getCarpetaRespaldos() == null ? respaldos().getUbicacion()
+                : respaldos().getCarpetaRespaldos().toAbsolutePath().toString();
     }
 
     private BackupService respaldos() {

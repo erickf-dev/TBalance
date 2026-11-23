@@ -16,5 +16,6 @@ public record ProfileServices(InventoryService inventario,
                               CategoryService categorias,
                               SupplierService proveedores,
                               MovementService movimientos,
-                              SaleService ventas) {
+                              SaleService ventas,
+                              CreditService fiados) {
 }

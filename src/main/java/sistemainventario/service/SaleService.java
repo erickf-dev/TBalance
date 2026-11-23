@@ -26,9 +26,27 @@ public class SaleService {
     private final InventoryService inventario;
     private final Repository<Sale> ventas;
 
+    /** Medios de pago que acepta el negocio; por defecto, todos. */
+    private java.util.function.Predicate<String> medioPermitido = metodo -> true;
+
     public SaleService(InventoryService inventario, Repository<Sale> ventas) {
         this.inventario = Objects.requireNonNull(inventario);
         this.ventas = Objects.requireNonNull(ventas);
+    }
+
+    /**
+     * @param medioPermitido dice si el negocio acepta un medio de pago (por su etiqueta)
+     */
+    public void usarMediosDePago(java.util.function.Predicate<String> medioPermitido) {
+        this.medioPermitido = Objects.requireNonNull(medioPermitido);
+    }
+
+    /**
+     * @param metodo etiqueta del medio de pago
+     * @return {@code true} si el negocio acepta ese medio
+     */
+    public boolean aceptaMedioPago(String metodo) {
+        return medioPermitido.test(metodo);
     }
 
     /**
@@ -42,6 +60,12 @@ public class SaleService {
         }
         venta.validar();
         venta.normalizarPago();
+        // con varios equipos sobre la misma base, el stock se revisa con lo último guardado
+        inventario.refrescar();
+        if (!medioPermitido.test(venta.getMetodoPago())) {
+            throw new ValidationException("Este negocio no tiene activo el pago con " + venta.getMetodoPago()
+                    + ". Actívelo en Editar negocio o elija otro medio.");
+        }
         Map<String, Integer> cantidades = venta.cantidadesPorProducto();
         verificarStock(cantidades);
         guardarCostos(venta);
@@ -53,7 +77,7 @@ public class SaleService {
 
     private void verificarStock(Map<String, Integer> cantidades) {
         cantidades.forEach((productoId, cantidad) ->
-                inventario.obtener(productoId).verificarStockDisponible(cantidad));
+                inventario.obtenerHabilitado(productoId).verificarStockDisponible(cantidad));
     }
 
     /** Guarda en cada ítem el precio de compra actual del producto, para la utilidad real. */
@@ -71,9 +95,61 @@ public class SaleService {
         });
     }
 
-    /** @return ventas de la más reciente a la más antigua, con el total sincronizado */
+    /** @return ventas vigentes (sin las anuladas), de la más reciente a la más antigua */
     public List<Sale> listarTodas() {
-        List<Sale> lista = new ArrayList<>(ventas.listarTodos());
+        return ordenar(ventas.filtrar(v -> !v.isAnulada()));
+    }
+
+    /** @return ventas anuladas, de la más reciente a la más antigua */
+    public List<Sale> listarAnuladas() {
+        return ordenar(ventas.filtrar(Sale::isAnulada));
+    }
+
+    /**
+     * Anula una venta: queda en el historial con el motivo, deja de contar en los
+     * totales y el stock de sus productos se devuelve.
+     *
+     * @param id     ID de la venta
+     * @param motivo por qué se anula
+     * @return la venta anulada
+     * @throws ValidationException si no existe, ya estaba anulada o falta el motivo
+     */
+    public Sale anular(String id, String motivo) {
+        return anular(id, motivo, null);
+    }
+
+    /**
+     * @param id  ID de la venta
+     * @return la venta (vigente o anulada)
+     * @throws ValidationException si no existe
+     */
+    public Sale obtener(String id) {
+        return ventas.buscarPorId(id).orElseThrow(() -> new ValidationException("Venta no encontrada"));
+    }
+
+    /**
+     * Igual que {@link #anular(String, String)}, dejando anotado quién anuló.
+     *
+     * @param id     ID de la venta
+     * @param motivo por qué se anula
+     * @param quien  nombre de quien anula (puede ser {@code null})
+     * @return la venta anulada
+     */
+    public Sale anular(String id, String motivo, String quien) {
+        Sale venta = obtener(id);
+        venta.anular(DateUtil.ahora(), motivo);
+        venta.setAnuladaPor(quien);
+        venta.cantidadesPorProducto().forEach((productoId, cantidad) ->
+                inventario.buscarPorId(productoId).ifPresent(producto -> {
+                    producto.aumentarStock(cantidad);
+                    inventario.registrarCambioDeStock(producto);
+                }));
+        ventas.actualizar(venta);
+        return venta;
+    }
+
+    private static List<Sale> ordenar(List<Sale> origen) {
+        List<Sale> lista = new ArrayList<>(origen);
         lista.forEach(Sale::recalcularTotal);
         Collections.reverse(lista);
         return lista;

@@ -25,10 +25,16 @@ public class StockEntry extends InventoryMovement {
         this.observacion = observacion;
     }
 
-    /** Polimorfismo: una entrada suma unidades al producto. */
+    /**
+     * Polimorfismo: una entrada suma unidades al producto. Si trae costo por
+     * unidad y es distinto, el producto queda con ese costo (último costo de compra).
+     */
     @Override
     public void aplicarA(Product producto) {
         producto.aumentarStock(getCantidad());
+        if (precioUnitario > 0 && precioUnitario != producto.getPrecioCompra()) {
+            producto.setPrecioCompra(precioUnitario);
+        }
     }
 
     @Override

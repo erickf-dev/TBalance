@@ -1,12 +1,15 @@
 package sistemainventario.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import sistemainventario.exception.ValidationException;
 import sistemainventario.util.TextUtil;
 
 /**
  * Distribuidor o fabricante que abastece productos al negocio.
  */
-public class Supplier extends IdentifiedEntity {
+public class Supplier extends IdentifiedEntity implements Deshabilitable {
 
     private String nombre;
     private String contacto;
@@ -14,6 +17,8 @@ public class Supplier extends IdentifiedEntity {
     private String email;
     private String direccion;
     private String categoria;
+    /** Tipos de producto que surte: IDs de categorías del negocio. */
+    private List<String> categoriaIds = new ArrayList<>();
     private boolean activo = true;
 
     /** Constructor vacío requerido por Gson. */
@@ -107,10 +112,12 @@ public class Supplier extends IdentifiedEntity {
         this.categoria = categoria;
     }
 
+    @Override
     public boolean isActivo() {
         return activo;
     }
 
+    @Override
     public void setActivo(boolean activo) {
         this.activo = activo;
     }
@@ -118,5 +125,15 @@ public class Supplier extends IdentifiedEntity {
     @Override
     public String toString() {
         return String.format("[%s] %s | %s | %s", getId(), nombre, telefono, email);
+    }
+
+    /** @return IDs de las categorías que surte (nunca {@code null}) */
+    public List<String> getCategoriaIds() {
+        return categoriaIds == null ? new ArrayList<>() : new ArrayList<>(categoriaIds);
+    }
+
+    /** @param categoriaIds IDs de las categorías que surte */
+    public void setCategoriaIds(List<String> categoriaIds) {
+        this.categoriaIds = categoriaIds == null ? new ArrayList<>() : new ArrayList<>(categoriaIds);
     }
 }

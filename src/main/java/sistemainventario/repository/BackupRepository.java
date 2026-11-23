@@ -11,6 +11,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -23,7 +24,7 @@ import java.util.stream.Stream;
  * <p>Valida los nombres recibidos desde la vista para que solo se pueda
  * acceder a archivos .zip de esa carpeta.</p>
  */
-public class BackupRepository {
+public class BackupRepository implements BackupStore {
 
     private static final Pattern NOMBRE_VALIDO = Pattern.compile("[A-Za-z0-9_\\-]+\\.zip");
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -39,6 +40,7 @@ public class BackupRepository {
     }
 
     /** @return respaldos existentes, del más reciente al más antiguo */
+    @Override
     public List<Backup> listar() {
         try (Stream<Path> archivos = Files.list(carpeta)) {
             return archivos
@@ -94,6 +96,7 @@ public class BackupRepository {
      * @param nombre archivo a eliminar
      * @throws ValidationException si no existe
      */
+    @Override
     public void eliminar(String nombre) {
         try {
             Files.delete(rutaExistente(nombre));
@@ -103,6 +106,41 @@ public class BackupRepository {
     }
 
     public Path getCarpeta() {
+        return carpeta;
+    }
+
+    @Override
+    public boolean existe(String nombre) {
+        return Files.isRegularFile(rutaNueva(nombre));
+    }
+
+    @Override
+    public Backup guardar(String nombre, Path zip) {
+        Path destino = rutaNueva(nombre);
+        try {
+            Files.move(zip, destino, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new PersistenceException("No se pudo guardar la copia " + nombre, e);
+        }
+        return describir(destino);
+    }
+
+    @Override
+    public void leer(String nombre, Path destino) {
+        try {
+            Files.copy(rutaExistente(nombre), destino, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new PersistenceException("No se pudo leer la copia " + nombre, e);
+        }
+    }
+
+    @Override
+    public String ubicacion() {
+        return carpeta.toString();
+    }
+
+    @Override
+    public Path carpeta() {
         return carpeta;
     }
 }
