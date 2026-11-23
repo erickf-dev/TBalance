@@ -1,31 +1,28 @@
 package sistemainventario.service;
 
-import sistemainventario.exception.PersistenceException;
 import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Backup;
-import sistemainventario.repository.ZipArchiver;
+import sistemainventario.repository.BackupStore;
 import sistemainventario.repository.GlobalConfigRepository;
-import sistemainventario.repository.JsonFileStore;
 import sistemainventario.repository.ProfileRepository;
-import sistemainventario.repository.BackupRepository;
+import sistemainventario.repository.ZipArchiver;
+import sistemainventario.util.FileUtil;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 /**
  * Casos de uso de copias de seguridad: crear, listar, restaurar y eliminar.
  *
- * <p><b>SRP:</b> solo coordina el respaldo de la carpeta de datos; la
- * compresión la hace {@link ZipArchiver} y el manejo de archivos .zip
- * {@link BackupRepository}. <b>Bajo acoplamiento:</b> recibe sus
- * dependencias por constructor.</p>
+ * <p><b>SRP:</b> solo coordina el respaldo; la compresión la hace
+ * {@link ZipArchiver}, sacar y reponer los datos {@link DataSnapshot} y guardar
+ * las copias {@link BackupStore} (carpeta con archivos JSON, o tabla RESPALDO
+ * dentro de PostgreSQL u Oracle). <b>OCP:</b> un nuevo lugar para las copias es
+ * otra implementación de {@link BackupStore}, sin tocar este servicio.</p>
  *
  * <p>Antes de restaurar se crea automáticamente una copia del estado actual,
  * para que una restauración equivocada siempre se pueda deshacer.</p>
@@ -36,79 +33,101 @@ public class BackupService {
     public static final String PREFIJO_SEGURIDAD = "TBalance_antes-de-restaurar";
     private static final DateTimeFormatter FORMATO_NOMBRE = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
-    private final Path directorioDatos;
-    private final BackupRepository respaldos;
     private final ZipArchiver archivador;
+    private BackupStore almacen;
+    private DataSnapshot datos;
 
-    public BackupService(Path directorioDatos, BackupRepository respaldos, ZipArchiver archivador) {
-        this.directorioDatos = Objects.requireNonNull(directorioDatos);
-        this.respaldos = Objects.requireNonNull(respaldos);
+    /**
+     * @param almacen    dónde se guardan las copias (carpeta o base de datos)
+     * @param datos      cómo se sacan y reponen los datos
+     * @param archivador compresor .zip
+     */
+    public BackupService(BackupStore almacen, DataSnapshot datos, ZipArchiver archivador) {
+        this.almacen = Objects.requireNonNull(almacen);
+        this.datos = Objects.requireNonNull(datos);
         this.archivador = Objects.requireNonNull(archivador);
     }
 
-    /** @return respaldos guardados, del más reciente al más antiguo */
-    public List<Backup> listar() {
-        return respaldos.listar();
+    /**
+     * Cambia el destino de las copias al cambiar de almacenamiento: con base de
+     * datos las copias quedan en la misma base; con archivos, en la carpeta.
+     *
+     * @param almacen dónde se guardan las copias
+     * @param datos   cómo se sacan y reponen los datos
+     */
+    public void usar(BackupStore almacen, DataSnapshot datos) {
+        this.almacen = Objects.requireNonNull(almacen);
+        this.datos = Objects.requireNonNull(datos);
     }
 
-    /**
-     * Comprime toda la carpeta de datos (perfiles, productos, ventas...).
-     *
-     * @return el respaldo creado
-     */
+    /** @return copias guardadas, de la más reciente a la más antigua */
+    public List<Backup> listar() {
+        return almacen.listar();
+    }
+
+    /** @return la copia creada */
     public Backup crear() {
         return crearConPrefijo(PREFIJO);
     }
 
     /**
-     * Reemplaza los datos actuales por los del respaldo indicado.
-     * Antes guarda una copia automática del estado actual.
+     * Restaura una copia. Antes guarda una copia de seguridad del estado actual.
      *
-     * @param nombre archivo .zip a restaurar
-     * @return la copia automática creada antes de restaurar
-     * @throws ValidationException   si el archivo no existe o no es un respaldo de TBalance
-     * @throws PersistenceException si falla la lectura o escritura
+     * @param nombre copia a restaurar
+     * @return la copia de seguridad que se hizo antes de restaurar
      */
     public Backup restaurar(String nombre) {
-        Path archivo = respaldos.rutaExistente(nombre);
-        Path temporal = crearCarpetaTemporal();
+        Path temporal = FileUtil.carpetaTemporal("tbalance-restaurar-");
         try {
-            archivador.extraer(archivo, temporal);
-            validarContenido(temporal);
+            Path zip = temporal.resolve("copia.zip");
+            almacen.leer(nombre, zip);
+            Path contenido = temporal.resolve("datos");
+            archivador.extraer(zip, contenido);
+            validarContenido(contenido);
             Backup copiaPrevia = crearConPrefijo(PREFIJO_SEGURIDAD);
-            reemplazarDatos(temporal);
+            datos.restaurarDesde(contenido);
             return copiaPrevia;
         } finally {
-            borrarCarpeta(temporal);
+            FileUtil.borrarCarpeta(temporal);
         }
     }
 
-    /**
-     * @param nombre archivo .zip a eliminar
-     */
+    /** @param nombre copia a borrar */
     public void eliminar(String nombre) {
-        respaldos.eliminar(nombre);
+        almacen.eliminar(nombre);
     }
 
-    /** @return ruta de la carpeta donde se guardan los respaldos */
+    /** @return la carpeta de las copias, o {@code null} si están en la base de datos */
     public Path getCarpetaRespaldos() {
-        return respaldos.getCarpeta();
+        return almacen.carpeta();
+    }
+
+    /** @return dónde están las copias, para mostrarlo */
+    public String getUbicacion() {
+        return almacen.ubicacion();
     }
 
     private Backup crearConPrefijo(String prefijo) {
-        Path destino = nombreDisponible(prefijo);
-        archivador.comprimir(directorioDatos, destino);
-        return respaldos.describir(destino);
+        String nombre = nombreDisponible(prefijo);
+        Path carpeta = datos.prepararCarpeta();
+        Path temporal = FileUtil.carpetaTemporal("tbalance-zip-");
+        try {
+            Path zip = temporal.resolve(nombre);
+            archivador.comprimir(carpeta, zip);
+            return almacen.guardar(nombre, zip);
+        } finally {
+            datos.liberarCarpeta(carpeta);
+            FileUtil.borrarCarpeta(temporal);
+        }
     }
 
-    /** Evita sobrescribir un respaldo creado en el mismo segundo. */
-    private Path nombreDisponible(String prefijo) {
+    private String nombreDisponible(String prefijo) {
         String base = prefijo + "_" + LocalDateTime.now().format(FORMATO_NOMBRE);
-        Path destino = respaldos.rutaNueva(base + ".zip");
-        for (int n = 2; Files.exists(destino); n++) {
-            destino = respaldos.rutaNueva(base + "-" + n + ".zip");
+        String nombre = base + ".zip";
+        for (int n = 2; almacen.existe(nombre); n++) {
+            nombre = base + "-" + n + ".zip";
         }
-        return destino;
+        return nombre;
     }
 
     private void validarContenido(Path carpeta) {
@@ -116,44 +135,6 @@ public class BackupService {
         boolean tieneConfiguracion = Files.isRegularFile(carpeta.resolve(GlobalConfigRepository.ARCHIVO));
         if (!tienePerfiles && !tieneConfiguracion) {
             throw new ValidationException("El archivo no es una copia de seguridad de TBalance");
-        }
-    }
-
-    private void reemplazarDatos(Path origen) {
-        borrarCarpeta(directorioDatos);
-        JsonFileStore.crearDirectorio(directorioDatos);
-        try (Stream<Path> rutas = Files.walk(origen)) {
-            for (Path ruta : rutas.toList()) {
-                Path destino = directorioDatos.resolve(origen.relativize(ruta).toString());
-                if (Files.isDirectory(ruta)) {
-                    JsonFileStore.crearDirectorio(destino);
-                } else {
-                    Files.copy(ruta, destino);
-                }
-            }
-        } catch (IOException e) {
-            throw new PersistenceException("No se pudieron restaurar los datos", e);
-        }
-    }
-
-    private Path crearCarpetaTemporal() {
-        try {
-            return Files.createTempDirectory(respaldos.getCarpeta(), "restaurando-");
-        } catch (IOException e) {
-            throw new PersistenceException("No se pudo preparar la restauracion", e);
-        }
-    }
-
-    private void borrarCarpeta(Path carpeta) {
-        if (!Files.exists(carpeta)) {
-            return;
-        }
-        try (Stream<Path> rutas = Files.walk(carpeta)) {
-            for (Path ruta : rutas.sorted(Comparator.reverseOrder()).toList()) {
-                Files.deleteIfExists(ruta);
-            }
-        } catch (IOException e) {
-            throw new PersistenceException("No se pudo limpiar la carpeta " + carpeta.getFileName(), e);
         }
     }
 }
