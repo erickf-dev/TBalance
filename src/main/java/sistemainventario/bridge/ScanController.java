@@ -2,6 +2,9 @@ package sistemainventario.bridge;
 
 import sistemainventario.AppContext;
 import sistemainventario.dispositivo.Camera;
+import sistemainventario.dispositivo.CameraProvider;
+import sistemainventario.dispositivo.PhoneLink;
+import sistemainventario.util.QrGenerator;
 import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Product;
 import sistemainventario.service.QrSaleScanner;
@@ -12,7 +15,6 @@ import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 
 /**
  * <b>GRASP Controller</b> del caso de uso "registrar venta por QR".
@@ -39,16 +41,48 @@ public class ScanController {
     private static final long ESPERA_SESION_ANTERIOR_MS = 3000;
 
     private final AppContext contexto;
-    private final Supplier<Camera> fabricaCamara;
+    private final CameraProvider camaras;
+    private volatile String camaraElegida;
     private final ViewNotifier vista;
+    private final PhoneLink celular;
 
     private AtomicBoolean sesionActiva;
     private Thread hiloActual;
 
-    public ScanController(AppContext contexto, Supplier<Camera> fabricaCamara, ViewNotifier vista) {
+    /**
+     * @param contexto contexto de la aplicación
+     * @param camaras  cámaras disponibles (webcam o celular)
+     * @param vista    canal para avisar a la página
+     * @param celular  conexión con el celular por Wi-Fi
+     */
+    public ScanController(AppContext contexto, CameraProvider camaras, ViewNotifier vista, PhoneLink celular) {
         this.contexto = contexto;
-        this.fabricaCamara = fabricaCamara;
+        this.camaras = camaras;
         this.vista = vista;
+        this.celular = celular;
+    }
+
+    /**
+     * Prepara la conexión con el celular: abre el servidor en la red local y
+     * devuelve el código QR que el celular debe escanear para conectarse.
+     *
+     * @return JSON {@code {direccion, qr}} (qr es una imagen PNG en Base64), o un error
+     */
+    public String prepararCelular() {
+        return BridgeResponse.ejecutar(() -> {
+            contexto.requerirServiciosActivos();
+            String direccion = celular.iniciar();
+            BufferedImage codigo = new QrGenerator().generar(direccion, 260);
+            Map<String, Object> datos = new LinkedHashMap<>();
+            datos.put("direccion", direccion);
+            datos.put("qr", ImageEncoder.aPngDataUri(codigo));
+            return BridgeResponse.json(datos);
+        });
+    }
+
+    /** @return {@code true} si el celular está enviando imágenes */
+    public boolean celularConectado() {
+        return celular.celularConectado();
     }
 
     /**
@@ -72,6 +106,41 @@ public class ScanController {
     }
 
     /**
+     * Enciende una cámara concreta (por ejemplo, el celular usado como cámara web).
+     *
+     * @param nombre nombre de la cámara, o vacío para la predeterminada
+     * @return {@code "OK"}, o un error si no hay perfil activo
+     */
+    public synchronized String iniciarEscaneoQRCon(String nombre) {
+        String elegida = nombre == null || nombre.isBlank() || "null".equals(nombre) ? null : nombre;
+        if (!java.util.Objects.equals(elegida, camaraElegida) && sesionActiva != null) {
+            // Cambio de cámara: se apaga la actual y la nueva espera a que la suelte.
+            sesionActiva.set(false);
+        }
+        camaraElegida = elegida;
+        return iniciarEscaneoQR();
+    }
+
+    /**
+     * Busca las cámaras en segundo plano (puede tardar unos segundos) y avisa a la
+     * vista con {@code tbCamarasDisponibles(["...", ...])}.
+     *
+     * @return {@code "OK"}
+     */
+    public String listarCamaras() {
+        Thread hilo = new Thread(() -> {
+            try {
+                avisar("tbCamarasDisponibles(" + BridgeResponse.json(camaras.listar()) + ")");
+            } catch (RuntimeException e) {
+                avisar("tbCamarasDisponibles([])");
+            }
+        }, "buscar-camaras");
+        hilo.setDaemon(true);
+        hilo.start();
+        return BridgeResponse.OK;
+    }
+
+    /**
      * Apaga la cámara. No falla si ya estaba apagada.
      *
      * @return {@code "OK"}
@@ -90,40 +159,49 @@ public class ScanController {
 
     private void escanear(AtomicBoolean sesion, Thread anterior) {
         esperarA(anterior);
-        Camera camara = fabricaCamara.get();
-        QrSaleScanner escaner = new QrSaleScanner(new QrReader());
+        Camera camara = camaras.crear(camaraElegida);
+        QrSaleScanner escaner = new QrSaleScanner(new QrReader()).conNombresDeNegocio(
+                id -> contexto.getGestorPerfiles().buscarPorId(id).map(p -> p.getNombre()));
         try {
             camara.abrir();
-            avisar("tbCamaraLista()");
+            avisarSiEsActual(sesion, "tbCamaraLista()");
             while (sesion.get()) {
                 BufferedImage cuadro = camara.capturar();
                 if (cuadro != null) {
                     avisar("tbCuadroCamara(" + BridgeResponse.literalJs(
                             ImageEncoder.aJpegDataUri(cuadro, ANCHO_VISTA_PREVIA)) + ")");
-                    buscarProducto(escaner, cuadro);
+                    buscarProducto(escaner, cuadro, camara);
                 }
                 Thread.sleep(PAUSA_ENTRE_CUADROS_MS);
             }
         } catch (ValidationException e) {
-            avisar("tbErrorCamara(" + BridgeResponse.literalJs(e.getMessage()) + ")");
+            avisarSiEsActual(sesion, "tbErrorCamara(" + BridgeResponse.literalJs(e.getMessage()) + ")");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (RuntimeException e) {
             System.err.println("[EscaneoController] " + e);
-            avisar("tbErrorCamara(" + BridgeResponse.literalJs("Error con la camara: " + e.getMessage()) + ")");
+            avisarSiEsActual(sesion, "tbErrorCamara(" + BridgeResponse.literalJs("Error con la camara: " + e.getMessage()) + ")");
         } finally {
             camara.cerrar();
             sesion.set(false);
-            avisar("tbCamaraDetenida()");
+            avisarSiEsActual(sesion, "tbCamaraDetenida()");
         }
     }
 
-    private void buscarProducto(QrSaleScanner escaner, BufferedImage cuadro) {
+    private void buscarProducto(QrSaleScanner escaner, BufferedImage cuadro, Camera camara) {
         try {
-            escaner.procesar(cuadro, contexto.requerirServiciosActivos().inventario())
-                    .ifPresent(producto -> avisar("tbProductoEscaneado(" + BridgeResponse.json(resumen(producto)) + ")"));
+            escaner.procesar(cuadro, contexto.requerirServiciosActivos().inventario(), contexto.getPerfilActivoId())
+                    .ifPresent(lectura -> {
+                        avisar("tbProductoEscaneado(" + BridgeResponse.json(resumen(lectura.producto())) + ")");
+                        camara.avisar(lectura.producto().getNombre() + " agregado", true);
+                        if (lectura.aviso() != null) {
+                            avisar("tbAvisoEscaneo(" + BridgeResponse.literalJs(lectura.aviso()) + ")");
+                            camara.avisar(lectura.aviso(), false);
+                        }
+                    });
         } catch (ValidationException e) {
             avisar("tbAvisoEscaneo(" + BridgeResponse.literalJs(e.getMessage()) + ")");
+            camara.avisar(e.getMessage(), false);
         }
     }
 
@@ -146,6 +224,20 @@ public class ScanController {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Avisa a la vista solo si la sesión sigue siendo la actual: al cambiar de
+     * cámara, la sesión anterior puede terminar después de que la nueva ya
+     * arrancó, y su "cámara detenida" apagaría la vista de la nueva.
+     */
+    private void avisarSiEsActual(AtomicBoolean sesion, String script) {
+        synchronized (this) {
+            if (sesionActiva != sesion) {
+                return;
+            }
+        }
+        avisar(script);
     }
 
     private void avisar(String script) {
