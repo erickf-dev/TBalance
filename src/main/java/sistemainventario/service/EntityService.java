@@ -1,12 +1,14 @@
 package sistemainventario.service;
 
 import sistemainventario.exception.ValidationException;
+import sistemainventario.model.Deshabilitable;
 import sistemainventario.model.IdentifiedEntity;
 import sistemainventario.repository.Repository;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Servicio base para las entidades con CRUD simple (productos, categorías y
@@ -29,13 +31,26 @@ public abstract class EntityService<T extends IdentifiedEntity> {
 
     protected final Repository<T> repositorio;
 
+    /**
+     * Si otro equipo cambió los datos en la base, los vuelve a leer. Se usa
+     * antes de vender o sacar mercancía, para revisar el stock real.
+     */
+    public void refrescar() {
+        repositorio.refrescar();
+    }
+
     protected EntityService(Repository<T> repositorio) {
         this.repositorio = Objects.requireNonNull(repositorio, "El repositorio es obligatorio");
     }
 
     /** @return todas las entidades del perfil activo */
     public List<T> listarTodos() {
-        return repositorio.listarTodos();
+        return repositorio.listarTodos().stream().filter(EntityService::habilitado).collect(Collectors.toList());
+    }
+
+    /** @return los registros deshabilitados (borrado lógico), para poder volver a habilitarlos */
+    public List<T> listarDeshabilitados() {
+        return repositorio.listarTodos().stream().filter(e -> !habilitado(e)).collect(Collectors.toList());
     }
 
     /**
@@ -71,7 +86,9 @@ public abstract class EntityService<T extends IdentifiedEntity> {
         if (!entidad.tieneId()) {
             entidad.setId(generarId());
         }
-        if (repositorio.existe(entidad.getId())) {
+        Optional<T> guardado = repositorio.buscarPorId(entidad.getId());
+        if (guardado.isPresent()) {
+            conservarEstado(guardado.get(), entidad);
             repositorio.actualizar(entidad);
         } else {
             repositorio.agregar(entidad);
@@ -83,8 +100,45 @@ public abstract class EntityService<T extends IdentifiedEntity> {
      * @param id identificador
      * @return {@code true} si la entidad existía y fue eliminada
      */
-    public boolean eliminar(String id) {
-        return repositorio.eliminar(id);
+    /**
+     * Borrado lógico: deshabilita o vuelve a habilitar el registro. Nada se borra,
+     * así se conserva el historial (ventas, entradas, salidas) que lo menciona.
+     *
+     * @param id     ID del registro
+     * @param activo {@code false} para deshabilitar, {@code true} para habilitar
+     * @return el registro con su nuevo estado
+     * @throws ValidationException si no existe o no se puede deshabilitar
+     */
+    public T cambiarEstado(String id, boolean activo) {
+        T entidad = obtener(id);
+        if (!(entidad instanceof Deshabilitable registro)) {
+            throw new ValidationException(nombreEntidad() + " no se puede deshabilitar");
+        }
+        if (!activo) {
+            validarDeshabilitar(entidad);
+        }
+        registro.setActivo(activo);
+        repositorio.actualizar(entidad);
+        return entidad;
+    }
+
+    /**
+     * Reglas extra antes de deshabilitar. Por defecto ninguna.
+     *
+     * @param entidad registro que se va a deshabilitar
+     */
+    protected void validarDeshabilitar(T entidad) {
+    }
+
+    /** Editar un registro no cambia si está habilitado: eso solo lo hace {@link #cambiarEstado}. */
+    private static void conservarEstado(Object anterior, Object nuevo) {
+        if (anterior instanceof Deshabilitable antes && nuevo instanceof Deshabilitable despues) {
+            despues.setActivo(antes.isActivo());
+        }
+    }
+
+    private static boolean habilitado(Object entidad) {
+        return !(entidad instanceof Deshabilitable registro) || registro.isActivo();
     }
 
     /** Paso variable: reglas de validación propias de la entidad. */

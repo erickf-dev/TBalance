@@ -17,18 +17,28 @@ import java.util.Map;
  * <p><b>GRASP Experto:</b> conoce todos sus ítems, por lo que calcula el
  * total, las unidades y las cantidades agrupadas por producto.</p>
  */
-public class Sale extends IdentifiedEntity {
+public class Sale extends IdentifiedEntity implements Anulable {
 
     public static final String PREFIJO_ID = "VTA";
     public static final String ESTADO_COMPLETADA = "COMPLETADA";
 
     private String cliente;
+    /** Cédula u otro documento del cliente; obligatoria cuando la venta es fiada. */
+    private String clienteDocumento;
     private String metodoPago;
     private String observacion;
     /** Número de comprobante de un pago digital (Nequi, Daviplata, tarjeta...); opcional. */
     private String referenciaPago;
     private String fecha;
     private String estado;
+    private String fechaAnulacion;
+    private String motivoAnulacion;
+    private String anuladaPor;
+    /** Quién registró la venta (para que el cajero solo anule las suyas). */
+    private String usuarioId;
+    private String vendedor;
+    /** Fecha y hora exactas en que se registró (la fecha de la venta es solo el día). */
+    private String fechaRegistro;
     private List<SaleItem> items = new ArrayList<>();
     private double total;
 
@@ -141,6 +151,14 @@ public class Sale extends IdentifiedEntity {
         this.cliente = cliente;
     }
 
+    public String getClienteDocumento() {
+        return clienteDocumento;
+    }
+
+    public void setClienteDocumento(String clienteDocumento) {
+        this.clienteDocumento = clienteDocumento;
+    }
+
     public String getMetodoPago() {
         return metodoPago;
     }
@@ -151,8 +169,9 @@ public class Sale extends IdentifiedEntity {
 
     /**
      * Deja el método de pago con su nombre oficial y revisa sus reglas: un
-     * fiado necesita el nombre del cliente y solo los pagos digitales llevan
-     * comprobante.
+     * fiado necesita el nombre y la cédula del cliente (para saber quién debe),
+     * una venta de contado sin cliente queda como "Consumidor final" y solo los
+     * pagos digitales llevan comprobante.
      *
      * @throws ValidationException si el método no se reconoce o falta el cliente del fiado
      */
@@ -163,6 +182,15 @@ public class Sale extends IdentifiedEntity {
         if (metodo == PaymentMethod.FIADO && (cliente == null || cliente.isBlank()
                 || cliente.trim().toLowerCase().startsWith("cliente"))) {
             throw new ValidationException("Para fiar escriba el nombre del cliente");
+        }
+        String documento = clienteDocumento == null ? "" : clienteDocumento.replaceAll("[\\s.]", "");
+        if (metodo == PaymentMethod.FIADO && !documento.matches("[0-9A-Za-z-]{5,15}")) {
+            throw new ValidationException("Para fiar escriba la cédula del cliente");
+        }
+        clienteDocumento = documento.isEmpty() ? null : documento;
+        if (metodo != PaymentMethod.FIADO && (cliente == null || cliente.isBlank()
+                || cliente.trim().equalsIgnoreCase("cliente"))) {
+            cliente = "Consumidor final";
         }
         if (!metodo.esDigital() || referenciaPago == null || referenciaPago.isBlank()) {
             referenciaPago = null;
@@ -210,5 +238,77 @@ public class Sale extends IdentifiedEntity {
 
     public void setItems(List<SaleItem> items) {
         this.items = items == null ? new ArrayList<>() : new ArrayList<>(items);
+    }
+
+    @Override
+    public boolean isAnulada() {
+        return ANULADA.equals(estado);
+    }
+
+    @Override
+    public String getFechaAnulacion() {
+        return fechaAnulacion;
+    }
+
+    @Override
+    public String getMotivoAnulacion() {
+        return motivoAnulacion;
+    }
+
+    @Override
+    public void anular(String fecha, String motivo) {
+        if (isAnulada()) {
+            throw new ValidationException("Ya estaba anulada");
+        }
+        if (motivo == null || motivo.isBlank()) {
+            throw new ValidationException("Escriba el motivo de la anulación");
+        }
+        this.estado = ANULADA;
+        this.fechaAnulacion = fecha;
+        this.motivoAnulacion = motivo.trim();
+    }
+
+    /**
+     * @param fechaAnulacion fecha de la anulación (al leer de la base)
+     * @param motivoAnulacion motivo de la anulación (al leer de la base)
+     */
+    public void setAnulacion(String fechaAnulacion, String motivoAnulacion) {
+        this.fechaAnulacion = fechaAnulacion;
+        this.motivoAnulacion = motivoAnulacion;
+    }
+
+    @Override
+    public String getAnuladaPor() {
+        return anuladaPor;
+    }
+
+    @Override
+    public void setAnuladaPor(String anuladaPor) {
+        this.anuladaPor = anuladaPor;
+    }
+
+    public String getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(String usuarioId) {
+        this.usuarioId = usuarioId;
+    }
+
+    /** @return nombre de quien vendió, o {@code null} en ventas de antes del login */
+    public String getVendedor() {
+        return vendedor;
+    }
+
+    public void setVendedor(String vendedor) {
+        this.vendedor = vendedor;
+    }
+
+    public String getFechaRegistro() {
+        return fechaRegistro;
+    }
+
+    public void setFechaRegistro(String fechaRegistro) {
+        this.fechaRegistro = fechaRegistro;
     }
 }

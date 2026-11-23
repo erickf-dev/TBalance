@@ -33,9 +33,20 @@ public class CatalogController {
                 categorias().guardar(JsonUtil.fromJson(jsonCategoria, Category.class)));
     }
 
-    public String eliminarCategoria(String id) {
-        return BridgeResponse.ejecutar(() ->
-                categorias().eliminar(id) ? BridgeResponse.OK : BridgeResponse.error("Categoria no encontrada"));
+    /** @return categorías deshabilitadas del perfil activo */
+    public String obtenerCategoriasDeshabilitadas() {
+        return contexto.getServiciosActivos()
+                .map(servicios -> BridgeResponse.json(servicios.categorias().listarDeshabilitados()))
+                .orElse(LISTA_VACIA);
+    }
+
+    /**
+     * @param id     ID de la categoría
+     * @param activa {@code "true"} para habilitar, {@code "false"} para deshabilitar
+     * @return {@code "OK"} o {@code "ERROR: ..."}
+     */
+    public String cambiarEstadoCategoria(String id, String activa) {
+        return BridgeResponse.ejecutarOk(() -> categorias().cambiarEstado(id, Boolean.parseBoolean(activa)));
     }
 
     // ── Proveedores ─────────────────────────────────────────────────────
@@ -51,9 +62,20 @@ public class CatalogController {
                 proveedores().guardar(JsonUtil.fromJson(jsonProveedor, Supplier.class)));
     }
 
-    public String eliminarProveedor(String id) {
-        return BridgeResponse.ejecutar(() ->
-                proveedores().eliminar(id) ? BridgeResponse.OK : BridgeResponse.error("Proveedor no encontrado"));
+    /** @return proveedores deshabilitados del perfil activo */
+    public String obtenerProveedoresDeshabilitados() {
+        return contexto.getServiciosActivos()
+                .map(servicios -> BridgeResponse.json(servicios.proveedores().listarDeshabilitados()))
+                .orElse(LISTA_VACIA);
+    }
+
+    /**
+     * @param id     ID del proveedor
+     * @param activo {@code "true"} para habilitar, {@code "false"} para deshabilitar
+     * @return {@code "OK"} o {@code "ERROR: ..."}
+     */
+    public String cambiarEstadoProveedor(String id, String activo) {
+        return BridgeResponse.ejecutarOk(() -> proveedores().cambiarEstado(id, Boolean.parseBoolean(activo)));
     }
 
     private CategoryService categorias() {

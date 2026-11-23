@@ -62,11 +62,13 @@ public class ProfileService {
      * @return ID del perfil a cargar, o vacío si no hay perfiles
      */
     public Optional<String> resolverPerfilInicial() {
-        Optional<String> activo = configuracion.getPerfilActivoId().filter(perfiles::existe);
+        Optional<String> activo = configuracion.getPerfilActivoId()
+                .filter(id -> perfiles.buscarPorId(id).filter(Profile::isActivo).isPresent());
         if (activo.isPresent()) {
             return activo;
         }
-        Optional<String> primero = perfiles.listarTodos().stream().map(Profile::getId).findFirst();
+        Optional<String> primero = perfiles.listarTodos().stream().filter(Profile::isActivo)
+                .map(Profile::getId).findFirst();
         primero.ifPresent(configuracion::establecerPerfilActivo);
         return primero;
     }
@@ -89,6 +91,7 @@ public class ProfileService {
                 TextUtil.recortar(datos.getDescripcion()),
                 datos.getColor(),
                 datos.getTipoNegocio());
+        perfil.copiarAjustesDePago(datos);
         perfil.validar();
         perfiles.agregar(perfil);
         directorios.crear(perfil.getId());
@@ -114,25 +117,46 @@ public class ProfileService {
     public Profile actualizar(Profile cambios) {
         Profile perfil = obtener(cambios == null ? null : cambios.getId());
         perfil.actualizarDatos(cambios.getNombre(), cambios.getDescripcion(), cambios.getColor());
+        perfil.copiarAjustesDePago(cambios);
         perfiles.actualizar(perfil);
         sincronizarConfiguracion();
         return perfil;
     }
 
     /**
-     * Elimina el perfil y todos sus datos. Si era el activo, deja el sistema
-     * sin perfil activo.
+     * Deshabilita un negocio (borrado lógico): sus productos, ventas y demás
+     * datos se conservan y se puede volver a habilitar. Si era el activo, se
+     * activa otro negocio habilitado.
+     *
+     * @param id ID del perfil
+     * @throws ValidationException si no existe o es el único habilitado
+     */
+    public void deshabilitar(String id) {
+        Profile perfil = obtener(id);
+        Optional<String> otro = perfiles.listarTodos().stream()
+                .filter(p -> p.isActivo() && !p.getId().equals(id))
+                .map(Profile::getId).findFirst();
+        if (otro.isEmpty()) {
+            throw new ValidationException("Debe quedar al menos un negocio habilitado");
+        }
+        perfil.setActivo(false);
+        perfiles.actualizar(perfil);
+        if (configuracion.getPerfilActivoId().filter(id::equals).isPresent()) {
+            configuracion.establecerPerfilActivo(otro.get());
+        }
+        sincronizarConfiguracion();
+    }
+
+    /**
+     * Vuelve a habilitar un negocio deshabilitado.
      *
      * @param id ID del perfil
      * @throws ValidationException si el perfil no existe
      */
-    public void eliminar(String id) {
-        obtener(id);
-        perfiles.eliminar(id);
-        directorios.eliminar(id);
-        if (configuracion.getPerfilActivoId().filter(id::equals).isPresent()) {
-            configuracion.establecerPerfilActivo(null);
-        }
+    public void habilitar(String id) {
+        Profile perfil = obtener(id);
+        perfil.setActivo(true);
+        perfiles.actualizar(perfil);
         sincronizarConfiguracion();
     }
 
@@ -146,7 +170,9 @@ public class ProfileService {
             configuracion.establecerPerfilActivo(null);
             return Optional.empty();
         }
-        obtener(id);
+        if (!obtener(id).isActivo()) {
+            throw new ValidationException("Ese negocio está deshabilitado. Habilítelo en Mis negocios.");
+        }
         configuracion.establecerPerfilActivo(id);
         return Optional.of(fabricaServicios.crear(id));
     }
@@ -159,12 +185,27 @@ public class ProfileService {
         return fabricaServicios.crear(id);
     }
 
+    /**
+     * Revisa la categoría de los productos de todos los negocios (los datos de
+     * versiones en que era opcional quedan en "Sin categoría").
+     *
+     * @return cuántos productos se corrigieron en total
+     */
+    public int normalizarCategorias() {
+        return perfiles.listarTodos().stream()
+                .mapToInt(perfil -> fabricaServicios.normalizarCategorias(perfil.getId())).sum();
+    }
+
     private Profile obtener(String id) {
         return perfiles.buscarPorId(id)
                 .orElseThrow(() -> new ValidationException("Perfil no encontrado"));
     }
 
-    private void sincronizarConfiguracion() {
+    /**
+     * Copia la lista de perfiles al archivo de configuración. Al abrir una base
+     * de datos que ya tiene negocios, evita que TBalance crea que es la primera vez.
+     */
+    public void sincronizarConfiguracion() {
         configuracion.sincronizarPerfiles(perfiles.listarTodos());
     }
 }

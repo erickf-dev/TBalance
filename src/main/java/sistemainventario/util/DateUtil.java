@@ -55,4 +55,19 @@ public final class DateUtil {
     public static String formatearFecha(String fechaIso) {
         return parsear(fechaIso).map(f -> f.format(FORMATO_VISUAL)).orElse(fechaIso);
     }
+
+    /**
+     * @param momentoIso fecha y hora en formato {@code yyyy-MM-dd'T'HH:mm:ss} (los segundos son opcionales)
+     * @return el momento, o {@link Optional#empty()} si es nulo o inválido
+     */
+    public static Optional<LocalDateTime> parsearMomento(String momentoIso) {
+        if (TextUtil.esVacio(momentoIso)) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(LocalDateTime.parse(momentoIso.trim()));
+        } catch (DateTimeParseException e) {
+            return Optional.empty();
+        }
+    }
 }
