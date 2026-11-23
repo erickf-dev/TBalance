@@ -25,7 +25,7 @@ public final class BridgeResponse {
 
     /** @return el objeto serializado como JSON */
     public static String json(Object objeto) {
-        return JsonUtil.toJson(objeto);
+        return JsonUtil.toJsonCompacto(objeto);
     }
 
     /** @return mensaje de error en el formato que entiende la vista */
