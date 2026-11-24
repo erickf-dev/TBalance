@@ -8,8 +8,8 @@ import sistemainventario.model.DatabaseEngine;
 import sistemainventario.model.DatabaseSettings;
 
 /**
- * Casos de uso de "Dónde se guardan los datos": ver la configuración, probar la
- * conexión y cambiar entre archivos, PostgreSQL y Oracle.
+ * Casos de uso de "Conexión con Oracle": ver la configuración, probar la
+ * conexión con Oracle y cambiarla.
  *
  * <p>La clave de la base nunca se envía a la vista: solo se informa si hay una
  * guardada. Si el usuario deja la clave vacía, se conserva la anterior.</p>
@@ -36,27 +36,24 @@ public class StorageController {
         return BridgeResponse.ejecutar(() -> String.valueOf(contexto.revisarCambiosDeOtrosEquipos()));
     }
 
-    /** @return JSON con el motor, la URL, el usuario, el almacenamiento en uso, el aviso pendiente y los motores */
+    /** @return JSON con la URL, el usuario, si hay conexión y el aviso pendiente */
     public String obtenerAlmacenamiento() {
         return BridgeResponse.ejecutar(() -> {
             DatabaseSettings config = contexto.getAjustesBaseDeDatos();
             JsonObject json = new JsonObject();
-            json.addProperty("motor", config.motor().name());
+            json.addProperty("motor", "ORACLE");
             json.addProperty("url", config.url());
             json.addProperty("usuario", config.usuario());
             json.addProperty("tieneClave", !config.clave().isEmpty());
             json.addProperty("enUso", contexto.getAlmacenEnUso());
             json.addProperty("aviso", contexto.getAvisoAlmacenamiento());
-            json.addProperty("avisoEsError", config.usaBaseDeDatos()
-                    && !contexto.getAlmacenEnUso().equals(config.motor().getEtiqueta()));
+            json.addProperty("avisoEsError", !contexto.estaConectado());
             JsonArray motores = new JsonArray();
-            for (DatabaseEngine motor : DatabaseEngine.values()) {
-                JsonObject item = new JsonObject();
-                item.addProperty("id", motor.name());
-                item.addProperty("etiqueta", motor.getEtiqueta());
-                item.addProperty("urlPorDefecto", motor.getUrlPorDefecto());
-                motores.add(item);
-            }
+            JsonObject oracle = new JsonObject();
+            oracle.addProperty("id", "ORACLE");
+            oracle.addProperty("etiqueta", DatabaseEngine.ORACLE.getEtiqueta());
+            oracle.addProperty("urlPorDefecto", DatabaseEngine.ORACLE.getUrlPorDefecto());
+            motores.add(oracle);
             json.add("motores", motores);
             return json.toString();
         });
@@ -94,15 +91,12 @@ public class StorageController {
      */
     public String conectarBaseExistente(String datosJson) {
         return BridgeResponse.ejecutar(() -> {
-            if (!contexto.getUsuarios().esPrimeraVez()) {
+            // sin sesión solo se puede conectar si todavía no hay conexión o la base no tiene usuarios
+            if (contexto.estaConectado() && !contexto.getUsuarios().esPrimeraVez()) {
                 throw new sistemainventario.exception.ValidationException(
-                        "Este computador ya tiene usuarios. Entre como dueño y cambie la base en Copias de seguridad.");
+                        "TBalance ya está conectado con Oracle. Entre como dueño y cambie la conexión en Copias de seguridad.");
             }
             DatabaseSettings config = leer(datosJson);
-            if (!config.usaBaseDeDatos()) {
-                throw new sistemainventario.exception.ValidationException("Elija PostgreSQL u Oracle");
-            }
-            contexto.getAlmacenamiento().probar(config);
             String mensaje = contexto.cambiarAlmacenamiento(config);
             notificador.ejecutarScript("onPerfilesActualizados()");
             return mensaje;
@@ -111,13 +105,11 @@ public class StorageController {
 
     private DatabaseSettings leer(String datosJson) {
         JsonObject json = JsonParser.parseString(datosJson).getAsJsonObject();
-        DatabaseEngine motor = DatabaseEngine.desde(texto(json, "motor"));
         String clave = texto(json, "clave");
-        DatabaseSettings actual = contexto.getAjustesBaseDeDatos();
-        if (clave.isEmpty() && actual.motor() == motor) {
-            clave = actual.clave();
+        if (clave.isEmpty()) {
+            clave = contexto.getAjustesBaseDeDatos().clave();
         }
-        return new DatabaseSettings(motor, texto(json, "url"), texto(json, "usuario"), clave);
+        return new DatabaseSettings(texto(json, "url"), texto(json, "usuario"), clave);
     }
 
     private static String texto(JsonObject json, String campo) {

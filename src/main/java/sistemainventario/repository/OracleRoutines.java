@@ -93,17 +93,17 @@ public class OracleRoutines implements DatabaseRoutines {
 
     @Override
     public double saldoCliente(String claveCliente) {
-        return bd.funcionNumerica("{? = call FN_SALDO_CLIENTE(?, ?)}", perfilId, claveCliente);
+        return bd.llamarDecimal("FN_SALDO_CLIENTE", perfilId, claveCliente);
     }
 
     @Override
     public double valorInventario() {
-        return bd.funcionNumerica("{? = call FN_VALOR_INVENTARIO(?)}", perfilId);
+        return bd.llamarDecimal("FN_VALOR_INVENTARIO", perfilId);
     }
 
     @Override
     public double utilidadPeriodo(LocalDate desde, LocalDate hasta) {
-        return bd.funcionNumerica("{? = call FN_UTILIDAD_PERIODO(?, ?, ?)}", perfilId,
+        return bd.llamarDecimal("FN_UTILIDAD_PERIODO", perfilId,
                 Date.valueOf(desde), Date.valueOf(hasta));
     }
 

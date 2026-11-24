@@ -23,13 +23,13 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
- * Repositorio genérico sobre una tabla de PostgreSQL u Oracle (DAO con JDBC).
+ * Repositorio genérico sobre una tabla de Oracle (DAO con JDBC).
  *
- * <p>Implementa la misma interfaz {@link Repository} que {@link JsonRepository},
- * así que los servicios funcionan igual con archivos o con base de datos
- * (polimorfismo). Cada subclase dice su tabla, sus columnas y cómo convertir
- * una fila en objeto; esta clase arma el INSERT, el UPDATE, el DELETE y el
- * SELECT.</p>
+ * <p>No escribe SQL: para leer llama a la función {@code FN_LISTAR_...} de la
+ * tabla, que devuelve un cursor, y para guardar llama a los procedimientos
+ * {@code SP_GUARDAR_<TABLA>} y {@code SP_BORRAR_<TABLA>}, con los parámetros en
+ * el mismo orden de {@link #columnas()}. Cada subclase dice su tabla, sus
+ * columnas, su función de lectura y cómo convertir una fila en objeto.</p>
  *
  * <p>Las tablas de un negocio tienen llave (PERFIL_ID, ID). Los datos del perfil
  * se leen una vez y quedan en memoria para las consultas; cada cambio se
@@ -60,8 +60,11 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
     /** @return nombre de la tabla */
     protected abstract String tabla();
 
-    /** @return columnas que se escriben, sin PERFIL_ID ni ID */
+    /** @return columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) */
     protected abstract List<String> columnas();
+
+    /** @return función de Oracle que devuelve las filas, por ejemplo {@code FN_LISTAR_PRODUCTOS} */
+    protected abstract String funcionListar();
 
     /**
      * @param entidad objeto a guardar
@@ -95,16 +98,6 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
      * @throws SQLException si la base rechaza un cambio
      */
     protected void guardarHijos(Connection conexion, T entidad, boolean nueva) throws SQLException {
-    }
-
-    /**
-     * Prepara el borrado (por ejemplo, quitar referencias). Por defecto no hace nada.
-     *
-     * @param conexion conexión de la transacción
-     * @param id       ID a borrar
-     * @throws SQLException si la base rechaza un cambio
-     */
-    protected void antesDeEliminar(Connection conexion, String id) throws SQLException {
     }
 
     /** Pregunta ya a la base si otro equipo cambió algo y, si es así, recarga. */
@@ -144,7 +137,7 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
         // ya traería la fila nueva y quedaría repetida al agregarla abajo
         List<T> enMemoria = datos();
         bd.transaccion(c -> {
-            Database.actualizar(c, sqlInsertar(), concatenar(llave(entidad.getId()), valores(entidad)));
+            Database.procedimiento(c, "SP_GUARDAR_" + tabla(), concatenar(concatenar(new Object[]{1}, llave(entidad.getId())), valores(entidad)));
             guardarHijos(c, entidad, true);
             return null;
         });
@@ -158,7 +151,7 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
             return false;
         }
         bd.transaccion(c -> {
-            Database.actualizar(c, sqlActualizar(), concatenar(valores(entidad), llave(entidad.getId())));
+            Database.procedimiento(c, "SP_GUARDAR_" + tabla(), concatenar(concatenar(new Object[]{0}, llave(entidad.getId())), valores(entidad)));
             guardarHijos(c, entidad, false);
             return null;
         });
@@ -172,8 +165,7 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
             return false;
         }
         bd.transaccion(c -> {
-            antesDeEliminar(c, id);
-            Database.actualizar(c, "DELETE FROM " + tabla() + " WHERE " + condicionLlave(), llave(id));
+            Database.procedimiento(c, "SP_BORRAR_" + tabla(), llave(id));
             return null;
         });
         datos().removeIf(e -> Objects.equals(id, e.getId()));
@@ -191,17 +183,15 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
     }
 
     /**
-     * @param tablaReferida tabla de la referencia (CATEGORIA o PROVEEDOR)
+     * @param funcionExiste función que dice si existe (FN_EXISTE_CATEGORIA o FN_EXISTE_PROVEEDOR)
      * @param id            ID referido
      * @return el ID si existe en ese negocio; si no, un nulo (para no romper la llave foránea)
      */
-    protected Object referenciaValida(String tablaReferida, String id) {
+    protected Object referenciaValida(String funcionExiste, String id) {
         if (id == null || id.isBlank()) {
             return new Database.Nulo(Types.VARCHAR);
         }
-        int cantidad = bd.consultar("SELECT COUNT(*) FROM " + tablaReferida + " WHERE PERFIL_ID = ? AND ID = ?",
-                fila -> fila.getInt(1), perfilId, id).get(0);
-        return cantidad > 0 ? id : new Database.Nulo(Types.VARCHAR);
+        return bd.llamarNumero(funcionExiste, perfilId, id) > 0 ? id : new Database.Nulo(Types.VARCHAR);
     }
 
     // ---- conversión de valores -------------------------------------------------
@@ -263,7 +253,7 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
         }
     }
 
-    // ---- SQL -------------------------------------------------------------------
+    // ---- lectura y llave -------------------------------------------------------
 
     private List<T> datos() {
         long generacion = bd.revisarCambios(false);
@@ -272,34 +262,12 @@ public abstract class JdbcRepository<T extends IdentifiedEntity> implements Repo
         }
         if (cache == null) {
             generacionCache = generacion;
-            String sql = "SELECT ID, " + String.join(", ", columnas()) + " FROM " + tabla()
-                    + (porPerfil() ? " WHERE PERFIL_ID = ?" : "") + " ORDER BY LENGTH(ID), ID";
-            List<T> leidos = porPerfil() ? bd.consultar(sql, this::leer, perfilId) : bd.consultar(sql, this::leer);
+            List<T> leidos = porPerfil() ? bd.llamar(funcionListar(), this::leer, perfilId)
+                    : bd.llamar(funcionListar(), this::leer);
             completar(leidos);
             cache = Collections.synchronizedList(new ArrayList<>(leidos));
         }
         return cache;
-    }
-
-    private String sqlInsertar() {
-        List<String> todas = new ArrayList<>();
-        if (porPerfil()) {
-            todas.add("PERFIL_ID");
-        }
-        todas.add("ID");
-        todas.addAll(columnas());
-        return "INSERT INTO " + tabla() + " (" + String.join(", ", todas) + ") VALUES ("
-                + String.join(", ", Collections.nCopies(todas.size(), "?")) + ")";
-    }
-
-    private String sqlActualizar() {
-        return "UPDATE " + tabla() + " SET "
-                + columnas().stream().map(c -> c + " = ?").collect(Collectors.joining(", "))
-                + " WHERE " + condicionLlave();
-    }
-
-    private String condicionLlave() {
-        return porPerfil() ? "PERFIL_ID = ? AND ID = ?" : "ID = ?";
     }
 
     private Object[] llave(String id) {

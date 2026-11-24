@@ -31,6 +31,11 @@ public class SaleJdbcRepository extends JdbcRepository<Sale> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_VENTAS";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("CLIENTE", "METODO_PAGO", "OBSERVACION", "REFERENCIA_PAGO", "FECHA", "ESTADO", "TOTAL",
                 "FECHA_ANULACION", "MOTIVO_ANULACION", "ANULADA_POR", "USUARIO_ID", "VENDEDOR", "FECHA_REGISTRO", "CLIENTE_DOCUMENTO");
@@ -69,8 +74,7 @@ public class SaleJdbcRepository extends JdbcRepository<Sale> {
     @Override
     protected void completar(List<Sale> ventas) {
         Map<String, List<SaleItem>> porVenta = new LinkedHashMap<>();
-        bd.consultar("SELECT VENTA_ID, PRODUCTO_ID, NOMBRE_PRODUCTO, CANTIDAD, PRECIO_UNITARIO, COSTO_UNITARIO "
-                        + "FROM DETALLE_VENTA WHERE PERFIL_ID = ? ORDER BY VENTA_ID, LINEA",
+        bd.llamar("FN_LISTAR_DETALLE_VENTAS",
                 fila -> {
                     SaleItem item = new SaleItem();
                     item.setProductoId(fila.getString("PRODUCTO_ID"));
@@ -91,14 +95,11 @@ public class SaleJdbcRepository extends JdbcRepository<Sale> {
     @Override
     protected void guardarHijos(Connection conexion, Sale venta, boolean nueva) throws SQLException {
         if (!nueva) {
-            Database.actualizar(conexion, "DELETE FROM DETALLE_VENTA WHERE PERFIL_ID = ? AND VENTA_ID = ?",
-                    perfilId, venta.getId());
+            Database.procedimiento(conexion, "SP_BORRAR_DETALLE_VENTA", perfilId, venta.getId());
         }
         int linea = 1;
         for (SaleItem item : venta.getItems()) {
-            Database.actualizar(conexion,
-                    "INSERT INTO DETALLE_VENTA (PERFIL_ID, VENTA_ID, LINEA, PRODUCTO_ID, NOMBRE_PRODUCTO, CANTIDAD, "
-                            + "PRECIO_UNITARIO, SUBTOTAL, COSTO_UNITARIO) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            Database.procedimiento(conexion, "SP_AGREGAR_DETALLE_VENTA",
                     perfilId, venta.getId(), linea++, item.getProductoId(), texto(item.getNombreProducto()),
                     item.getCantidad(), item.getPrecioUnitario(), item.getSubtotal(), item.getCostoUnitario());
         }

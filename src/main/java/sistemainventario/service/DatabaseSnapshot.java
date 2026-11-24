@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /**
- * Copias de seguridad cuando los datos están en PostgreSQL u Oracle.
+ * Copias de seguridad de los datos de Oracle.
  *
  * <p>Para comprimir, vuelca las tablas a una carpeta temporal en el mismo
  * formato JSON de siempre (una copia hecha con base de datos se puede

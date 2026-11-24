@@ -9,7 +9,7 @@ import java.util.Objects;
  *
  * <p><b>GRASP Creator:</b> es la clase que posee los datos de inicialización
  * (el ID del perfil) y por eso es responsable de pedir los repositorios al
- * almacenamiento ({@link StorageProvider}: archivos JSON, PostgreSQL u Oracle)
+ * almacenamiento ({@link StorageProvider}: Oracle)
  * e inyectarlos en los gestores. Así ningún gestor sabe dónde se guardan los
  * datos, lo que reduce el acoplamiento.</p>
  */

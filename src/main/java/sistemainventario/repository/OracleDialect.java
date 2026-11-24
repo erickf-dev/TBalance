@@ -1,6 +1,5 @@
 package sistemainventario.repository;
 
-import sistemainventario.model.DatabaseEngine;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -20,29 +19,19 @@ import java.util.regex.Pattern;
  * una línea con "/". Los errores de los disparadores usan los códigos
  * ORA-20000 a ORA-20999 de {@code RAISE_APPLICATION_ERROR}.</p>
  */
-public class OracleDialect implements SqlDialect {
+public class OracleDialect {
 
     private static final Pattern INICIO_PLSQL = Pattern.compile(
             "^(CREATE\\s+(OR\\s+REPLACE\\s+)?(TRIGGER|PROCEDURE|FUNCTION|PACKAGE)|BEGIN|DECLARE)\\b.*",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern COMANDO_SQLPLUS = Pattern.compile("^(SET|PROMPT|SPOOL)\\b.*", Pattern.CASE_INSENSITIVE);
 
-    @Override
-    public DatabaseEngine motor() {
-        return DatabaseEngine.ORACLE;
-    }
-
-    @Override
-    public String carpetaScripts() {
-        return "sql/oracle";
-    }
-
-    @Override
-    public String nombreDriver() {
-        return "ojdbc11 (com.oracle.database.jdbc)";
-    }
-
-    @Override
+    /**
+     * @param conexion conexión abierta
+     * @param tabla    nombre de la tabla
+     * @return {@code true} si la tabla existe en el esquema del usuario (USER_TABLES)
+     * @throws SQLException si falla la consulta al diccionario de datos
+     */
     public boolean tablaExiste(Connection conexion, String tabla) throws SQLException {
         try (PreparedStatement consulta = conexion.prepareStatement(
                 "SELECT COUNT(*) FROM USER_TABLES WHERE TABLE_NAME = ?")) {
@@ -53,7 +42,10 @@ public class OracleDialect implements SqlDialect {
         }
     }
 
-    @Override
+    /**
+     * @param script texto de un archivo .sql
+     * @return sentencias listas para ejecutar, sin ";" ni "/" al final
+     */
     public List<String> separarSentencias(String script) {
         List<String> sentencias = new ArrayList<>();
         StringBuilder actual = new StringBuilder();
@@ -94,7 +86,10 @@ public class OracleDialect implements SqlDialect {
         return sentencias;
     }
 
-    @Override
+    /**
+     * @param error error de JDBC
+     * @return el mensaje de RAISE_APPLICATION_ERROR (códigos -20000 a -20999), si lo es
+     */
     public Optional<String> mensajeDeDisparador(SQLException error) {
         int codigo = error.getErrorCode();
         if (codigo < 20000 || codigo > 20999) {
@@ -104,7 +99,13 @@ public class OracleDialect implements SqlDialect {
         return Optional.of(mensaje.replaceFirst("^ORA-\\d{5}:\\s*", "").trim());
     }
 
-    @Override
+    /**
+     * Revisa si alguna función o procedimiento de TBalance quedó con errores (USER_ERRORS).
+     *
+     * @param conexion conexión abierta
+     * @return el primer error, para mostrarlo; vacío si todo está bien
+     * @throws SQLException si falla la consulta al diccionario de datos
+     */
     public Optional<String> erroresDeRutinas(Connection conexion) throws SQLException {
         try (PreparedStatement consulta = conexion.prepareStatement(
                 "SELECT NAME, LINE, TEXT FROM USER_ERRORS WHERE TYPE IN ('FUNCTION', 'PROCEDURE') "

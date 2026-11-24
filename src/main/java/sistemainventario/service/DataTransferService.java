@@ -9,9 +9,9 @@ import sistemainventario.repository.StorageProvider;
 import java.util.List;
 
 /**
- * Copia todos los negocios de un almacenamiento a otro: de los archivos JSON a
- * PostgreSQL u Oracle la primera vez que se conecta, y de la base a los
- * archivos para las copias de seguridad.
+ * Copia todos los negocios de un almacenamiento a otro, para las copias de
+ * seguridad: de Oracle a los archivos del .zip al crearla, y de esos archivos a
+ * Oracle al restaurarla.
  *
  * <p>Solo usa la interfaz {@link Repository}, así que sirve en cualquier
  * dirección. Copia primero categorías y proveedores, porque los productos los

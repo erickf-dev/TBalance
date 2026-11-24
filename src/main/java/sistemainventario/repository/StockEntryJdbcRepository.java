@@ -23,6 +23,11 @@ public class StockEntryJdbcRepository extends JdbcRepository<StockEntry> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_ENTRADAS";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("PRODUCTO_ID", "CANTIDAD", "FECHA", "PROVEEDOR_ID", "PRECIO_UNITARIO", "OBSERVACION", "ESTADO", "FECHA_REGISTRO", "FECHA_ANULACION", "MOTIVO_ANULACION", "ANULADA_POR");
     }

@@ -3,7 +3,6 @@ package sistemainventario.repository;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import sistemainventario.exception.PersistenceException;
-import sistemainventario.model.DatabaseEngine;
 import sistemainventario.model.DatabaseSettings;
 
 import java.io.IOException;
@@ -12,8 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Guarda en {@code ~/.inventariopro/basedatos.json} qué base de datos usa este
- * computador (motor, URL, usuario y clave).
+ * Guarda en {@code ~/.inventariopro/basedatos.json} cómo se conecta este
+ * computador a Oracle (URL, usuario y clave).
  *
  * <p>Igual que la clave del asistente, está fuera de la carpeta {@code data}:
  * no entra en los respaldos ni en GitHub.</p>
@@ -27,17 +26,16 @@ public class DatabaseSettingsRepository {
         this.archivo = archivo;
     }
 
-    /** @return la configuración guardada o, si no hay, archivos JSON */
+    /** @return la configuración guardada o, si no hay, la de Oracle local sin clave */
     public DatabaseSettings leer() {
         if (!Files.isRegularFile(archivo)) {
-            return DatabaseSettings.ARCHIVOS;
+            return DatabaseSettings.POR_DEFECTO;
         }
         try {
             JsonObject json = JsonParser.parseString(Files.readString(archivo, StandardCharsets.UTF_8)).getAsJsonObject();
-            return new DatabaseSettings(DatabaseEngine.desde(texto(json, "motor")),
-                    texto(json, "url"), texto(json, "usuario"), texto(json, "clave"));
+            return new DatabaseSettings(texto(json, "url"), texto(json, "usuario"), texto(json, "clave"));
         } catch (IOException | RuntimeException e) {
-            return DatabaseSettings.ARCHIVOS;
+            return DatabaseSettings.POR_DEFECTO;
         }
     }
 

@@ -26,8 +26,7 @@ import java.util.Optional;
  *
  * <p>Con Oracle, registrar y anular las hace la base con los procedimientos
  * SP_REGISTRAR_VENTA y SP_ANULAR_VENTA ({@link DatabaseRoutines}); Java solo
- * valida los datos de la venta y el medio de pago. Con archivos JSON y con
- * PostgreSQL todo se hace aquí en Java.</p>
+ * valida los datos de la venta y el medio de pago.</p>
  */
 public class SaleService {
 

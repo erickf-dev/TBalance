@@ -761,15 +761,12 @@
         <div id="bd-tarjeta" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm px-6 py-5 mb-5">
           <div class="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h2 class="text-base font-semibold text-gray-900 dark:text-white">Dónde se guardan los datos</h2>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">Conexión con Oracle</h2>
               <p id="bd-en-uso" class="text-xs text-gray-400 mt-0.5"></p>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:minmax(180px,220px) 1fr 1fr;gap:12px;align-items:end">
-            <div>
-              <label for="bd-motor" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Almacenamiento</label>
-              <select id="bd-motor" onchange="bdCambioMotor()" class="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white"></select>
-            </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end">
+            <input type="hidden" id="bd-motor" value="ORACLE">
             <div class="bd-campo" style="grid-column:span 2">
               <label for="bd-url" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">URL de conexión (JDBC)</label>
               <input id="bd-url" type="text" spellcheck="false" class="w-full px-3 py-2.5 text-sm font-mono border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
@@ -788,7 +785,7 @@
             </div>
           </div>
           <p id="bd-resultado" class="text-sm mt-3 text-gray-600 dark:text-gray-300" role="status" aria-live="polite"></p>
-          <p class="text-xs text-gray-400 mt-2 bd-campo">Primero cree el usuario con el script <span class="font-mono">00</span> de la carpeta <span class="font-mono">src/main/resources/sql</span> (Oracle: SQL Developer como SYSTEM; PostgreSQL: pgAdmin como postgres). Al guardar, TBalance crea las tablas y los disparadores y copia sus negocios; si la base ya tiene negocios, usa esos. La clave queda solo en este computador.</p>
+          <p class="text-xs text-gray-400 mt-2 bd-campo">Primero cree el usuario con el script <span class="font-mono">00_crear_usuario.sql</span> de la carpeta <span class="font-mono">src/main/resources/sql/oracle</span> (SQL Developer, conectado como SYSTEM). Al guardar, TBalance crea las tablas, los disparadores, las funciones y los procedimientos; si la base ya tiene negocios, usa esos. La clave queda solo en este computador.</p>
         </div>
         <div class="flex items-start gap-3 bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800 rounded-2xl px-5 py-4 mb-5">
           <svg class="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -4494,7 +4491,7 @@ function restaurarRespaldo(nombre) {
   showToast('Copia restaurada. Copia previa guardada como ' + JSON.parse(r).nombre);
 }
 
-// ── BASE DE DATOS (archivos, PostgreSQL u Oracle) ─────────
+// ── CONEXIÓN CON ORACLE ───────────────────────────────────
 let bdMotores = [];
 let bdAvisoMostrado = false;
 
@@ -4521,37 +4518,18 @@ function renderBaseDeDatos() {
   if (typeof raw !== 'string' || raw.startsWith('ERROR')) return;
   const info = JSON.parse(raw);
   bdMotores = info.motores || [];
-  const select = document.getElementById('bd-motor');
-  if (select) {
-    select.innerHTML = bdMotores.map(function(m) { return '<option value="' + esc(m.id) + '">' + esc(m.etiqueta) + '</option>'; }).join('');
-    select.value = info.motor;
+  if (document.getElementById('bd-url')) {
     document.getElementById('bd-url').value = info.url || '';
     document.getElementById('bd-usuario').value = info.usuario || '';
     const clave = document.getElementById('bd-clave');
     clave.value = '';
     clave.placeholder = info.tieneClave ? 'Guardada (escriba otra para cambiarla)' : '';
     document.getElementById('bd-en-uso').textContent = 'Ahora: ' + info.enUso;
-    bdMostrarCampos();
   }
   if (info.aviso && !bdAvisoMostrado) {
     bdAvisoMostrado = true;
     showToast(info.aviso, info.avisoEsError ? 'error' : 'success');
   }
-}
-
-function bdMostrarCampos() {
-  const relacional = document.getElementById('bd-motor').value !== 'JSON';
-  document.querySelectorAll('#bd-tarjeta .bd-campo').forEach(function(el) { el.style.display = relacional ? '' : 'none'; });
-}
-
-function bdCambioMotor() {
-  const motor = document.getElementById('bd-motor').value;
-  const elegido = bdMotores.find(function(m) { return m.id === motor; });
-  const url = document.getElementById('bd-url');
-  const prefijo = elegido && elegido.urlPorDefecto ? elegido.urlPorDefecto.split(':').slice(0, 2).join(':') : '';
-  if (prefijo && url.value.indexOf(prefijo) !== 0) url.value = elegido.urlPorDefecto;
-  bdResultado('');
-  bdMostrarCampos();
 }
 
 function bdProbar() {
@@ -4763,18 +4741,18 @@ document.addEventListener('keydown', function(e) {
       <p class="tb-login-error" id="tb-crear-error" role="alert"></p>
       <button type="submit" class="tbv-btn tb-login-btn" id="tb-crear-btn">Crear cuenta y entrar</button>
       <p class="tb-login-nota">Guarde bien la contraseña: si la olvida, solo otra cuenta de dueño puede ponerle una nueva.</p>
-      <button type="button" class="tbv-link tb-lg-nube" onclick="tbNubeAbrir(true)">¿El negocio ya usa TBalance en otro computador con base de datos (por ejemplo, en la nube)? Conectar a esa base</button>
+      <button type="button" class="tbv-link tb-lg-nube" onclick="tbNubeAbrir(true)">¿El negocio ya tiene sus datos en otra base de Oracle? Conectar a esa base</button>
     </form>
     <form id="tb-login-nube" onsubmit="tbNubeConectar(event)" hidden autocomplete="off">
-      <h1 class="tb-login-h1">Conectar a la base del negocio</h1>
-      <p class="tb-login-sub">Escriba la misma dirección, usuario y contraseña de la base que usa el otro computador. Después cada persona entra con su usuario de TBalance.</p>
-      <label class="tb-campo"><span>Motor</span><select id="tb-nube-motor"><option value="POSTGRESQL">PostgreSQL</option><option value="ORACLE">Oracle</option></select></label>
-      <label class="tb-campo"><span>Dirección de conexión</span><input id="tb-nube-url" required spellcheck="false" autocapitalize="none" placeholder="jdbc:postgresql://servidor/basedatos?sslmode=require"></label>
-      <label class="tb-campo"><span>Usuario de la base</span><input id="tb-nube-usuario" required spellcheck="false" autocapitalize="none"></label>
-      <label class="tb-campo"><span>Contraseña de la base</span><input id="tb-nube-clave" type="password" required autocomplete="off"></label>
+      <h1 class="tb-login-h1">Conectar con Oracle</h1>
+      <p class="tb-login-sub" id="tb-nube-sub">Escriba la dirección, el usuario y la contraseña de la base de Oracle. Después cada persona entra con su usuario de TBalance.</p>
+      <input type="hidden" id="tb-nube-motor" value="ORACLE">
+      <label class="tb-campo"><span>Dirección de conexión</span><input id="tb-nube-url" required spellcheck="false" autocapitalize="none" placeholder="jdbc:oracle:thin:@localhost:1521/XEPDB1"></label>
+      <label class="tb-campo"><span>Usuario de Oracle</span><input id="tb-nube-usuario" required spellcheck="false" autocapitalize="none" placeholder="TBALANCE"></label>
+      <label class="tb-campo"><span>Contraseña de Oracle</span><input id="tb-nube-clave" type="password" required autocomplete="off"></label>
       <p class="tb-login-error" id="tb-nube-error" role="alert"></p>
       <button type="submit" class="tbv-btn tb-login-btn" id="tb-nube-btn">Conectar</button>
-      <button type="button" class="tbv-link tb-lg-nube" onclick="tbNubeAbrir(false)">Volver a crear la cuenta del dueño</button>
+      <button type="button" class="tbv-link tb-lg-nube" id="tb-nube-volver" onclick="tbNubeAbrir(false)">Volver a crear la cuenta del dueño</button>
     </form>
   </div>
   </div>

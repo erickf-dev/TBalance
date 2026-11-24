@@ -10,7 +10,7 @@
 (function () {
   'use strict';
 
-  const TB = { sesion: null, primeraVez: false, minutos: 30, ultimoUso: Date.now(), avisoInactividad: null, usuarios: [] };
+  const TB = { sesion: null, primeraVez: false, sinConexion: false, conexion: {}, minutos: 30, ultimoUso: Date.now(), avisoInactividad: null, usuarios: [] };
   window.tbSesion = function () { return TB.sesion; };
 
   const $ = id => document.getElementById(id);
@@ -40,6 +40,8 @@
     if (esError(r)) { console.error('[TBalance] sesión:', r); return null; }
     const e = JSON.parse(r);
     TB.primeraVez = !!e.primeraVez;
+    TB.sinConexion = !!e.sinConexion;
+    TB.conexion = { aviso: e.avisoConexion || '', url: e.urlOracle || '', usuario: e.usuarioOracle || '' };
     TB.sesion = e.sesion || null;
     TB.minutos = e.minutosInactividad || 30;
     return e;
@@ -74,6 +76,7 @@
     $('tb-login-entrar').hidden = TB.primeraVez;
     $('tb-login-crear').hidden = !TB.primeraVez;
     if ($('tb-login-nube')) $('tb-login-nube').hidden = true;
+    if (TB.sinConexion) { mostrarConexion(); return; }
     $('tb-login-error').textContent = mensaje || '';
     $('tb-crear-error').textContent = '';
     $('tb-login-clave').value = '';
@@ -132,8 +135,21 @@
     }, 30);
   };
 
-  // Computador nuevo de un negocio que ya tiene su base (por ejemplo, en la nube)
+  // Sin conexión con Oracle: lo único que se puede hacer es conectar
+  function mostrarConexion() {
+    $('tb-login-entrar').hidden = true;
+    $('tb-login-crear').hidden = true;
+    $('tb-login-nube').hidden = false;
+    if ($('tb-nube-volver')) $('tb-nube-volver').hidden = true;
+    if (!$('tb-nube-url').value) $('tb-nube-url').value = TB.conexion.url || 'jdbc:oracle:thin:@localhost:1521/XEPDB1';
+    if (!$('tb-nube-usuario').value) $('tb-nube-usuario').value = TB.conexion.usuario || 'TBALANCE';
+    $('tb-nube-error').textContent = TB.conexion.aviso || '';
+    setTimeout(() => { const f = $('tb-nube-clave'); if (f) f.focus(); }, 60);
+  }
+
+  // Cambiar a otra base de Oracle antes de crear la cuenta del dueño
   window.tbNubeAbrir = function (si) {
+    if ($('tb-nube-volver')) $('tb-nube-volver').hidden = false;
     $('tb-login-crear').hidden = si;
     $('tb-login-nube').hidden = !si;
     $('tb-nube-error').textContent = '';
@@ -152,7 +168,7 @@
       $('tb-nube-clave').value = '';
       leerEstado();
       mostrarLogin();
-      if (typeof showToast === 'function') showToast(TB.primeraVez ? 'Conectado. La base está vacía: cree la cuenta del dueño.' : 'Conectado a la base del negocio. Entre con su usuario.');
+      if (typeof showToast === 'function') showToast(TB.primeraVez ? 'Conectado con Oracle. La base está vacía: cree la cuenta del dueño.' : 'Conectado con Oracle. Entre con su usuario.');
     }, 30);
   };
 
