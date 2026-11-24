@@ -22,13 +22,13 @@ package sistemainventario {
 class AppContext {
   - directorioDatos : Path
   - gestorRespaldo : BackupService
-  - respaldosEnCarpeta : BackupRepository
   - gestorEtiquetas : LabelService
   - ajustesAsistente : AssistantSettingsService
   - exportadorInformes : ReportExportService
   - almacenamiento : StorageService
   - almacenActual : StorageProvider
-  - ... (7 más)
+  - avisoAlmacenamiento : String
+  - ... (6 más)
   + recargar()
   + iniciarSesion() : User
   + crearPrimerDueno() : User
@@ -38,7 +38,7 @@ class AppContext {
   + puedeCrearNegocios() : boolean
   + esDuenoDe() : boolean
   + registrarNegocioCreado()
-  + ... (15 más)
+  + ... (14 más)
 }
 class Launcher {
   + {static} main()

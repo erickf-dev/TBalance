@@ -3,8 +3,7 @@ package sistemainventario.service;
 import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Backup;
 import sistemainventario.repository.BackupStore;
-import sistemainventario.repository.GlobalConfigRepository;
-import sistemainventario.repository.ProfileRepository;
+import sistemainventario.repository.JsonStorageProvider;
 import sistemainventario.repository.ZipArchiver;
 import sistemainventario.util.FileUtil;
 
@@ -131,9 +130,9 @@ public class BackupService {
     }
 
     private void validarContenido(Path carpeta) {
-        boolean tienePerfiles = Files.isRegularFile(carpeta.resolve(ProfileRepository.ARCHIVO));
-        boolean tieneConfiguracion = Files.isRegularFile(carpeta.resolve(GlobalConfigRepository.ARCHIVO));
-        if (!tienePerfiles && !tieneConfiguracion) {
+        boolean tienePerfiles = Files.isRegularFile(carpeta.resolve(JsonStorageProvider.ARCHIVO_PERFILES));
+        boolean tieneUsuarios = Files.isRegularFile(carpeta.resolve(JsonStorageProvider.ARCHIVO_USUARIOS));
+        if (!tienePerfiles && !tieneUsuarios) {
             throw new ValidationException("El archivo no es una copia de seguridad de TBalance");
         }
     }

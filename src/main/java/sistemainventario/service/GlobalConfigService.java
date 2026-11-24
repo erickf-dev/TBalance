@@ -1,10 +1,8 @@
 package sistemainventario.service;
 
 import sistemainventario.model.GlobalConfig;
-import sistemainventario.model.Profile;
 import sistemainventario.repository.GlobalConfigRepository;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -24,10 +22,6 @@ public class GlobalConfigService {
     }
 
     /** @return {@code true} si aún no se ha creado ningún perfil */
-    public boolean esPrimerArranque() {
-        return !repositorio.existe() || !repositorio.cargar().tienePerfiles();
-    }
-
     /** @return ID del perfil activo, si hay uno */
     public Optional<String> getPerfilActivoId() {
         GlobalConfig configuracion = repositorio.cargar();
@@ -45,14 +39,4 @@ public class GlobalConfigService {
         repositorio.guardar(configuracion);
     }
 
-    /**
-     * Copia la lista de perfiles al archivo de configuración (estructura de P2).
-     *
-     * @param perfiles lista actual de perfiles
-     */
-    public void sincronizarPerfiles(List<Profile> perfiles) {
-        GlobalConfig configuracion = repositorio.cargar();
-        configuracion.setPerfiles(perfiles);
-        repositorio.guardar(configuracion);
-    }
 }

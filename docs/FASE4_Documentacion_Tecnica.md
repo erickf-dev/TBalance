@@ -28,7 +28,7 @@ Recorrido de una venta: la página llama a `javaBridge.crearVenta(...)` → `Acc
 
 ## 3. Diagrama de clases final y descripción de cada clase
 
-El diagrama de clases final tiene 154 clases y está dividido en siete partes:
+El diagrama de clases final tiene 142 clases y está dividido en siete partes:
 
 ![Modelo](diagramas/clases-modelo.png)
 
@@ -429,7 +429,7 @@ Otros archivos que genera el programa (no son tablas de datos): etiquetas `~/.in
 | GRASP | Experto en información | [`CustomerDebt`](../src/main/java/sistemainventario/model/CustomerDebt.java) | Calcula cuánto debe un cliente con lo fiado y lo abonado. |
 | GRASP | Bajo acoplamiento | [`Repository<T>`](../src/main/java/sistemainventario/repository/Repository.java) | Los servicios no saben cómo se guardan los datos: el acceso a Oracle está en los repositorios. |
 | GRASP | Alta cohesión | [`AccessPolicy`](../src/main/java/sistemainventario/bridge/AccessPolicy.java), [`AuditTrail`](../src/main/java/sistemainventario/bridge/AuditTrail.java) | Uno solo revisa permisos; el otro solo anota el historial. |
-| SOLID | SRP | `Product` / `InventoryService` / `ProductRepository` | Reglas, caso de uso y guardado están en clases distintas. |
+| SOLID | SRP | `Product` / `InventoryService` / `ProductJdbcRepository` | Reglas, caso de uso y guardado están en clases distintas. |
 | SOLID | SRP | `UserService` / `SessionService` / [`PasswordHasher`](../src/main/java/sistemainventario/util/PasswordHasher.java) | Usuarios, sesión y cifrado de contraseñas separados. |
 | SOLID | OCP | [`JdbcRepository<T>`](../src/main/java/sistemainventario/repository/JdbcRepository.java) | La base de datos se agregó con clases nuevas, sin cambiar los servicios. |
 | SOLID | OCP | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) | El celular como lector se agregó con `PhoneCamera`, sin cambiar la venta por QR. |

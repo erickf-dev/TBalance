@@ -5,12 +5,10 @@ import sistemainventario.model.Backup;
 import sistemainventario.model.DatabaseSettings;
 import sistemainventario.repository.ZipArchiver;
 import sistemainventario.repository.GlobalConfigRepository;
-import sistemainventario.repository.ProfileDirectory;
 import sistemainventario.repository.LabelRepository;
 import sistemainventario.repository.JsonFileStore;
 import sistemainventario.repository.DatabaseSettingsRepository;
 import sistemainventario.repository.StorageProvider;
-import sistemainventario.repository.BackupRepository;
 import sistemainventario.repository.AssistantConfigRepository;
 import sistemainventario.repository.ReportExcelWriter;
 import sistemainventario.service.ProfileServicesFactory;
@@ -53,7 +51,6 @@ public final class AppContext {
     private static final Path DIRECTORIO_DATOS =
             Paths.get(System.getProperty("user.home"), ".inventariopro", "data");
 
-    private static final String CARPETA_RESPALDOS = "respaldos";
     private static final String CARPETA_ETIQUETAS = "etiquetas";
     private static final String ARCHIVO_ASISTENTE = "asistente.json";
     private static final String ARCHIVO_BASE_DATOS = "basedatos.json";
@@ -62,7 +59,6 @@ public final class AppContext {
 
     private final Path directorioDatos;
     private final BackupService gestorRespaldo;
-    private final BackupRepository respaldosEnCarpeta;
     private final LabelService gestorEtiquetas;
     private final AssistantSettingsService ajustesAsistente;
     private final ReportExportService exportadorInformes;
@@ -79,9 +75,7 @@ public final class AppContext {
     private AppContext(Path directorioDatos) {
         this.directorioDatos = directorioDatos;
         JsonFileStore.crearDirectorio(directorioDatos);
-        Path carpetaRespaldos = directorioDatos.resolveSibling(CARPETA_RESPALDOS);
-        this.respaldosEnCarpeta = new BackupRepository(carpetaRespaldos);
-        this.gestorRespaldo = new BackupService(respaldosEnCarpeta, StorageService.SIN_DATOS, new ZipArchiver());
+        this.gestorRespaldo = new BackupService(StorageService.SIN_COPIAS, StorageService.SIN_DATOS, new ZipArchiver());
         this.gestorEtiquetas = new LabelService(new QrGenerator(),
                 new LabelRepository(directorioDatos.resolveSibling(CARPETA_ETIQUETAS)));
         this.ajustesAsistente = new AssistantSettingsService(
@@ -108,13 +102,11 @@ public final class AppContext {
         this.almacenActual = apertura.almacen();
         this.avisoAlmacenamiento = apertura.aviso();
         this.conectado = apertura.conectado();
-        gestorRespaldo.usar(apertura.respaldos() != null ? apertura.respaldos() : respaldosEnCarpeta, apertura.copias());
+        gestorRespaldo.usar(apertura.respaldos() != null ? apertura.respaldos() : StorageService.SIN_COPIAS, apertura.copias());
         this.gestorPerfiles = new ProfileService(
                 almacenActual.perfiles(),
                 new GlobalConfigService(new GlobalConfigRepository(directorioDatos)),
-                new ProfileDirectory(directorioDatos),
                 new ProfileServicesFactory(almacenActual));
-        gestorPerfiles.sincronizarConfiguracion();
         gestorPerfiles.normalizarCategorias();
         this.usuarios = new UserService(almacenActual.usuarios());
         this.auditoria = new sistemainventario.service.AuditService(almacenActual.auditoria());
@@ -393,7 +385,4 @@ public final class AppContext {
     }
 
     /** @return {@code true} si todavía no existe ningún perfil */
-    public boolean esPrimerArranque() {
-        return gestorPerfiles.esPrimerArranque();
-    }
 }

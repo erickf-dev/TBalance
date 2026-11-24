@@ -46,8 +46,8 @@ IdentifiedEntity (abstracta)
     └── StockExit
 
 Repository<T> (interfaz)
-├── JsonRepository<T> (abstracta) → 10 repositorios para el contenido de las copias de seguridad
-└── JdbcRepository<T> (abstracta) → 10 repositorios de base de datos
+├── JsonRepository<T> → una sola clase para el contenido de las copias de seguridad
+└── JdbcRepository<T> (abstracta) → 10 repositorios de Oracle
 
 EntityService<T> (abstracta)
 ├── InventoryService
@@ -57,7 +57,7 @@ EntityService<T> (abstracta)
 
 ### 2.2 Métodos sobrescritos
 
-El proyecto tiene **213 métodos con `@Override`** en 46 clases. Los principales:
+El proyecto tiene **213 métodos con `@Override`** en 45 clases. Los principales:
 
 | Clase | Métodos sobrescritos |
 |---|---|
@@ -97,7 +97,7 @@ El proyecto tiene 13 interfaces: `Repository<T>`, `StorageProvider`, `DatabaseRo
 
 | Colección | Veces que se crea | Para qué se usa |
 |---|---|---|
-| `ArrayList` | 73 | Listas: la copia en memoria de cada repositorio, los renglones de una venta, los abonos y ventas de un cliente, filas de informes. |
+| `ArrayList` | 70 | Listas: la copia en memoria de cada repositorio, los renglones de una venta, los abonos y ventas de un cliente, filas de informes. |
 | `LinkedHashMap` | 23 | Mapas que conservan el orden: la configuración de cada negocio, las cuentas de Fiados, los datos que se envían a la pantalla. |
 | `HashMap` | 2 | Búsquedas por nombre donde el orden no importa (métodos del puente, acumulados del informe). |
 | `EnumSet` | 11 | Conjuntos de permisos de cada rol y medios de pago activos. |
@@ -226,7 +226,7 @@ Cada método del puente devuelve `OK`, los datos en JSON o `ERROR: mensaje`, y l
 | Experto en información | [`Product`](../src/main/java/sistemainventario/model/Product.java), [`Sale`](../src/main/java/sistemainventario/model/Sale.java), [`CustomerDebt`](../src/main/java/sistemainventario/model/CustomerDebt.java), [`Rol`](../src/main/java/sistemainventario/model/Rol.java) |
 | Bajo acoplamiento | [`Repository<T>`](../src/main/java/sistemainventario/repository/Repository.java), [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) |
 | Alta cohesión | Controladores del `bridge`, [`AccessPolicy`](../src/main/java/sistemainventario/bridge/AccessPolicy.java), [`AuditTrail`](../src/main/java/sistemainventario/bridge/AuditTrail.java), [`CreditService`](../src/main/java/sistemainventario/service/CreditService.java) |
-| SRP | `Product` / `InventoryService` / `ProductRepository`; `UserService` / `SessionService` / `PasswordHasher` |
+| SRP | `Product` / `InventoryService` / `ProductJdbcRepository`; `UserService` / `SessionService` / `PasswordHasher` |
 | OCP | `Repository<T>` con `JsonRepository<T>` y `JdbcRepository<T>`; `Camera` con `WebcamCamera` y `PhoneCamera` |
 
 La tabla completa, con código limpio, está en [TRAZABILIDAD.md](TRAZABILIDAD.md).
