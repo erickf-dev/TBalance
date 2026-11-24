@@ -132,20 +132,38 @@ Los scripts están en `src/main/resources/sql/oracle` y `src/main/resources/sql/
 | `01_tablas.sql` | Crea las tablas con sus llaves primarias, foráneas y restricciones. |
 | `02_disparadores.sql` | Dos disparadores: uno valida el producto (no deja stock ni precios negativos) y otro guarda el historial de precios. |
 | `03_probar_disparadores.sql` | Prueba los disparadores y deshace los cambios. |
+| `04_funciones.sql` (Oracle) | Funciones en PL/SQL: `FN_SALDO_CLIENTE` (lo que debe un cliente), `FN_VALOR_INVENTARIO` (cuánto costó el inventario), `FN_UTILIDAD_PERIODO` (cuánto se ganó entre dos fechas) y `FN_CLAVE_CLIENTE` (cómo se reconoce a un cliente de fiado). |
+| `05_procedimientos.sql` (Oracle) | Procedimientos en PL/SQL: `SP_REGISTRAR_VENTA`, `SP_ANULAR_VENTA` y `SP_REGISTRAR_ABONO` (ver más abajo). |
+| `06_probar_procedimientos.sql` (Oracle) | Vende, abona y anula en un negocio de prueba, muestra los resultados y deshace todo. |
 | `cambios/v2_borrado_logico.sql` | Columnas para deshabilitar y anular, y tablas `PROVEEDOR_CATEGORIA`, `RESPALDO` y `ESQUEMA_VERSION`. |
 | `cambios/v3_vistas_informes.sql` | Cuatro vistas para informes (ventas por día, ganancia por producto, valor del inventario y compras por mes). |
 | `cambios/v4_usuarios.sql` | Tablas `USUARIO` y `NEGOCIO_USUARIO`, y quién vendió o anuló cada movimiento. |
 | `cambios/v5_historial.sql` | Tabla `AUDITORIA` (historial) y la cédula del cliente en las ventas fiadas. |
 | `cambios/v6_abonos.sql` | Tabla `ABONO` (abonos de los fiados). |
 | `cambios/v7_varios_equipos.sql` | Tabla `CAMBIO_VERSION`: un contador que sube con cada cambio, para que los demás computadores sepan que deben actualizarse. |
+| Cambio v8 | En Oracle ejecuta `04_funciones.sql` y `05_procedimientos.sql`. En PostgreSQL (`cambios/v8_procedimientos.sql`) no crea nada. |
 | `00_crear_usuario_nube.sql` (Oracle) | Crea el usuario `TBALANCE` en Oracle Autonomous Database (nube). |
 | `99_borrar_todo.sql` | Borra todas las tablas (solo para empezar de cero). |
 
-Los cambios v2 a v7 **solo agregan** tablas, columnas o vistas: no cambian ni borran lo anterior, así las consultas que ya existían siguen funcionando.
+Los cambios v2 a v8 **solo agregan** tablas, columnas, vistas, funciones o procedimientos: no cambian ni borran lo anterior, así las consultas que ya existían siguen funcionando.
+
+**Procedimientos y funciones en Oracle (enfoque híbrido).** Las consultas sencillas (listar productos, guardar una categoría o un proveedor) siguen en los repositorios de Java, porque pasarlas a PL/SQL no aporta nada. Lo que toca varias tablas a la vez y los cálculos de los informes se hacen dentro de Oracle:
+
+| En Oracle | Qué hace | Quién lo llama |
+|---|---|---|
+| `SP_REGISTRAR_VENTA` | Revisa el stock de todos los productos antes de cambiar nada, guarda la venta y su detalle, descuenta las unidades y calcula el total. | `SaleService.registrar` |
+| `SP_ANULAR_VENTA` | Marca la venta como anulada con el motivo, devuelve las unidades al inventario y anota la anulación en `AUDITORIA`. | `SaleService.anular` |
+| `SP_REGISTRAR_ABONO` | Revisa con `FN_SALDO_CLIENTE` que el abono no pase de la deuda y lo guarda. | `CreditService.registrarAbono` |
+| `FN_VALOR_INVENTARIO` | Suma stock × precio de compra. | `CostService` (pantalla Costos) |
+| `FN_UTILIDAD_PERIODO` | Suma la ganancia de las ventas entre dos fechas. | `ReportService` (Informes) |
+
+Java los llama con `CallableStatement` (`{call SP_REGISTRAR_VENTA(...)}` y `{? = call FN_VALOR_INVENTARIO(?)}`) desde la clase `OracleRoutines`. Los procedimientos no hacen `COMMIT`: TBalance los llama dentro de una transacción y hace `COMMIT` si todo salió bien o `ROLLBACK` si el procedimiento rechazó algo (por ejemplo, "Stock insuficiente"), así nunca queda una venta a medias. Java sigue revisando lo que es de la pantalla (que la venta tenga productos, el medio de pago y la cédula para fiar).
+
+Con archivos JSON y con PostgreSQL no hay procedimientos: los mismos servicios hacen todo en Java, como antes. Para crear funciones y procedimientos, el usuario de Oracle necesita el permiso `CREATE PROCEDURE` (`GRANT CREATE PROCEDURE TO TBALANCE;` como SYSTEM); si falta, TBalance lo avisa al conectarse.
 
 **Borrado lógico.** Desde el programa no se borra nada que tenga historial. Negocios, categorías, proveedores, productos y usuarios se *deshabilitan* y se pueden volver a habilitar. Ventas, entradas, salidas y abonos se *anulan* con un motivo, el stock o el saldo se corrige y quedan en la lista de anulados.
 
-**Historial.** Cada acción que pasa por el puente (`BridgeInvoker`) se revisa en `AccessPolicy` (¿tiene sesión y permiso?) y luego `AuditTrail` la anota en `AUDITORIA` con la persona, el rol, el negocio y la hora. Nunca se anota una contraseña.
+**Historial.** Cada acción que pasa por el puente (`BridgeInvoker`) se revisa en `AccessPolicy` (¿tiene sesión y permiso?) y luego `AuditTrail` la anota en `AUDITORIA` con la persona, el rol, el negocio y la hora. Nunca se anota una contraseña. Con Oracle, la anulación de una venta la anota `SP_ANULAR_VENTA` y `AuditTrail` no la repite.
 
 **Fiados.** Lo que debe un cliente no se guarda: se calcula sumando sus ventas fiadas vigentes y restando sus abonos vigentes (`CreditService`). Así, si se anula una venta o un abono, la deuda se corrige sola.
 

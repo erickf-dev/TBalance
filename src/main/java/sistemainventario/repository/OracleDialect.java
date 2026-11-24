@@ -104,6 +104,23 @@ public class OracleDialect implements SqlDialect {
         return Optional.of(mensaje.replaceFirst("^ORA-\\d{5}:\\s*", "").trim());
     }
 
+    @Override
+    public Optional<String> erroresDeRutinas(Connection conexion) throws SQLException {
+        try (PreparedStatement consulta = conexion.prepareStatement(
+                "SELECT NAME, LINE, TEXT FROM USER_ERRORS WHERE TYPE IN ('FUNCTION', 'PROCEDURE') "
+                        + "AND (NAME LIKE 'FN\\_%' ESCAPE '\\' OR NAME LIKE 'SP\\_%' ESCAPE '\\') "
+                        + "AND ATTRIBUTE = 'ERROR' ORDER BY NAME, SEQUENCE")) {
+            try (ResultSet fila = consulta.executeQuery()) {
+                if (fila.next()) {
+                    return Optional.of("En Oracle, " + fila.getString("NAME") + " quedó con un error en la línea "
+                            + fila.getInt("LINE") + ": " + fila.getString("TEXT").trim()
+                            + " Envíe este mensaje a quien mantiene TBalance.");
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
     private static void agregar(List<String> sentencias, String texto) {
         if (!texto.isBlank()) {
             sentencias.add(texto.trim());

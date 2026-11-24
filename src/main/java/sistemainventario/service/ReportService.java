@@ -82,8 +82,8 @@ public class ReportService {
 
         return new SalesReport(desde.toString(), hasta.toString(),
                 desdeAnterior.toString(), hastaAnterior.toString(), agrupacion,
-                totales(delPeriodo),
-                totales(ventasEntre(desdeAnterior, hastaAnterior)),
+                conUtilidadDeLaBase(totales(delPeriodo), desde, hasta),
+                conUtilidadDeLaBase(totales(ventasEntre(desdeAnterior, hastaAnterior)), desdeAnterior, hastaAnterior),
                 serie(delPeriodo, desde, hasta, agrupacion),
                 ranking(delPeriodo),
                 metodosPago(delPeriodo),
@@ -136,6 +136,14 @@ public class ReportService {
                 .filter(Product::tienePrecioCompra)
                 .map(Product::getPrecioCompra)
                 .orElse(0.0);
+    }
+
+    /** Oracle: la utilidad del periodo la calcula FN_UTILIDAD_PERIODO. */
+    private SalesReport.Totals conUtilidadDeLaBase(SalesReport.Totals t, LocalDate desde, LocalDate hasta) {
+        return ventas.rutinas()
+                .map(r -> new SalesReport.Totals(t.ventas(), t.numeroVentas(), t.unidades(), t.ticketPromedio(),
+                        r.utilidadPeriodo(desde, hasta), t.unidadesSinCosto()))
+                .orElse(t);
     }
 
     private SalesReport.Totals totales(List<Sale> lista) {

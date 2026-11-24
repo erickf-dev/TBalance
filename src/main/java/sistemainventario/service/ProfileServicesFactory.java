@@ -49,6 +49,7 @@ public class ProfileServicesFactory {
         inventario.usarCategorias(categorias);
         inventario.normalizarCategorias();
         SaleService ventas = new SaleService(inventario, almacen.ventas(perfilId));
+        almacen.rutinas(perfilId).ifPresent(ventas::usarRutinas);
         ventas.usarMediosDePago(metodo -> almacen.perfiles().buscarPorId(perfilId)
                 .map(perfil -> perfil.aceptaMedioPago(metodo)).orElse(true));
         return new ProfileServices(

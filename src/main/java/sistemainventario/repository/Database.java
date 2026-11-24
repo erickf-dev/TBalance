@@ -31,9 +31,17 @@ public class Database implements AutoCloseable {
 
     /** Scripts que se ejecutan la primera vez, en orden (dejan el esquema en la versión 1). */
     private static final String[] SCRIPTS_INICIALES = {"01_tablas.sql", "02_disparadores.sql"};
+    /**
+     * Cambio v8. En Oracle crea las funciones y los procedimientos en PL/SQL
+     * ({@code 04_funciones.sql} y {@code 05_procedimientos.sql}); en PostgreSQL
+     * no crea nada (ese motor sigue con la lógica de Java).
+     */
+    private static final String CAMBIO_PROCEDIMIENTOS = "cambios/v8_procedimientos.sql";
+    private static final List<String> SCRIPTS_PLSQL = List.of("04_funciones.sql", "05_procedimientos.sql");
     /** Cambios del esquema: la posición 0 lleva a la versión 2, la 1 a la 3, etc. */
     private static final String[] CAMBIOS = {"cambios/v2_borrado_logico.sql", "cambios/v3_vistas_informes.sql",
-            "cambios/v4_usuarios.sql", "cambios/v5_historial.sql", "cambios/v6_abonos.sql", "cambios/v7_varios_equipos.sql"};
+            "cambios/v4_usuarios.sql", "cambios/v5_historial.sql", "cambios/v6_abonos.sql", "cambios/v7_varios_equipos.sql",
+            CAMBIO_PROCEDIMIENTOS};
     private static final int SEGUNDOS_VALIDACION = 3;
     /** Si la conexión lleva más de esto sin usarse, se revisa antes de usarla (la nube corta las inactivas). */
     private static final long VALIDAR_TRAS_MS = 20_000;
@@ -166,6 +174,20 @@ public class Database implements AutoCloseable {
      * @return cuántos cambios se aplicaron
      */
     public int actualizarEsquema() {
+        try {
+            return aplicarCambios();
+        } catch (PersistenceException e) {
+            String texto = String.valueOf(e.getMessage());
+            if (texto.contains("ORA-01031")) {
+                throw new PersistenceException("Al usuario de Oracle le falta un permiso para crear las funciones y los "
+                        + "procedimientos. En SQL Developer, conectado como SYSTEM, ejecute una vez: "
+                        + "GRANT CREATE PROCEDURE TO TBALANCE;  y vuelva a abrir TBalance.", e);
+            }
+            throw e;
+        }
+    }
+
+    private int aplicarCambios() {
         int version = versionEsquema();
         if (version == 0) {
             crearTablas();
@@ -174,12 +196,76 @@ public class Database implements AutoCloseable {
         int aplicados = 0;
         for (int siguiente = version + 1; siguiente <= versionActual(); siguiente++) {
             int numero = siguiente;
-            ejecutarScript(dialecto.carpetaScripts() + "/" + CAMBIOS[numero - 2]);
+            for (String script : scriptsDelCambio(CAMBIOS[numero - 2])) {
+                ejecutarScript(dialecto.carpetaScripts() + "/" + script);
+            }
+            revisarRutinas();
             transaccion(c -> actualizar(c, "INSERT INTO ESQUEMA_VERSION (VERSION) VALUES (?)", numero));
             aplicados++;
         }
         seguimiento = null;
         return aplicados;
+    }
+
+    private List<String> scriptsDelCambio(String cambio) {
+        if (cambio.equals(CAMBIO_PROCEDIMIENTOS) && dialecto.motor() == sistemainventario.model.DatabaseEngine.ORACLE) {
+            return SCRIPTS_PLSQL;
+        }
+        return List.of(cambio);
+    }
+
+    /**
+     * Oracle crea una función o un procedimiento aunque tenga errores (queda
+     * INVALID). Si pasa, se avisa con el error exacto en vez de fallar después
+     * al vender.
+     */
+    private void revisarRutinas() {
+        try {
+            java.util.Optional<String> error = dialecto.erroresDeRutinas(conexion());
+            if (error.isPresent()) {
+                throw new PersistenceException(error.get(), null);
+            }
+        } catch (SQLException e) {
+            throw traducir(e, "revisar las funciones y los procedimientos");
+        }
+    }
+
+    /**
+     * Llama a funciones o procedimientos almacenados dentro de una transacción.
+     * Como el procedimiento cambia filas por su cuenta, después se vuelven a
+     * leer los datos que TBalance tiene en memoria.
+     *
+     * @param trabajo llamadas con {@link java.sql.CallableStatement}
+     * @param <T>     resultado
+     * @return lo que devuelva el trabajo
+     */
+    public synchronized <T> T llamar(Trabajo<T> trabajo) {
+        try {
+            return transaccion(trabajo);
+        } finally {
+            generacion++;
+        }
+    }
+
+    /**
+     * Llama a una función almacenada que devuelve un número, sin abrir transacción.
+     *
+     * @param llamada    por ejemplo {@code "{? = call FN_SALDO_CLIENTE(?, ?)}"}
+     * @param parametros valores de los "?" después del resultado
+     * @return el número que devolvió la función (0 si fue nulo)
+     */
+    public synchronized double funcionNumerica(String llamada, Object... parametros) {
+        try (java.sql.CallableStatement funcion = conexion().prepareCall(llamada)) {
+            funcion.registerOutParameter(1, Types.NUMERIC);
+            for (int i = 0; i < parametros.length; i++) {
+                asignarUno(funcion, i + 2, parametros[i]);
+            }
+            funcion.execute();
+            BigDecimal valor = funcion.getBigDecimal(1);
+            return valor == null ? 0 : valor.doubleValue();
+        } catch (SQLException e) {
+            throw traducir(e, "calcular en la base");
+        }
     }
 
     /** @return {@code true} si la tabla PERFIL no tiene filas */
@@ -424,21 +510,31 @@ public class Database implements AutoCloseable {
 
     private static void asignar(PreparedStatement sentencia, Object... parametros) throws SQLException {
         for (int i = 0; i < parametros.length; i++) {
-            Object valor = parametros[i];
-            int posicion = i + 1;
-            if (valor instanceof Nulo nulo) {
-                sentencia.setNull(posicion, nulo.tipo());
-            } else if (valor instanceof Binario binario) {
-                sentencia.setBinaryStream(posicion, new java.io.ByteArrayInputStream(binario.datos()), binario.datos().length);
-            } else if (valor == null) {
-                sentencia.setNull(posicion, Types.VARCHAR);
-            } else if (valor instanceof Double numero) {
-                sentencia.setBigDecimal(posicion, BigDecimal.valueOf(numero));
-            } else if (valor instanceof Boolean logico) {
-                sentencia.setInt(posicion, logico ? 1 : 0);
-            } else {
-                sentencia.setObject(posicion, valor);
-            }
+            asignarUno(sentencia, i + 1, parametros[i]);
+        }
+    }
+
+    /**
+     * Asigna un parámetro con las mismas reglas que las consultas normales.
+     *
+     * @param sentencia sentencia o llamada preparada
+     * @param posicion  posición del "?" (desde 1)
+     * @param valor     valor; {@code null}, {@link Nulo} o {@link Binario} incluidos
+     * @throws SQLException si el driver rechaza el valor
+     */
+    public static void asignarUno(PreparedStatement sentencia, int posicion, Object valor) throws SQLException {
+        if (valor instanceof Nulo nulo) {
+            sentencia.setNull(posicion, nulo.tipo());
+        } else if (valor instanceof Binario binario) {
+            sentencia.setBinaryStream(posicion, new java.io.ByteArrayInputStream(binario.datos()), binario.datos().length);
+        } else if (valor == null) {
+            sentencia.setNull(posicion, Types.VARCHAR);
+        } else if (valor instanceof Double numero) {
+            sentencia.setBigDecimal(posicion, BigDecimal.valueOf(numero));
+        } else if (valor instanceof Boolean logico) {
+            sentencia.setInt(posicion, logico ? 1 : 0);
+        } else {
+            sentencia.setObject(posicion, valor);
         }
     }
 

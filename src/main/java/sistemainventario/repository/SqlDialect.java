@@ -48,6 +48,17 @@ public interface SqlDialect {
     Optional<String> mensajeDeDisparador(SQLException error);
 
     /**
+     * Revisa si alguna función o procedimiento de TBalance quedó con errores.
+     *
+     * @param conexion conexión abierta
+     * @return el primer error, para mostrarlo; vacío si todo está bien
+     * @throws SQLException si falla la consulta al diccionario de datos
+     */
+    default Optional<String> erroresDeRutinas(Connection conexion) throws SQLException {
+        return Optional.empty();
+    }
+
+    /**
      * @param motor PostgreSQL u Oracle
      * @return el dialecto de ese motor
      * @throws IllegalArgumentException si el motor no es relacional

@@ -7,6 +7,15 @@
 -- archivos JSON de ese computador.
 -- =====================================================================
 
+-- v8: procedimientos y funciones
+DROP PROCEDURE SP_REGISTRAR_ABONO;
+DROP PROCEDURE SP_ANULAR_VENTA;
+DROP PROCEDURE SP_REGISTRAR_VENTA;
+DROP FUNCTION FN_UTILIDAD_PERIODO;
+DROP FUNCTION FN_VALOR_INVENTARIO;
+DROP FUNCTION FN_SALDO_CLIENTE;
+DROP FUNCTION FN_CLAVE_CLIENTE;
+
 -- v5, v4, v3 y v2 (si la base todavía no los tiene, SQL Developer avisa y sigue)
 DROP TABLE CAMBIO_VERSION CASCADE CONSTRAINTS PURGE;
 DROP TABLE ABONO CASCADE CONSTRAINTS PURGE;
