@@ -99,10 +99,8 @@ abstract class EntityService {
 }
 class GlobalConfigService {
   - repositorio : GlobalConfigRepository
-  + esPrimerArranque() : boolean
   + getPerfilActivoId() : Optional<String>
   + establecerPerfilActivo()
-  + sincronizarPerfiles()
 }
 class InventoryService {
   - categorias : CategoryService
@@ -142,18 +140,17 @@ class MovementService {
 class ProfileService {
   - perfiles : Repository<Profile>
   - configuracion : GlobalConfigService
-  - directorios : ProfileDirectory
   - fabricaServicios : ProfileServicesFactory
   + listarTodos() : List<Profile>
   + buscarPorId() : Optional<Profile>
   + getPerfilActivo() : Optional<Profile>
-  + esPrimerArranque() : boolean
   + resolverPerfilInicial() : Optional<String>
   + crear() : Profile
   + actualizar() : Profile
   + deshabilitar()
   + habilitar()
-  + ... (4 más)
+  + seleccionar() : Optional<ProfileServices>
+  + ... (2 más)
 }
 class ProfileServices <<record>> {
 }

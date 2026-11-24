@@ -19,21 +19,6 @@ hide empty members
 title Diagrama de clases — contenido de las copias de seguridad (repository) — TBalance v3.5.0
 
 package repository {
-class AuditRepository {
-}
-class BackupRepository {
-  - carpeta : Path
-  + listar() : List<Backup>
-  + rutaExistente() : Path
-  + rutaNueva() : Path
-  + describir() : Backup
-  + eliminar()
-  + existe() : boolean
-  + guardar() : Backup
-  + leer()
-  + ubicacion() : String
-  + ... (1 más)
-}
 interface BackupStore {
   + {abstract} listar() : List<Backup>
   + {abstract} existe() : boolean
@@ -42,10 +27,6 @@ interface BackupStore {
   + {abstract} eliminar()
   + {abstract} ubicacion() : String
   + {abstract} carpeta() : Path
-}
-class CategoryRepository {
-}
-class CreditPaymentRepository {
 }
 class GlobalConfigRepository {
   - almacen : JsonFileStore
@@ -60,7 +41,7 @@ class JsonFileStore {
   + escribir()
   + {static} crearDirectorio()
 }
-abstract class JsonRepository {
+class JsonRepository {
   - almacen : JsonFileStore
   - tipo : Class<T>
   - cache : List<T>
@@ -75,9 +56,7 @@ abstract class JsonRepository {
   + getArchivo() : Path
 }
 class JsonStorageProvider {
-  - directorioDatos : Path
-  - directorios : ProfileDirectory
-  + vaciarArchivos()
+  - carpeta : Path
   + nombre() : String
   + perfiles() : Repository<Profile>
   + usuarios() : Repository<User>
@@ -86,7 +65,8 @@ class JsonStorageProvider {
   + categorias() : Repository<Category>
   + proveedores() : Repository<Supplier>
   + entradas() : Repository<StockEntry>
-  + ... (3 más)
+  + abonos() : Repository<CreditPayment>
+  + ... (2 más)
 }
 class LabelRepository {
   - carpeta : Path
@@ -99,17 +79,6 @@ class PaymentQrRepository {
   + leerComoDataUrl() : Optional<String>
   + eliminar()
 }
-class ProductRepository {
-}
-class ProfileDirectory {
-  - directorioBase : Path
-  + resolver() : Path
-  + crear() : Path
-  + eliminarTodas()
-  + eliminar()
-}
-class ProfileRepository {
-}
 interface Repository {
   + {abstract} listarTodos() : List<T>
   + {abstract} buscarPorId() : Optional<T>
@@ -121,36 +90,14 @@ interface Repository {
   + {abstract} siguienteIdNumerico() : String
   + refrescar()
 }
-class SaleRepository {
-}
-class StockEntryRepository {
-}
-class StockExitRepository {
-}
-class SupplierRepository {
-}
-class UserRepository {
-}
 class ZipArchiver {
   + comprimir()
   + extraer() : int
 }
 }
 interface StorageProvider <<otro diagrama>>
-BackupStore <|.. BackupRepository
 GlobalConfigRepository --> JsonFileStore
 JsonRepository --> JsonFileStore
-JsonRepository <|-- AuditRepository
-JsonRepository <|-- CategoryRepository
-JsonRepository <|-- CreditPaymentRepository
-JsonRepository <|-- ProductRepository
-JsonRepository <|-- ProfileRepository
-JsonRepository <|-- SaleRepository
-JsonRepository <|-- StockEntryRepository
-JsonRepository <|-- StockExitRepository
-JsonRepository <|-- SupplierRepository
-JsonRepository <|-- UserRepository
-JsonStorageProvider --> ProfileDirectory
 Repository <|.. JsonRepository
 StorageProvider <|.. JsonStorageProvider
 @enduml

@@ -3,7 +3,6 @@ package sistemainventario.service;
 import sistemainventario.exception.ValidationException;
 import sistemainventario.model.Profile;
 import sistemainventario.model.BusinessType;
-import sistemainventario.repository.ProfileDirectory;
 import sistemainventario.repository.Repository;
 import sistemainventario.util.TextUtil;
 
@@ -15,8 +14,8 @@ import java.util.Optional;
  * Ciclo de vida de los perfiles: crear, editar, eliminar y seleccionar.
  *
  * <p><b>GRASP Creator:</b> registra los perfiles, por eso crea las instancias
- * de {@link Profile}. <b>SRP:</b> delega el sistema de archivos en
- * {@link ProfileDirectory}, el archivo de configuración en
+ * de {@link Profile}. <b>SRP:</b> delega el guardado en el repositorio
+ * (Oracle), el negocio abierto en este computador en
  * {@link GlobalConfigService} y la construcción de servicios en
  * {@link ProfileServicesFactory}.</p>
  */
@@ -24,16 +23,13 @@ public class ProfileService {
 
     private final Repository<Profile> perfiles;
     private final GlobalConfigService configuracion;
-    private final ProfileDirectory directorios;
     private final ProfileServicesFactory fabricaServicios;
 
     public ProfileService(Repository<Profile> perfiles,
                           GlobalConfigService configuracion,
-                          ProfileDirectory directorios,
                           ProfileServicesFactory fabricaServicios) {
         this.perfiles = Objects.requireNonNull(perfiles);
         this.configuracion = Objects.requireNonNull(configuracion);
-        this.directorios = Objects.requireNonNull(directorios);
         this.fabricaServicios = Objects.requireNonNull(fabricaServicios);
     }
 
@@ -51,10 +47,6 @@ public class ProfileService {
     }
 
     /** @return {@code true} si aún no se ha creado ningún perfil */
-    public boolean esPrimerArranque() {
-        return configuracion.esPrimerArranque();
-    }
-
     /**
      * Determina qué perfil cargar al iniciar: el activo guardado o, si no hay,
      * el primero de la lista (comportamiento de P2).
@@ -94,9 +86,7 @@ public class ProfileService {
         perfil.copiarAjustesDePago(datos);
         perfil.validar();
         perfiles.agregar(perfil);
-        directorios.crear(perfil.getId());
         crearCategoriasIniciales(perfil);
-        sincronizarConfiguracion();
         return perfil;
     }
 
@@ -119,7 +109,6 @@ public class ProfileService {
         perfil.actualizarDatos(cambios.getNombre(), cambios.getDescripcion(), cambios.getColor());
         perfil.copiarAjustesDePago(cambios);
         perfiles.actualizar(perfil);
-        sincronizarConfiguracion();
         return perfil;
     }
 
@@ -144,7 +133,6 @@ public class ProfileService {
         if (configuracion.getPerfilActivoId().filter(id::equals).isPresent()) {
             configuracion.establecerPerfilActivo(otro.get());
         }
-        sincronizarConfiguracion();
     }
 
     /**
@@ -157,7 +145,6 @@ public class ProfileService {
         Profile perfil = obtener(id);
         perfil.setActivo(true);
         perfiles.actualizar(perfil);
-        sincronizarConfiguracion();
     }
 
     /**
@@ -201,11 +188,4 @@ public class ProfileService {
                 .orElseThrow(() -> new ValidationException("Perfil no encontrado"));
     }
 
-    /**
-     * Copia la lista de perfiles al archivo de configuración. Al abrir una base
-     * de datos que ya tiene negocios, evita que TBalance crea que es la primera vez.
-     */
-    public void sincronizarConfiguracion() {
-        configuracion.sincronizarPerfiles(perfiles.listarTodos());
-    }
 }

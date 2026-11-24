@@ -23,7 +23,7 @@ Cada capa solo usa a la de abajo: la pantalla nunca lee la base de datos directa
 
 ## 2. Diagrama de clases
 
-El sistema tiene **154 clases**: 126 concretas, 5 abstractas, 13 interfaces, 5 enumeraciones y 5 registros (`record`). Por su tamaño, el diagrama se divide en siete partes. En los diagramas no se dibujan los getters y setters.
+El sistema tiene **142 clases**: 115 concretas, 4 abstractas, 13 interfaces, 5 enumeraciones y 5 registros (`record`). Por su tamaño, el diagrama se divide en siete partes. En los diagramas no se dibujan los getters y setters.
 
 ### 2.1 Modelo del negocio (`model`, `exception`)
 
@@ -76,7 +76,7 @@ Los diagramas se generan a partir del código; sus fuentes están en [`docs/diag
 | 13 | `DatabaseEngine` | Enumeración | `model` | Lógica de negocio | Base de datos que usa TBalance: Oracle. |
 | 14 | `DatabaseSettings` | Registro | `model` | Lógica de negocio | Conexión a Oracle de este computador. |
 | 15 | `Deshabilitable` | Interfaz | `model` | Lógica de negocio | Registro que no se borra sino que se deshabilita (borrado lógico). |
-| 16 | `GlobalConfig` | Concreta | `model` | Lógica de negocio | Configuración general: qué negocio está abierto y la lista de negocios. |
+| 16 | `GlobalConfig` | Concreta | `model` | Lógica de negocio | Lo que recuerda este computador: qué negocio quedó abierto. |
 | 17 | `IdentifiedEntity` | Abstracta | `model` | Lógica de negocio | Clase base de todo lo que se guarda: le da a cada objeto su ID. |
 | 18 | `InventoryMovement` | Abstracta | `model` | Lógica de negocio | Movimiento que modifica el stock de un producto (entrada o salida). |
 | 19 | `PaymentMethod` | Enumeración | `model` | Lógica de negocio | Métodos de pago que se usan en las tiendas colombianas. |
@@ -97,124 +97,112 @@ Los diagramas se generan a partir del código; sus fuentes están en [`docs/diag
 | 34 | `ValidationException` | Concreta | `exception` | Transversal | Error de una regla del negocio o de un dato mal escrito; su mensaje se le muestra al usuario. |
 | 35 | `AssistantConfigRepository` | Concreta | `repository` | Acceso a datos | Guarda la clave y el modelo del asistente en ~/.inventariopro/asistente.json. |
 | 36 | `AuditJdbcRepository` | Concreta | `repository` | Acceso a datos | Historial de acciones en la tabla AUDITORIA. |
-| 37 | `AuditRepository` | Concreta | `repository` | Acceso a datos | Historial de acciones en auditoria.json (junto a usuarios.json). |
-| 38 | `BackupRepository` | Concreta | `repository` | Acceso a datos | Administra los archivos de copia de seguridad guardados en ~/.inventariopro/respaldos/. |
-| 39 | `BackupStore` | Interfaz | `repository` | Acceso a datos | Dónde se guardan las copias de seguridad (archivos .zip con los datos en JSON). |
-| 40 | `CategoryJdbcRepository` | Concreta | `repository` | Acceso a datos | Categorías de un negocio en la tabla CATEGORIA. |
-| 41 | `CategoryRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las categorías de un perfil en categorias.json. |
-| 42 | `CreditPaymentJdbcRepository` | Concreta | `repository` | Acceso a datos | Abonos de los clientes que deben, en la tabla ABONO. |
-| 43 | `CreditPaymentRepository` | Concreta | `repository` | Acceso a datos | Abonos de los clientes que deben, en abonos.json de cada negocio. |
-| 44 | `Database` | Concreta | `repository` | Acceso a datos | Conexión con Oracle: llama a las funciones de consulta y a los procedimientos dentro de transacciones. |
-| 45 | `DatabaseBackupRepository` | Concreta | `repository` | Acceso a datos | Copias de seguridad dentro de Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna BLOB. |
-| 46 | `DatabaseRoutines` | Interfaz | `repository` | Acceso a datos | Operaciones que hace Oracle con sus procedimientos y funciones (vender, anular, abonar, saldo, utilidad, valor del inventario). |
-| 47 | `DatabaseSettingsRepository` | Concreta | `repository` | Acceso a datos | Guarda en ~/.inventariopro/basedatos.json cómo se conecta este computador a Oracle (URL, usuario y clave). |
-| 48 | `DatabaseStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios JDBC sobre Oracle; todos comparten una conexión. |
-| 49 | `GlobalConfigRepository` | Concreta | `repository` | Acceso a datos | Persiste la GlobalConfig (perfil activo y lista de perfiles) en configuracion-global.json. |
-| 50 | `JdbcRepository` | Abstracta | `repository` | Acceso a datos | Repositorio genérico sobre una tabla de Oracle: lee con FN_LISTAR_ y guarda con SP_GUARDAR_ y SP_BORRAR_. |
-| 51 | `JsonFileStore` | Concreta | `repository` | Acceso a datos | Lectura y escritura de un archivo de texto JSON en disco. |
-| 52 | `JsonRepository` | Abstracta | `repository` | Acceso a datos | Guarda una lista de objetos en un archivo JSON; solo se usa dentro de las copias de seguridad. |
-| 53 | `JsonStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios en archivos JSON; solo se usan para el contenido de las copias de seguridad. |
-| 54 | `LabelRepository` | Concreta | `repository` | Acceso a datos | Guarda las etiquetas generadas como imágenes PNG en ~/.inventariopro/etiquetas/ y las convierte a Base64 para mostrarlas en la vista. |
-| 55 | `OracleDialect` | Concreta | `repository` | Acceso a datos | Separa los scripts de Oracle, revisa si una tabla existe y convierte los errores de RAISE_APPLICATION_ERROR en mensajes. |
-| 56 | `OracleRoutines` | Concreta | `repository` | Acceso a datos | Llama con CallableStatement a los procedimientos y funciones de Oracle para vender, anular, abonar e informes. |
-| 57 | `PaymentQrRepository` | Concreta | `repository` | Acceso a datos | Imagen del QR de cobro (Bre-B) de cada negocio, en ~/.inventariopro/qr-cobro/.img. |
-| 58 | `ProductJdbcRepository` | Concreta | `repository` | Acceso a datos | Productos de un negocio en la tabla PRODUCTO. |
-| 59 | `ProductRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los productos de un perfil en productos.json. |
-| 60 | `ProfileDirectory` | Concreta | `repository` | Acceso a datos | Administra las carpetas físicas de cada perfil: ~/.inventariopro/data/perfiles//. |
-| 61 | `ProfileJdbcRepository` | Concreta | `repository` | Acceso a datos | Perfiles (negocios) en la tabla PERFIL y su configuración en PERFIL_CONFIGURACION. |
-| 62 | `ProfileRepository` | Concreta | `repository` | Acceso a datos | Persistencia global de la lista de perfiles en perfiles.json. |
-| 63 | `ReportExcelWriter` | Concreta | `repository` | Acceso a datos | Guarda un SalesReport como libro de Excel (.xlsx) con formato de informe: encabezado con el negocio y el período, tablas con estilos, filas alternadas, totales con fórmulas, filtros, barras de datos, encabezados fijos y pie de página con el número de página para imprimir. |
-| 64 | `Repository` | Interfaz | `repository` | Acceso a datos | Contrato de acceso a datos para cualquier entidad del sistema. |
-| 65 | `SaleJdbcRepository` | Concreta | `repository` | Acceso a datos | Ventas de un negocio en las tablas VENTA y DETALLE_VENTA. |
-| 66 | `SaleRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las ventas de un perfil en ventas.json. |
-| 67 | `SinConexionStorageProvider` | Concreta | `repository` | Acceso a datos | Lo que usa TBalance mientras no hay conexión con Oracle: todo vacío y sin poder guardar. |
-| 68 | `StockEntryJdbcRepository` | Concreta | `repository` | Acceso a datos | Entradas de inventario de un negocio en la tabla ENTRADA. |
-| 69 | `StockEntryRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las entradas de inventario de un perfil en entradas.json. |
-| 70 | `StockExitJdbcRepository` | Concreta | `repository` | Acceso a datos | Salidas de inventario de un negocio en la tabla SALIDA. |
-| 71 | `StockExitRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las salidas de inventario de un perfil en salidas.json. |
-| 72 | `StorageProvider` | Interfaz | `repository` | Acceso a datos | Entrega los repositorios de TBalance: los de Oracle, los vacíos sin conexión o los de una copia de seguridad. |
-| 73 | `SupplierJdbcRepository` | Concreta | `repository` | Acceso a datos | Proveedores de un negocio en la tabla PROVEEDOR. |
-| 74 | `SupplierRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los proveedores de un perfil en proveedores.json. |
-| 75 | `UserJdbcRepository` | Concreta | `repository` | Acceso a datos | Personas en la tabla USUARIO y sus accesos en NEGOCIO_USUARIO (qué negocio y con qué rol). |
-| 76 | `UserRepository` | Concreta | `repository` | Acceso a datos | Personas que usan TBalance, en usuarios.json (junto a perfiles.json). |
-| 77 | `ZipArchiver` | Concreta | `repository` | Acceso a datos | Comprime una carpeta en un archivo .zip y la extrae de nuevo. |
-| 78 | `GeminiClient` | Concreta | `ia` | Acceso a datos | Cliente de la API de Google Gemini (capa gratuita) con llamadas a funciones. |
-| 79 | `LanguageModel` | Interfaz | `ia` | Acceso a datos | Modelo de lenguaje en la nube que usa el asistente. |
-| 80 | `SecureConnection` | Concreta | `ia` | Acceso a datos | Prepara el cliente HTTP del asistente para que se conecte como lo hace Edge en el mismo computador. |
-| 81 | `AssistantProposal` | Concreta | `service` | Lógica de negocio | Cambio que el asistente propone y que solo se hace si el usuario lo confirma (registrar una venta, una entrada de mercancía, cambiar un precio...). |
-| 82 | `AssistantService` | Concreta | `service` | Lógica de negocio | Maneja la conversación con el asistente y guarda lo que propone hasta que el usuario confirma. |
-| 83 | `AssistantSettingsService` | Concreta | `service` | Lógica de negocio | Guarda y prueba la configuración del asistente. |
-| 84 | `AssistantTools` | Concreta | `service` | Lógica de negocio | Funciones del inventario que el asistente puede usar. |
-| 85 | `AuditService` | Concreta | `service` | Lógica de negocio | Anota acciones en el historial y las lista con filtros (persona, fechas, negocio). |
-| 86 | `BackupService` | Concreta | `service` | Lógica de negocio | Crea, lista, restaura y elimina las copias de seguridad. |
-| 87 | `CategoryService` | Concreta | `service` | Lógica de negocio | Casos de uso de las categorías de un perfil. |
-| 88 | `CostService` | Concreta | `service` | Lógica de negocio | Costos del negocio por sus productos: cuánto cuesta cada producto, cuánto costó todo lo que hay en inventario y cuánto se ha comprado (entradas) en un periodo. |
-| 89 | `CreditService` | Concreta | `service` | Lógica de negocio | Calcula quién debe y cuánto (ventas fiadas menos abonos) y registra y anula abonos. |
-| 90 | `DataSnapshot` | Interfaz | `service` | Lógica de negocio | Cómo se sacan y se reponen los datos para las copias de seguridad. |
-| 91 | `DataTransferService` | Concreta | `service` | Lógica de negocio | Copia todos los negocios de un almacenamiento a otro, para las copias de seguridad: de Oracle a los archivos del .zip al crearla, y de esos archivos a Oracle al restaurarla. |
-| 92 | `DatabaseSnapshot` | Concreta | `service` | Lógica de negocio | Copias de seguridad de los datos de Oracle. |
-| 93 | `EntityService` | Abstracta | `service` | Lógica de negocio | Servicio base para las entidades con CRUD simple (productos, categorías y proveedores). |
-| 94 | `GlobalConfigService` | Concreta | `service` | Lógica de negocio | Lectura y actualización de la GlobalConfig. |
-| 95 | `InventoryService` | Concreta | `service` | Lógica de negocio | Casos de uso del catálogo de productos: CRUD, búsqueda, filtros y alertas de stock y vencimiento. |
-| 96 | `LabelService` | Concreta | `service` | Lógica de negocio | Genera etiquetas con código QR para los productos: una etiqueta individual (vista previa o imagen) y hojas listas para imprimir. |
-| 97 | `MovementService` | Concreta | `service` | Lógica de negocio | Registro de entradas y salidas de inventario. |
-| 98 | `ProfileService` | Concreta | `service` | Lógica de negocio | Crea, edita, deshabilita, habilita y abre negocios. |
-| 99 | `ProfileServices` | Registro | `service` | Lógica de negocio | Agrupa los servicios de un negocio: inventario, categorías, proveedores, movimientos, ventas y fiados. |
-| 100 | `ProfileServicesFactory` | Concreta | `service` | Lógica de negocio | Construye los repositorios y servicios de un perfil. |
-| 101 | `QrSaleScanner` | Concreta | `service` | Lógica de negocio | Convierte lo que ve la cámara en productos para la venta por QR. |
-| 102 | `ReportExportService` | Concreta | `service` | Lógica de negocio | Exporta un informe de ventas a un libro de Excel en la carpeta Documentos/TBalance. |
-| 103 | `ReportService` | Concreta | `service` | Lógica de negocio | Calcula los informes de ventas de un período. |
-| 104 | `SaleService` | Concreta | `service` | Lógica de negocio | Registro y consulta de ventas. |
-| 105 | `SessionService` | Concreta | `service` | Lógica de negocio | Guarda quién inició sesión y cierra la sesión después de 30 minutos sin uso. |
-| 106 | `StorageService` | Concreta | `service` | Lógica de negocio | Conecta TBalance con Oracle y prepara la base. |
-| 107 | `SupplierService` | Concreta | `service` | Lógica de negocio | Casos de uso de los proveedores de un perfil. |
-| 108 | `UserService` | Concreta | `service` | Lógica de negocio | Casos de uso de las personas que usan TBalance: la primera cuenta (el dueño), iniciar sesión, crear usuarios de un negocio, deshabilitarlos y cambiar contraseñas. |
-| 109 | `AccessPolicy` | Concreta | `bridge` | Presentación | Revisa en Java, antes de cada llamada de la página, que la persona tenga la sesión abierta y el permiso que pide esa acción en el negocio abierto. |
-| 110 | `AssistantController` | Concreta | `bridge` | Presentación | Recibe las acciones del asistente: configurar la clave, conversar y confirmar o descartar lo que propone. |
-| 111 | `AuditTrail` | Concreta | `bridge` | Presentación | Decide qué llamadas del puente quedan en el historial y arma el texto de cada una. |
-| 112 | `BackupController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla copias de seguridad. |
-| 113 | `BridgeInvoker` | Concreta | `bridge` | Presentación | Ejecuta un método público de JavaBridge a partir de su nombre y de sus argumentos en JSON, y devuelve el resultado también en JSON. |
-| 114 | `BridgeResponse` | Concreta | `bridge` | Presentación | Formato de las respuestas que el bridge devuelve a JavaScript. |
-| 115 | `CatalogController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla categorías y proveedores. |
-| 116 | `CostController` | Concreta | `bridge` | Presentación | Entrega a la pantalla los datos de la sección Costos. |
-| 117 | `CreditController` | Concreta | `bridge` | Presentación | Recibe las acciones de la sección Fiados: ver quién debe, ver la cuenta de un cliente, registrar y anular abonos. |
-| 118 | `DesktopFileOpener` | Concreta | `bridge` | Presentación | Implementación de FileOpener con Desktop. |
-| 119 | `FileOpener` | Interfaz | `bridge` | Presentación | Abre un archivo o carpeta con el programa predeterminado del sistema operativo (visor de imágenes, explorador de archivos...). |
-| 120 | `InventoryController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla productos y del dashboard. |
-| 121 | `JavaBridge` | Concreta | `bridge` | Presentación | Objeto que la página web llama como window.javaBridge; pasa cada pedido al controlador que le corresponde. |
-| 122 | `LabelController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla etiquetas con código QR. |
-| 123 | `ProfileController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla perfiles: recibe los eventos de la vista, delega en ProfileService y avisa a la vista cuando cambia el estado. |
-| 124 | `ReportController` | Concreta | `bridge` | Presentación | Entrega a la pantalla los informes de ventas y los exporta a Excel. |
-| 125 | `ScanController` | Concreta | `bridge` | Presentación | Recibe la acción de la pantalla "registrar venta por QR". |
-| 126 | `ScreenTransition` | Interfaz | `bridge` | Presentación | Transición visual que hace la ventana de JavaFX por encima de la página HTML. |
-| 127 | `SessionController` | Concreta | `bridge` | Presentación | Recibe las acciones del inicio de sesión y de los usuarios de cada negocio. |
-| 128 | `SseNotifier` | Concreta | `bridge` | Presentación | Implementación de ViewNotifier para cuando la interfaz se muestra en Edge: envía cada script a la página por un flujo de eventos del servidor (Server-Sent Events) y la página lo ejecuta al recibirlo. |
-| 129 | `StorageController` | Concreta | `bridge` | Presentación | Recibe las acciones de "Dónde se guardan los datos": probar la conexión y cambiar de almacenamiento. |
-| 130 | `TransactionController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla que mueven stock: entradas, salidas y ventas. |
-| 131 | `ViewNotifier` | Interfaz | `bridge` | Presentación | Canal para que Java avise a la vista web de un cambio de estado. |
-| 132 | `WebViewNotifier` | Concreta | `bridge` | Presentación | Implementación de ViewNotifier sobre el WebEngine de JavaFX. |
-| 133 | `BrowserWindow` | Concreta | `view` | Presentación | Abre la interfaz en una ventana de aplicación de Microsoft Edge (o de Google Chrome si no hay Edge): una ventana propia, sin pestañas ni barra de direcciones, que dibuja la página con la tarjeta gráfica. |
-| 134 | `DesktopBrowserApp` | Concreta | `view` | Presentación | Arranca TBalance mostrando la interfaz en una ventana de Edge (modo aplicación) en lugar del visor de JavaFX. |
-| 135 | `LocalWebServer` | Concreta | `view` | Presentación | Servidor HTTP local (solo en 127.0.0.1) que entrega la interfaz a Edge y conecta la página con Java. |
-| 136 | `SnapshotTransition` | Concreta | `view` | Presentación | Hace las transiciones grandes de la ventana de JavaFX con animaciones de JavaFX. |
-| 137 | `WebViewBridgeAdapter` | Concreta | `view` | Presentación | Conecta la página con JavaBridge cuando se usa la ventana de JavaFX. |
-| 138 | `WebViewMain` | Concreta | `view` | Presentación | Ventana de JavaFX que muestra la interfaz cuando no hay Edge. |
-| 139 | `WindowsTaskbarIcon` | Concreta | `view` | Presentación | Pone el ícono de TBalance en alta resolución en la ventana de Edge (barra de tareas y barra de título de Windows). |
-| 140 | `Camera` | Interfaz | `dispositivo` | Acceso a datos | Cámara de la que se toman cuadros para leer códigos QR. |
-| 141 | `CameraProvider` | Interfaz | `dispositivo` | Acceso a datos | Cámaras disponibles en el computador. |
-| 142 | `PhoneCamera` | Concreta | `dispositivo` | Acceso a datos | Camera que toma las imágenes del celular conectado por Wi-Fi (PhoneLink). |
-| 143 | `PhoneLink` | Concreta | `dispositivo` | Acceso a datos | Conexión con el celular por el Wi-Fi del local, para usarlo como lector de etiquetas sin instalar aplicaciones ni usar internet. |
-| 144 | `WebcamCamera` | Concreta | `dispositivo` | Acceso a datos | Camera implementada con la webcam del computador mediante la librería webcam-capture. |
-| 145 | `AssistantLog` | Concreta | `util` | Transversal | Registro de errores del asistente en ~/.inventariopro/asistente.log, para poder ver qué pasó si no responde. |
-| 146 | `DateUtil` | Concreta | `util` | Transversal | Utilidades de fecha usadas por todo el sistema. |
-| 147 | `FileUtil` | Concreta | `util` | Transversal | Operaciones con carpetas que usan las copias de seguridad. |
-| 148 | `IdGenerator` | Concreta | `util` | Transversal | Generador de identificadores únicos. |
-| 149 | `ImageEncoder` | Concreta | `util` | Transversal | Convierte imágenes en texto para mostrarlas en la página. |
-| 150 | `JsonUtil` | Concreta | `util` | Transversal | Punto único de configuración de Gson para todo el sistema. |
-| 151 | `PasswordHasher` | Concreta | `util` | Transversal | Cifra las contraseñas antes de guardarlas y las comprueba al iniciar sesión. |
-| 152 | `QrGenerator` | Concreta | `util` | Transversal | Genera imágenes de códigos QR usando la librería ZXing. |
-| 153 | `QrReader` | Concreta | `util` | Transversal | Lee el texto de un código QR que aparece en una imagen (por ejemplo, un cuadro de la cámara). |
-| 154 | `TextUtil` | Concreta | `util` | Transversal | Utilidades puras para el manejo de texto. |
+| 37 | `BackupStore` | Interfaz | `repository` | Acceso a datos | Dónde se guardan las copias de seguridad (archivos .zip con los datos en JSON). |
+| 38 | `CategoryJdbcRepository` | Concreta | `repository` | Acceso a datos | Categorías de un negocio en la tabla CATEGORIA. |
+| 39 | `CreditPaymentJdbcRepository` | Concreta | `repository` | Acceso a datos | Abonos de los clientes que deben, en la tabla ABONO. |
+| 40 | `Database` | Concreta | `repository` | Acceso a datos | Conexión con Oracle: llama a las funciones de consulta y a los procedimientos dentro de transacciones. |
+| 41 | `DatabaseBackupRepository` | Concreta | `repository` | Acceso a datos | Copias de seguridad dentro de Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna BLOB. |
+| 42 | `DatabaseRoutines` | Interfaz | `repository` | Acceso a datos | Operaciones que hace Oracle con sus procedimientos y funciones (vender, anular, abonar, saldo, utilidad, valor del inventario). |
+| 43 | `DatabaseSettingsRepository` | Concreta | `repository` | Acceso a datos | Guarda en ~/.inventariopro/basedatos.json cómo se conecta este computador a Oracle (URL, usuario y clave). |
+| 44 | `DatabaseStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios JDBC sobre Oracle; todos comparten una conexión. |
+| 45 | `GlobalConfigRepository` | Concreta | `repository` | Acceso a datos | Persiste la GlobalConfig (perfil activo y lista de perfiles) en configuracion-global.json. |
+| 46 | `JdbcRepository` | Abstracta | `repository` | Acceso a datos | Repositorio genérico sobre una tabla de Oracle: lee con FN_LISTAR_ y guarda con SP_GUARDAR_ y SP_BORRAR_. |
+| 47 | `JsonFileStore` | Concreta | `repository` | Acceso a datos | Lectura y escritura de un archivo de texto JSON en disco. |
+| 48 | `JsonRepository` | Concreta | `repository` | Acceso a datos | Guarda una lista de objetos en un archivo JSON; solo se usa dentro de las copias de seguridad. |
+| 49 | `JsonStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios en archivos JSON; solo se usan para el contenido de las copias de seguridad. |
+| 50 | `LabelRepository` | Concreta | `repository` | Acceso a datos | Guarda las etiquetas generadas como imágenes PNG en ~/.inventariopro/etiquetas/ y las convierte a Base64 para mostrarlas en la vista. |
+| 51 | `OracleDialect` | Concreta | `repository` | Acceso a datos | Separa los scripts de Oracle, revisa si una tabla existe y convierte los errores de RAISE_APPLICATION_ERROR en mensajes. |
+| 52 | `OracleRoutines` | Concreta | `repository` | Acceso a datos | Llama con CallableStatement a los procedimientos y funciones de Oracle para vender, anular, abonar e informes. |
+| 53 | `PaymentQrRepository` | Concreta | `repository` | Acceso a datos | Imagen del QR de cobro (Bre-B) de cada negocio, en ~/.inventariopro/qr-cobro/.img. |
+| 54 | `ProductJdbcRepository` | Concreta | `repository` | Acceso a datos | Productos de un negocio en la tabla PRODUCTO. |
+| 55 | `ProfileJdbcRepository` | Concreta | `repository` | Acceso a datos | Perfiles (negocios) en la tabla PERFIL y su configuración en PERFIL_CONFIGURACION. |
+| 56 | `ReportExcelWriter` | Concreta | `repository` | Acceso a datos | Guarda un SalesReport como libro de Excel (.xlsx) con formato de informe: encabezado con el negocio y el período, tablas con estilos, filas alternadas, totales con fórmulas, filtros, barras de datos, encabezados fijos y pie de página con el número de página para imprimir. |
+| 57 | `Repository` | Interfaz | `repository` | Acceso a datos | Contrato de acceso a datos para cualquier entidad del sistema. |
+| 58 | `SaleJdbcRepository` | Concreta | `repository` | Acceso a datos | Ventas de un negocio en las tablas VENTA y DETALLE_VENTA. |
+| 59 | `SinConexionStorageProvider` | Concreta | `repository` | Acceso a datos | Lo que usa TBalance mientras no hay conexión con Oracle: todo vacío y sin poder guardar. |
+| 60 | `StockEntryJdbcRepository` | Concreta | `repository` | Acceso a datos | Entradas de inventario de un negocio en la tabla ENTRADA. |
+| 61 | `StockExitJdbcRepository` | Concreta | `repository` | Acceso a datos | Salidas de inventario de un negocio en la tabla SALIDA. |
+| 62 | `StorageProvider` | Interfaz | `repository` | Acceso a datos | Entrega los repositorios de TBalance: los de Oracle, los vacíos sin conexión o los de una copia de seguridad. |
+| 63 | `SupplierJdbcRepository` | Concreta | `repository` | Acceso a datos | Proveedores de un negocio en la tabla PROVEEDOR. |
+| 64 | `UserJdbcRepository` | Concreta | `repository` | Acceso a datos | Personas en la tabla USUARIO y sus accesos en NEGOCIO_USUARIO (qué negocio y con qué rol). |
+| 65 | `ZipArchiver` | Concreta | `repository` | Acceso a datos | Comprime una carpeta en un archivo .zip y la extrae de nuevo. |
+| 66 | `GeminiClient` | Concreta | `ia` | Acceso a datos | Cliente de la API de Google Gemini (capa gratuita) con llamadas a funciones. |
+| 67 | `LanguageModel` | Interfaz | `ia` | Acceso a datos | Modelo de lenguaje en la nube que usa el asistente. |
+| 68 | `SecureConnection` | Concreta | `ia` | Acceso a datos | Prepara el cliente HTTP del asistente para que se conecte como lo hace Edge en el mismo computador. |
+| 69 | `AssistantProposal` | Concreta | `service` | Lógica de negocio | Cambio que el asistente propone y que solo se hace si el usuario lo confirma (registrar una venta, una entrada de mercancía, cambiar un precio...). |
+| 70 | `AssistantService` | Concreta | `service` | Lógica de negocio | Maneja la conversación con el asistente y guarda lo que propone hasta que el usuario confirma. |
+| 71 | `AssistantSettingsService` | Concreta | `service` | Lógica de negocio | Guarda y prueba la configuración del asistente. |
+| 72 | `AssistantTools` | Concreta | `service` | Lógica de negocio | Funciones del inventario que el asistente puede usar. |
+| 73 | `AuditService` | Concreta | `service` | Lógica de negocio | Anota acciones en el historial y las lista con filtros (persona, fechas, negocio). |
+| 74 | `BackupService` | Concreta | `service` | Lógica de negocio | Crea, lista, restaura y elimina las copias de seguridad. |
+| 75 | `CategoryService` | Concreta | `service` | Lógica de negocio | Casos de uso de las categorías de un perfil. |
+| 76 | `CostService` | Concreta | `service` | Lógica de negocio | Costos del negocio por sus productos: cuánto cuesta cada producto, cuánto costó todo lo que hay en inventario y cuánto se ha comprado (entradas) en un periodo. |
+| 77 | `CreditService` | Concreta | `service` | Lógica de negocio | Calcula quién debe y cuánto (ventas fiadas menos abonos) y registra y anula abonos. |
+| 78 | `DataSnapshot` | Interfaz | `service` | Lógica de negocio | Cómo se sacan y se reponen los datos para las copias de seguridad. |
+| 79 | `DataTransferService` | Concreta | `service` | Lógica de negocio | Copia todos los negocios de un almacenamiento a otro, para las copias de seguridad: de Oracle a los archivos del .zip al crearla, y de esos archivos a Oracle al restaurarla. |
+| 80 | `DatabaseSnapshot` | Concreta | `service` | Lógica de negocio | Copias de seguridad de los datos de Oracle. |
+| 81 | `EntityService` | Abstracta | `service` | Lógica de negocio | Servicio base para las entidades con CRUD simple (productos, categorías y proveedores). |
+| 82 | `GlobalConfigService` | Concreta | `service` | Lógica de negocio | Lectura y actualización de la GlobalConfig. |
+| 83 | `InventoryService` | Concreta | `service` | Lógica de negocio | Casos de uso del catálogo de productos: CRUD, búsqueda, filtros y alertas de stock y vencimiento. |
+| 84 | `LabelService` | Concreta | `service` | Lógica de negocio | Genera etiquetas con código QR para los productos: una etiqueta individual (vista previa o imagen) y hojas listas para imprimir. |
+| 85 | `MovementService` | Concreta | `service` | Lógica de negocio | Registro de entradas y salidas de inventario. |
+| 86 | `ProfileService` | Concreta | `service` | Lógica de negocio | Crea, edita, deshabilita, habilita y abre negocios. |
+| 87 | `ProfileServices` | Registro | `service` | Lógica de negocio | Agrupa los servicios de un negocio: inventario, categorías, proveedores, movimientos, ventas y fiados. |
+| 88 | `ProfileServicesFactory` | Concreta | `service` | Lógica de negocio | Construye los repositorios y servicios de un perfil. |
+| 89 | `QrSaleScanner` | Concreta | `service` | Lógica de negocio | Convierte lo que ve la cámara en productos para la venta por QR. |
+| 90 | `ReportExportService` | Concreta | `service` | Lógica de negocio | Exporta un informe de ventas a un libro de Excel en la carpeta Documentos/TBalance. |
+| 91 | `ReportService` | Concreta | `service` | Lógica de negocio | Calcula los informes de ventas de un período. |
+| 92 | `SaleService` | Concreta | `service` | Lógica de negocio | Registro y consulta de ventas. |
+| 93 | `SessionService` | Concreta | `service` | Lógica de negocio | Guarda quién inició sesión y cierra la sesión después de 30 minutos sin uso. |
+| 94 | `StorageService` | Concreta | `service` | Lógica de negocio | Conecta TBalance con Oracle y prepara la base. |
+| 95 | `SupplierService` | Concreta | `service` | Lógica de negocio | Casos de uso de los proveedores de un perfil. |
+| 96 | `UserService` | Concreta | `service` | Lógica de negocio | Casos de uso de las personas que usan TBalance: la primera cuenta (el dueño), iniciar sesión, crear usuarios de un negocio, deshabilitarlos y cambiar contraseñas. |
+| 97 | `AccessPolicy` | Concreta | `bridge` | Presentación | Revisa en Java, antes de cada llamada de la página, que la persona tenga la sesión abierta y el permiso que pide esa acción en el negocio abierto. |
+| 98 | `AssistantController` | Concreta | `bridge` | Presentación | Recibe las acciones del asistente: configurar la clave, conversar y confirmar o descartar lo que propone. |
+| 99 | `AuditTrail` | Concreta | `bridge` | Presentación | Decide qué llamadas del puente quedan en el historial y arma el texto de cada una. |
+| 100 | `BackupController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla copias de seguridad. |
+| 101 | `BridgeInvoker` | Concreta | `bridge` | Presentación | Ejecuta un método público de JavaBridge a partir de su nombre y de sus argumentos en JSON, y devuelve el resultado también en JSON. |
+| 102 | `BridgeResponse` | Concreta | `bridge` | Presentación | Formato de las respuestas que el bridge devuelve a JavaScript. |
+| 103 | `CatalogController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla categorías y proveedores. |
+| 104 | `CostController` | Concreta | `bridge` | Presentación | Entrega a la pantalla los datos de la sección Costos. |
+| 105 | `CreditController` | Concreta | `bridge` | Presentación | Recibe las acciones de la sección Fiados: ver quién debe, ver la cuenta de un cliente, registrar y anular abonos. |
+| 106 | `DesktopFileOpener` | Concreta | `bridge` | Presentación | Implementación de FileOpener con Desktop. |
+| 107 | `FileOpener` | Interfaz | `bridge` | Presentación | Abre un archivo o carpeta con el programa predeterminado del sistema operativo (visor de imágenes, explorador de archivos...). |
+| 108 | `InventoryController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla productos y del dashboard. |
+| 109 | `JavaBridge` | Concreta | `bridge` | Presentación | Objeto que la página web llama como window.javaBridge; pasa cada pedido al controlador que le corresponde. |
+| 110 | `LabelController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla etiquetas con código QR. |
+| 111 | `ProfileController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla perfiles: recibe los eventos de la vista, delega en ProfileService y avisa a la vista cuando cambia el estado. |
+| 112 | `ReportController` | Concreta | `bridge` | Presentación | Entrega a la pantalla los informes de ventas y los exporta a Excel. |
+| 113 | `ScanController` | Concreta | `bridge` | Presentación | Recibe la acción de la pantalla "registrar venta por QR". |
+| 114 | `ScreenTransition` | Interfaz | `bridge` | Presentación | Transición visual que hace la ventana de JavaFX por encima de la página HTML. |
+| 115 | `SessionController` | Concreta | `bridge` | Presentación | Recibe las acciones del inicio de sesión y de los usuarios de cada negocio. |
+| 116 | `SseNotifier` | Concreta | `bridge` | Presentación | Implementación de ViewNotifier para cuando la interfaz se muestra en Edge: envía cada script a la página por un flujo de eventos del servidor (Server-Sent Events) y la página lo ejecuta al recibirlo. |
+| 117 | `StorageController` | Concreta | `bridge` | Presentación | Recibe las acciones de "Dónde se guardan los datos": probar la conexión y cambiar de almacenamiento. |
+| 118 | `TransactionController` | Concreta | `bridge` | Presentación | Recibe las acciones de la pantalla que mueven stock: entradas, salidas y ventas. |
+| 119 | `ViewNotifier` | Interfaz | `bridge` | Presentación | Canal para que Java avise a la vista web de un cambio de estado. |
+| 120 | `WebViewNotifier` | Concreta | `bridge` | Presentación | Implementación de ViewNotifier sobre el WebEngine de JavaFX. |
+| 121 | `BrowserWindow` | Concreta | `view` | Presentación | Abre la interfaz en una ventana de aplicación de Microsoft Edge (o de Google Chrome si no hay Edge): una ventana propia, sin pestañas ni barra de direcciones, que dibuja la página con la tarjeta gráfica. |
+| 122 | `DesktopBrowserApp` | Concreta | `view` | Presentación | Arranca TBalance mostrando la interfaz en una ventana de Edge (modo aplicación) en lugar del visor de JavaFX. |
+| 123 | `LocalWebServer` | Concreta | `view` | Presentación | Servidor HTTP local (solo en 127.0.0.1) que entrega la interfaz a Edge y conecta la página con Java. |
+| 124 | `SnapshotTransition` | Concreta | `view` | Presentación | Hace las transiciones grandes de la ventana de JavaFX con animaciones de JavaFX. |
+| 125 | `WebViewBridgeAdapter` | Concreta | `view` | Presentación | Conecta la página con JavaBridge cuando se usa la ventana de JavaFX. |
+| 126 | `WebViewMain` | Concreta | `view` | Presentación | Ventana de JavaFX que muestra la interfaz cuando no hay Edge. |
+| 127 | `WindowsTaskbarIcon` | Concreta | `view` | Presentación | Pone el ícono de TBalance en alta resolución en la ventana de Edge (barra de tareas y barra de título de Windows). |
+| 128 | `Camera` | Interfaz | `dispositivo` | Acceso a datos | Cámara de la que se toman cuadros para leer códigos QR. |
+| 129 | `CameraProvider` | Interfaz | `dispositivo` | Acceso a datos | Cámaras disponibles en el computador. |
+| 130 | `PhoneCamera` | Concreta | `dispositivo` | Acceso a datos | Camera que toma las imágenes del celular conectado por Wi-Fi (PhoneLink). |
+| 131 | `PhoneLink` | Concreta | `dispositivo` | Acceso a datos | Conexión con el celular por el Wi-Fi del local, para usarlo como lector de etiquetas sin instalar aplicaciones ni usar internet. |
+| 132 | `WebcamCamera` | Concreta | `dispositivo` | Acceso a datos | Camera implementada con la webcam del computador mediante la librería webcam-capture. |
+| 133 | `AssistantLog` | Concreta | `util` | Transversal | Registro de errores del asistente en ~/.inventariopro/asistente.log, para poder ver qué pasó si no responde. |
+| 134 | `DateUtil` | Concreta | `util` | Transversal | Utilidades de fecha usadas por todo el sistema. |
+| 135 | `FileUtil` | Concreta | `util` | Transversal | Operaciones con carpetas que usan las copias de seguridad. |
+| 136 | `IdGenerator` | Concreta | `util` | Transversal | Generador de identificadores únicos. |
+| 137 | `ImageEncoder` | Concreta | `util` | Transversal | Convierte imágenes en texto para mostrarlas en la página. |
+| 138 | `JsonUtil` | Concreta | `util` | Transversal | Punto único de configuración de Gson para todo el sistema. |
+| 139 | `PasswordHasher` | Concreta | `util` | Transversal | Cifra las contraseñas antes de guardarlas y las comprueba al iniciar sesión. |
+| 140 | `QrGenerator` | Concreta | `util` | Transversal | Genera imágenes de códigos QR usando la librería ZXing. |
+| 141 | `QrReader` | Concreta | `util` | Transversal | Lee el texto de un código QR que aparece en una imagen (por ejemplo, un cuadro de la cámara). |
+| 142 | `TextUtil` | Concreta | `util` | Transversal | Utilidades puras para el manejo de texto. |
 
 ### Descripción de cada clase
 
@@ -238,7 +226,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `instancia (static)` | `AppContext` | Instancia (AppContext) |
 | `directorioDatos` | `Path` | Directorio datos |
 | `gestorRespaldo` | `BackupService` | Gestor respaldo (BackupService) |
-| `respaldosEnCarpeta` | `BackupRepository` | Respaldos en carpeta (BackupRepository) |
 | `gestorEtiquetas` | `LabelService` | Gestor etiquetas (LabelService) |
 | `ajustesAsistente` | `AssistantSettingsService` | Ajustes asistente (AssistantSettingsService) |
 | `exportadorInformes` | `ReportExportService` | Exportador informes (ReportExportService) |
@@ -252,7 +239,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `auditoria` | `AuditService` | Auditoria (AuditService) |
 | `sesion` | `SessionService` | Sesion (SessionService) |
 
-**Constantes:** `DIRECTORIO_DATOS`, `CARPETA_RESPALDOS`, `CARPETA_ETIQUETAS`, `ARCHIVO_ASISTENTE`, `ARCHIVO_BASE_DATOS`
+**Constantes:** `DIRECTORIO_DATOS`, `CARPETA_ETIQUETAS`, `ARCHIVO_ASISTENTE`, `ARCHIVO_BASE_DATOS`
 
 **Métodos**
 
@@ -288,7 +275,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `getQrCobro()` | `PaymentQrRepository` | Imágenes del QR de cobro de cada negocio (~/.inventariopro/qr-cobro) |
 | `getCarpetaCelular()` | `Path` | Carpeta del certificado para conectar el celular (~/.inventariopro/celular) |
 | `getPerfilActivoId()` | `String` | ID del negocio abierto, o null si no hay ninguno |
-| `esPrimerArranque()` | `boolean` | True si todavía no existe ningún perfil |
 | Getters y setters | — | `getGestorEtiquetas()`, `getGestorPerfiles()`, `getGestorRespaldo()`, `getSesion()` |
 
 ##### Launcher
@@ -640,14 +626,13 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | — |
-| Responsabilidad | Configuración general: qué negocio está abierto y la lista de negocios. |
+| Responsabilidad | Lo que recuerda este computador: qué negocio quedó abierto. |
 | Archivo | [GlobalConfig.java](../src/main/java/sistemainventario/model/GlobalConfig.java) |
 
 **Atributos**
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `perfiles` | `List<Profile>` | Perfiles |
 | `perfilActivoId` | `String` | Perfil activo id |
 | `version` | `String` | Version |
 
@@ -657,10 +642,11 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `getPerfilActivo()` | `Profile` | La configuración conoce la lista y el ID activo |
-| `tienePerfiles()` | `boolean` | True si existe al menos un perfil registrado |
-| `tienePerfilActivo()` | `boolean` | True si hay un perfil marcado como activo |
-| Getters y setters | — | `getPerfilActivoId()`, `getPerfiles()`, `getVersion()`, `setPerfilActivoId()`, `setPerfiles()`, `setVersion()` |
+| `tienePerfilActivo()` | `boolean` | True si hay un negocio abierto guardado |
+| `getPerfilActivoId()` | `String` | ID del negocio abierto, o null |
+| `setPerfilActivoId(String perfilActivoId)` | `void` | Set perfil activo id |
+| `getVersion()` | `String` | Versión del formato del archivo |
+| `setVersion(String version)` | `void` | Set version |
 
 ##### IdentifiedEntity
 
@@ -1235,57 +1221,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `valores(AuditEntry e)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `AuditEntry` | La entidad |
 
-##### AuditRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Historial de acciones en auditoria.json (junto a usuarios.json). |
-| Archivo | [AuditRepository.java](../src/main/java/sistemainventario/repository/AuditRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `AuditRepository(Path directorio)` | — | Constructor |
-
-##### BackupRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | implementa `BackupStore` |
-| Responsabilidad | Administra los archivos de copia de seguridad guardados en ~/.inventariopro/respaldos/. |
-| Archivo | [BackupRepository.java](../src/main/java/sistemainventario/repository/BackupRepository.java) |
-
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| `carpeta` | `Path` | Carpeta |
-
-**Constantes:** `NOMBRE_VALIDO`, `FORMATO_FECHA`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `BackupRepository(Path carpeta)` | — | Constructor |
-| `listar()` | `List<Backup>` | Respaldos existentes, del más reciente al más antiguo |
-| `rutaExistente(String nombre)` | `Path` | Ruta del respaldo existente |
-| `rutaNueva(String nombre)` | `Path` | Ruta dentro de la carpeta de respaldos |
-| `describir(Path ruta)` | `Backup` | La información del respaldo |
-| `eliminar(String nombre)` | `void` | Elimina |
-| `existe(String nombre)` | `boolean` | True si ya hay una copia con ese nombre |
-| `guardar(String nombre, Path zip)` | `Backup` | Guarda una copia |
-| `leer(String nombre, Path destino)` | `void` | Deja el contenido de una copia en un archivo .zip para restaurarla |
-| `ubicacion()` | `String` | Dónde están las copias, para mostrarlo ("C:\\...\\respaldos" o "la base de datos Oracle") |
-| `carpeta()` | `Path` | La carpeta de las copias, o null si están en una base de datos |
-| Getters y setters | — | `getCarpeta()` |
-
 ##### BackupStore
 
 | Campo | Valor |
@@ -1327,23 +1262,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `valores(Category c)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `Category` | La entidad |
 
-##### CategoryRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Persistencia de las categorías de un perfil en categorias.json. |
-| Archivo | [CategoryRepository.java](../src/main/java/sistemainventario/repository/CategoryRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `CategoryRepository(Path directorio)` | — | Constructor |
-
 ##### CreditPaymentJdbcRepository
 
 | Campo | Valor |
@@ -1363,23 +1281,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(CreditPayment a)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `CreditPayment` | La entidad |
-
-##### CreditPaymentRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Abonos de los clientes que deben, en abonos.json de cada negocio. |
-| Archivo | [CreditPaymentRepository.java](../src/main/java/sistemainventario/repository/CreditPaymentRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `CreditPaymentRepository(Path directorio)` | — | Constructor |
 
 ##### Database
 
@@ -1646,7 +1547,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 
 | Campo | Valor |
 |---|---|
-| Tipo | Abstracta |
+| Tipo | Concreta |
 | Herencia | implementa `Repository` |
 | Responsabilidad | Guarda una lista de objetos en un archivo JSON; solo se usa dentro de las copias de seguridad. |
 | Archivo | [JsonRepository.java](../src/main/java/sistemainventario/repository/JsonRepository.java) |
@@ -1687,15 +1588,15 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 
 | Atributo | Tipo | Descripción |
 |---|---|---|
-| `directorioDatos` | `Path` | Directorio datos |
-| `directorios` | `ProfileDirectory` | Directorios (ProfileDirectory) |
+| `carpeta` | `Path` | Carpeta |
+
+**Constantes:** `ARCHIVO_PERFILES`, `ARCHIVO_USUARIOS`
 
 **Métodos**
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `JsonStorageProvider(Path directorioDatos)` | — | Constructor |
-| `vaciarArchivos()` | `void` | Borra perfiles.json y las carpetas de los negocios (no toca la configuración global) |
+| `JsonStorageProvider(Path carpeta)` | — | Constructor |
 | `nombre()` | `String` | Nombre para mostrar ("Oracle" o "Sin conexión") |
 | `perfiles()` | `Repository<Profile>` | Repositorio de perfiles |
 | `usuarios()` | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
@@ -1829,51 +1730,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `valores(Product p)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `Product` | La entidad |
 
-##### ProductRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Persistencia de los productos de un perfil en productos.json. |
-| Archivo | [ProductRepository.java](../src/main/java/sistemainventario/repository/ProductRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `ProductRepository(Path directorio)` | — | Constructor |
-
-##### ProfileDirectory
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | — |
-| Responsabilidad | Administra las carpetas físicas de cada perfil: ~/.inventariopro/data/perfiles//. |
-| Archivo | [ProfileDirectory.java](../src/main/java/sistemainventario/repository/ProfileDirectory.java) |
-
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| `directorioBase` | `Path` | Directorio base |
-
-**Constantes:** `CARPETA_PERFILES`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `ProfileDirectory(Path directorioBase)` | — | Constructor |
-| `resolver(String perfilId)` | `Path` | Ruta de la carpeta del perfil (no se crea) |
-| `crear(String perfilId)` | `Path` | Crea la carpeta del perfil si no existe |
-| `eliminarTodas()` | `void` | Elimina las carpetas de todos los perfiles |
-| `eliminar(String perfilId)` | `void` | Elimina la carpeta del perfil y todos sus archivos |
-| Getters y setters | — | `getDirectorioBase()` |
-
 ##### ProfileJdbcRepository
 
 | Campo | Valor |
@@ -1895,23 +1751,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `leer(ResultSet fila)` | `Profile` | La entidad |
 | `completar(List<Profile> perfiles)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
 | `guardarHijos(Connection conexion, Profile perfil, boolean nuevo)` | `void` | Escribe los datos de tablas hijas después del INSERT o del UPDATE |
-
-##### ProfileRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Persistencia global de la lista de perfiles en perfiles.json. |
-| Archivo | [ProfileRepository.java](../src/main/java/sistemainventario/repository/ProfileRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `ProfileRepository(Path directorio)` | — | Constructor |
 
 ##### ReportExcelWriter
 
@@ -1975,23 +1814,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `completar(List<Sale> ventas)` | `void` | Lee todo el detalle del negocio en una sola consulta y lo reparte entre las ventas |
 | `guardarHijos(Connection conexion, Sale venta, boolean nueva)` | `void` | Reescribe el detalle de la venta (al editar se borra el anterior) |
 
-##### SaleRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Persistencia de las ventas de un perfil en ventas.json. |
-| Archivo | [SaleRepository.java](../src/main/java/sistemainventario/repository/SaleRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `SaleRepository(Path directorio)` | — | Constructor |
-
 ##### SinConexionStorageProvider
 
 | Campo | Valor |
@@ -2039,23 +1861,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `valores(StockEntry e)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `StockEntry` | La entidad |
 
-##### StockEntryRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Persistencia de las entradas de inventario de un perfil en entradas.json. |
-| Archivo | [StockEntryRepository.java](../src/main/java/sistemainventario/repository/StockEntryRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `StockEntryRepository(Path directorio)` | — | Constructor |
-
 ##### StockExitJdbcRepository
 
 | Campo | Valor |
@@ -2075,23 +1880,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(StockExit s)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `StockExit` | La entidad |
-
-##### StockExitRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Persistencia de las salidas de inventario de un perfil en salidas.json. |
-| Archivo | [StockExitRepository.java](../src/main/java/sistemainventario/repository/StockExitRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `StockExitRepository(Path directorio)` | — | Constructor |
 
 ##### StorageProvider
 
@@ -2142,23 +1930,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `completar(List<Supplier> proveedores)` | `void` | Lee de PROVEEDOR_CATEGORIA los tipos de producto de todos los proveedores del negocio |
 | `guardarHijos(Connection conexion, Supplier proveedor, boolean nuevo)` | `void` | Reescribe los tipos de producto del proveedor (solo categorías que existen en el negocio) |
 
-##### SupplierRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Persistencia de los proveedores de un perfil en proveedores.json. |
-| Archivo | [SupplierRepository.java](../src/main/java/sistemainventario/repository/SupplierRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `SupplierRepository(Path directorio)` | — | Constructor |
-
 ##### UserJdbcRepository
 
 | Campo | Valor |
@@ -2180,23 +1951,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `leer(ResultSet fila)` | `User` | La entidad |
 | `completar(List<User> usuarios)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
 | `guardarHijos(Connection conexion, User usuario, boolean nuevo)` | `void` | Escribe los datos de tablas hijas después del INSERT o del UPDATE |
-
-##### UserRepository
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | hereda de `JsonRepository` |
-| Responsabilidad | Personas que usan TBalance, en usuarios.json (junto a perfiles.json). |
-| Archivo | [UserRepository.java](../src/main/java/sistemainventario/repository/UserRepository.java) |
-
-**Constantes:** `ARCHIVO`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `UserRepository(Path directorio)` | — | Constructor |
 
 ##### ZipArchiver
 
@@ -2657,10 +2411,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | Método | Retorna | Descripción |
 |---|---|---|
 | `GlobalConfigService(GlobalConfigRepository repositorio)` | — | Constructor |
-| `esPrimerArranque()` | `boolean` | True si aún no se ha creado ningún perfil |
 | `getPerfilActivoId()` | `Optional<String>` | ID del perfil activo, si hay uno |
 | `establecerPerfilActivo(String perfilId)` | `void` | Establecer perfil activo |
-| `sincronizarPerfiles(List<Profile> perfiles)` | `void` | Copia la lista de perfiles al archivo de configuración (estructura de P2) |
 
 ##### InventoryService
 
@@ -2775,7 +2527,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `perfiles` | `Repository<Profile>` | Perfiles |
 | `configuracion` | `GlobalConfigService` | Configuracion (GlobalConfigService) |
-| `directorios` | `ProfileDirectory` | Directorios (ProfileDirectory) |
 | `fabricaServicios` | `ProfileServicesFactory` | Fabrica servicios (ProfileServicesFactory) |
 
 **Métodos**
@@ -2785,7 +2536,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `listarTodos()` | `List<Profile>` | Lista todos |
 | `buscarPorId(String id)` | `Optional<Profile>` | Busca por id |
 | `getPerfilActivo()` | `Optional<Profile>` | El perfil activo, si existe |
-| `esPrimerArranque()` | `boolean` | True si aún no se ha creado ningún perfil |
 | `resolverPerfilInicial()` | `Optional<String>` | Determina qué perfil cargar al iniciar: el activo guardado o, si no hay, el primero de la lista (comportamiento de P2) |
 | `crear(Profile datos)` | `Profile` | Crea el perfil, su carpeta y, si el tipo de negocio lo indica, sus categorías predefinidas |
 | `actualizar(Profile cambios)` | `Profile` | Actualiza nombre, descripción y color; conserva el resto de datos |
@@ -2794,7 +2544,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `seleccionar(String id)` | `Optional<ProfileServices>` | Servicios del perfil activado, o vacío si se desactivó |
 | `crearServicios(String id)` | `ProfileServices` | Servicios para operar sobre los datos de ese perfil |
 | `normalizarCategorias()` | `int` | Revisa la categoría de los productos de todos los negocios (los datos de versiones en que era opcional quedan en "Sin categoría") |
-| `sincronizarConfiguracion()` | `void` | Copia la lista de perfiles al archivo de configuración |
 
 ##### ProfileServices
 
@@ -4275,7 +4024,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|---|
 | Herencia | `IdentifiedEntity` | `Product`, `Category`, `Supplier`, `Profile`, `Sale`, `InventoryMovement`, `User`, `AuditEntry`, `CreditPayment` | Todo lo que se guarda tiene un ID; lo heredan de esta clase. |
 | Herencia | `InventoryMovement` | `StockEntry`, `StockExit` | Una entrada suma stock y una salida lo resta; cada una sobrescribe `aplicarA(Product)`. |
-| Herencia | `JsonRepository<T>` | `ProductRepository`, `CategoryRepository`, `SupplierRepository`, `StockEntryRepository`, `StockExitRepository`, `SaleRepository`, `ProfileRepository`, `UserRepository`, `AuditRepository`, `CreditPaymentRepository` | Cada una solo dice en qué archivo de la copia de seguridad va; leer y escribir lo hace la clase padre. |
 | Herencia | `JdbcRepository<T>` | `ProductJdbcRepository`, `CategoryJdbcRepository`, `SupplierJdbcRepository`, `StockEntryJdbcRepository`, `StockExitJdbcRepository`, `SaleJdbcRepository`, `ProfileJdbcRepository`, `UserJdbcRepository`, `AuditJdbcRepository`, `CreditPaymentJdbcRepository` | Cada una dice su tabla y sus columnas; consultar, insertar y actualizar lo hace la clase padre. |
 | Herencia | `EntityService<T>` | `InventoryService`, `CategoryService`, `SupplierService` | Comparten el paso a paso de guardar; cada una pone su validación. |
 | Herencia | `RuntimeException` | `ValidationException`, `PersistenceException`, `AssistantException` | Los errores propios del proyecto. |
@@ -4301,7 +4049,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|---|
 | `IdentifiedEntity` | ninguno | 9 entidades (Product, Sale, User…) | Da a todo lo que se guarda su ID y la comparación por ID. |
 | `InventoryMovement` | `aplicarA(Product)`, `getPrefijoId()` | `StockEntry`, `StockExit` | Cada movimiento dice cómo cambia el stock; el servicio no pregunta de qué tipo es. |
-| `JsonRepository<T>` | ninguno | 10 repositorios de la copia de seguridad | Escribe una sola vez cómo se guarda una lista en un archivo JSON dentro de la copia. |
 | `JdbcRepository<T>` | `tabla()`, `columnas()`, `valores(T)`, `leer(ResultSet)` | 10 repositorios de base de datos | Escribe una sola vez cómo se consulta y se guarda en una tabla. |
 | `EntityService<T>` | `validar(T)`, `generarId()`, `nombreEntidad()` | `InventoryService`, `CategoryService`, `SupplierService` | Guardar sigue siempre los mismos pasos; cada servicio completa los suyos. |
 
@@ -4312,7 +4059,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `Repository<T>` | listarTodos, buscarPorId, agregar, actualizar, eliminar | `JsonRepository<T>`, `JdbcRepository<T>` | Los servicios guardan igual en Oracle o dentro de una copia de seguridad. |
 | `StorageProvider` | perfiles, usuarios, productos, ventas, abonos… | `DatabaseStorageProvider`, `SinConexionStorageProvider`, `JsonStorageProvider` | Entrega todos los repositorios: los de Oracle, los vacíos mientras no hay conexión o los de una copia de seguridad. |
 | `DatabaseRoutines` | registrarVenta, anularVenta, registrarAbono, saldoCliente… | `OracleRoutines` | Las operaciones que hace Oracle con sus procedimientos y funciones. |
-| `BackupStore` | listar, guardar, leer, eliminar | `BackupRepository`, `DatabaseBackupRepository` | Las copias se guardan en una carpeta o dentro de la base. |
+| `BackupStore` | listar, guardar, leer, eliminar | `DatabaseBackupRepository` | Las copias se guardan dentro de Oracle, en la tabla RESPALDO. |
 | `DataSnapshot` | prepararCarpeta, restaurarDesde | `DatabaseSnapshot` | Saca y repone los datos para una copia de seguridad. |
 | `Deshabilitable` | isActivo, setActivo | `Product`, `Category`, `Supplier`, `Profile`, `User` | Lo que se deshabilita en lugar de borrarse. |
 | `Anulable` | anular, isAnulada | `Sale`, `InventoryMovement`, `CreditPayment` | Lo que se anula con motivo en lugar de borrarse. |
@@ -4374,7 +4121,7 @@ Todas las pantallas comparten la misma distribución: a la izquierda, el menú c
 
 | Principio | Clase | Argumento |
 |---|---|---|
-| **SRP** (una sola responsabilidad) | `Product` / `InventoryService` / `ProductRepository` | El producto cumple sus reglas, el servicio coordina el caso de uso y el repositorio guarda. Cada uno cambia por una sola razón. |
+| **SRP** (una sola responsabilidad) | `Product` / `InventoryService` / `ProductJdbcRepository` | El producto cumple sus reglas, el servicio coordina el caso de uso y el repositorio guarda. Cada uno cambia por una sola razón. |
 | **SRP** | `AccessPolicy` / `AuditTrail` / controladores | Revisar permisos, anotar el historial y atender la acción del usuario están en clases distintas. |
 | **SRP** | `ReportService` / `ReportExportService` / `ReportExcelWriter` | Calcular el informe, decidir dónde se guarda y escribir el archivo de Excel están separados. |
 | **SRP** | `UserService` / `SessionService` / `PasswordHasher` | Administrar usuarios, recordar quién inició sesión y cifrar contraseñas están separados. |

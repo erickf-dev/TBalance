@@ -119,11 +119,8 @@ interface Deshabilitable {
   + {abstract} setActivo()
 }
 class GlobalConfig {
-  - perfiles : List<Profile>
   - perfilActivoId : String
   - version : String
-  + getPerfilActivo() : Profile
-  + tienePerfiles() : boolean
   + tienePerfilActivo() : boolean
 }
 abstract class IdentifiedEntity {
@@ -317,7 +314,6 @@ Deshabilitable <|.. Product
 Deshabilitable <|.. Profile
 Deshabilitable <|.. Supplier
 Deshabilitable <|.. User
-GlobalConfig o-- Profile
 IdentifiedEntity <|-- AuditEntry
 IdentifiedEntity <|-- Category
 IdentifiedEntity <|-- CreditPayment

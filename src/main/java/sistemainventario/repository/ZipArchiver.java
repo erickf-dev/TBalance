@@ -18,7 +18,7 @@ import java.util.zip.ZipOutputStream;
  * Comprime una carpeta en un archivo .zip y la extrae de nuevo.
  *
  * <p><b>SRP:</b> solo sabe manejar archivos .zip; no conoce perfiles ni reglas
- * de negocio. Lo usa {@link BackupRepository} a través del servicio de
+ * de negocio. Lo usa {@link sistemainventario.service.BackupService} a través del servicio de
  * respaldos.</p>
  *
  * <p>La extracción rechaza entradas que intenten escribir fuera de la carpeta
