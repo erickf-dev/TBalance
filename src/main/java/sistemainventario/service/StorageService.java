@@ -122,6 +122,44 @@ public class StorageService {
         }
     }
 
+    /** Sin conexión no hay copias de seguridad (se guardan en Oracle, en la tabla RESPALDO). */
+    public static final BackupStore SIN_COPIAS = new BackupStore() {
+        @Override
+        public java.util.List<sistemainventario.model.Backup> listar() {
+            return java.util.List.of();
+        }
+
+        @Override
+        public boolean existe(String nombre) {
+            return false;
+        }
+
+        @Override
+        public sistemainventario.model.Backup guardar(String nombre, Path zip) {
+            throw new ValidationException(SinConexionStorageProvider.MENSAJE);
+        }
+
+        @Override
+        public void leer(String nombre, Path destino) {
+            throw new ValidationException(SinConexionStorageProvider.MENSAJE);
+        }
+
+        @Override
+        public void eliminar(String nombre) {
+            throw new ValidationException(SinConexionStorageProvider.MENSAJE);
+        }
+
+        @Override
+        public String ubicacion() {
+            return "la base de datos Oracle (sin conexión)";
+        }
+
+        @Override
+        public Path carpeta() {
+            return null;
+        }
+    };
+
     /** Sin conexión no hay datos para copiar ni dónde restaurar. */
     public static final DataSnapshot SIN_DATOS = new DataSnapshot() {
         @Override

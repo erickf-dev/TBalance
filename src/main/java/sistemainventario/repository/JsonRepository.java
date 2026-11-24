@@ -18,16 +18,16 @@ import java.util.stream.Collectors;
  * Implementación genérica de {@link Repository} que guarda una lista de
  * entidades en un archivo JSON y la mantiene en memoria (caché).
  *
- * <p><b>OCP:</b> está cerrada a modificación y abierta a extensión. Cada
- * entidad nueva solo necesita una subclase que indique el nombre del
- * archivo y la clase (ver {@link ProductRepository}).</p>
+ * <p>Solo se usa para el contenido de las copias de seguridad
+ * ({@link JsonStorageProvider}): una sola clase sirve para todas las tablas,
+ * porque solo cambian el nombre del archivo y la clase de la entidad.</p>
  *
  * <p><b>SRP:</b> se ocupa del CRUD sobre la caché; la E/S de disco la delega
  * en {@link JsonFileStore} y la lógica de negocio vive en los servicios.</p>
  *
  * @param <T> tipo de entidad, siempre subclase de {@link IdentifiedEntity}
  */
-public abstract class JsonRepository<T extends IdentifiedEntity> implements Repository<T> {
+public class JsonRepository<T extends IdentifiedEntity> implements Repository<T> {
 
     private final JsonFileStore almacen;
     private final Class<T> tipo;
@@ -38,7 +38,7 @@ public abstract class JsonRepository<T extends IdentifiedEntity> implements Repo
      * @param nombreArchivo nombre del archivo JSON (por ejemplo {@code productos.json})
      * @param tipo          clase de la entidad para deserializar
      */
-    protected JsonRepository(Path directorio, String nombreArchivo, Class<T> tipo) {
+    public JsonRepository(Path directorio, String nombreArchivo, Class<T> tipo) {
         this.almacen = new JsonFileStore(directorio.resolve(nombreArchivo));
         this.tipo = tipo;
         this.cache = cargar();
