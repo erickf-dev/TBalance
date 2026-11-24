@@ -1,9 +1,11 @@
 package sistemainventario.service;
 
 import sistemainventario.exception.ValidationException;
+import sistemainventario.model.AuditEntry;
 import sistemainventario.model.Product;
 import sistemainventario.model.Sale;
 import sistemainventario.model.SaleItem;
+import sistemainventario.repository.DatabaseRoutines;
 import sistemainventario.repository.Repository;
 import sistemainventario.util.DateUtil;
 import sistemainventario.util.IdGenerator;
@@ -13,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Registro y consulta de ventas.
@@ -20,6 +23,11 @@ import java.util.Objects;
  * <p>Coordina el caso de uso "registrar venta": valida la venta, comprueba
  * el stock de todos los productos <i>antes</i> de modificar alguno (para no
  * dejar el inventario a medias) y luego descuenta y guarda.</p>
+ *
+ * <p>Con Oracle, registrar y anular las hace la base con los procedimientos
+ * SP_REGISTRAR_VENTA y SP_ANULAR_VENTA ({@link DatabaseRoutines}); Java solo
+ * valida los datos de la venta y el medio de pago. Con archivos JSON y con
+ * PostgreSQL todo se hace aquí en Java.</p>
  */
 public class SaleService {
 
@@ -28,6 +36,9 @@ public class SaleService {
 
     /** Medios de pago que acepta el negocio; por defecto, todos. */
     private java.util.function.Predicate<String> medioPermitido = metodo -> true;
+
+    /** Procedimientos de la base (solo Oracle); {@code null} si se usa la lógica de Java. */
+    private DatabaseRoutines rutinas;
 
     public SaleService(InventoryService inventario, Repository<Sale> ventas) {
         this.inventario = Objects.requireNonNull(inventario);
@@ -39,6 +50,23 @@ public class SaleService {
      */
     public void usarMediosDePago(java.util.function.Predicate<String> medioPermitido) {
         this.medioPermitido = Objects.requireNonNull(medioPermitido);
+    }
+
+    /**
+     * @param rutinas procedimientos y funciones de la base (solo Oracle)
+     */
+    public void usarRutinas(DatabaseRoutines rutinas) {
+        this.rutinas = rutinas;
+    }
+
+    /** @return los procedimientos y funciones de la base, si se usan */
+    public Optional<DatabaseRoutines> rutinas() {
+        return Optional.ofNullable(rutinas);
+    }
+
+    /** @return {@code true} si la base anota la anulación en el historial (SP_ANULAR_VENTA) */
+    public boolean anotaAnulacionEnLaBase() {
+        return rutinas != null;
     }
 
     /**
@@ -60,6 +88,9 @@ public class SaleService {
         }
         venta.validar();
         venta.normalizarPago();
+        if (rutinas != null) {
+            return registrarEnLaBase(venta);
+        }
         // con varios equipos sobre la misma base, el stock se revisa con lo último guardado
         inventario.refrescar();
         if (!medioPermitido.test(venta.getMetodoPago())) {
@@ -73,6 +104,18 @@ public class SaleService {
         venta.completar(IdGenerator.conPrefijo(Sale.PREFIJO_ID), DateUtil.hoy());
         ventas.agregar(venta);
         return venta;
+    }
+
+    /** Oracle: SP_REGISTRAR_VENTA revisa el stock, guarda y descuenta en una transacción. */
+    private Sale registrarEnLaBase(Sale venta) {
+        if (!medioPermitido.test(venta.getMetodoPago())) {
+            throw new ValidationException("Este negocio no tiene activo el pago con " + venta.getMetodoPago()
+                    + ". Actívelo en Editar negocio o elija otro medio.");
+        }
+        venta.completar(IdGenerator.conPrefijo(Sale.PREFIJO_ID), DateUtil.hoy());
+        rutinas.registrarVenta(venta);
+        // se devuelve como quedó en la base (con el costo de cada producto)
+        return ventas.buscarPorId(venta.getId()).orElse(venta);
     }
 
     private void verificarStock(Map<String, Integer> cantidades) {
@@ -115,7 +158,7 @@ public class SaleService {
      * @throws ValidationException si no existe, ya estaba anulada o falta el motivo
      */
     public Sale anular(String id, String motivo) {
-        return anular(id, motivo, null);
+        return anular(id, motivo, (String) null);
     }
 
     /**
@@ -136,6 +179,11 @@ public class SaleService {
      * @return la venta anulada
      */
     public Sale anular(String id, String motivo, String quien) {
+        if (rutinas != null) {
+            AuditEntry historial = new AuditEntry(DateUtil.ahora(), null, quien, null, null, null, null, null);
+            rutinas.anularVenta(id, motivo, historial);
+            return obtener(id);
+        }
         Sale venta = obtener(id);
         venta.anular(DateUtil.ahora(), motivo);
         venta.setAnuladaPor(quien);
@@ -146,6 +194,23 @@ public class SaleService {
                 }));
         ventas.actualizar(venta);
         return venta;
+    }
+
+    /**
+     * Anula una venta dejando anotado quién lo hizo. Con Oracle, SP_ANULAR_VENTA
+     * también escribe el historial (AUDITORIA) con estos datos.
+     *
+     * @param id        ID de la venta
+     * @param motivo    por qué se anula
+     * @param historial fecha, usuario, rol y negocio de quien anula
+     * @return la venta anulada
+     */
+    public Sale anular(String id, String motivo, AuditEntry historial) {
+        if (rutinas != null) {
+            rutinas.anularVenta(id, motivo, historial);
+            return obtener(id);
+        }
+        return anular(id, motivo, historial.getUsuario());
     }
 
     private static List<Sale> ordenar(List<Sale> origen) {

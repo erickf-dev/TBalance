@@ -50,7 +50,7 @@ La descripción de cada clase (tipo, responsabilidad, atributos y métodos) est�
 
 ### 4.1 Modelo entidad-relación
 
-Las tablas son las mismas en PostgreSQL y en Oracle. Los scripts `src/main/resources/sql/*/01_tablas.sql` y `02_disparadores.sql` crean la versión 1 del esquema; los cambios posteriores están en `cambios/` y TBalance los aplica solo al conectarse, una vez cada uno, anotándolos en `ESQUEMA_VERSION` (v2: borrado lógico, fecha de llegada, proveedor por tipo de producto y copias en la base; v3: vistas para informes; v4: usuarios y roles; v5: historial y cédula en los fiados; v6: abonos; v7: varios computadores). Así una base que ya tenía datos se actualiza sin perderlos.
+Las tablas son las mismas en PostgreSQL y en Oracle. Los scripts `src/main/resources/sql/*/01_tablas.sql` y `02_disparadores.sql` crean la versión 1 del esquema; los cambios posteriores están en `cambios/` y TBalance los aplica solo al conectarse, una vez cada uno, anotándolos en `ESQUEMA_VERSION` (v2: borrado lógico, fecha de llegada, proveedor por tipo de producto y copias en la base; v3: vistas para informes; v4: usuarios y roles; v5: historial y cédula en los fiados; v6: abonos; v7: varios computadores; v8: en Oracle, funciones y procedimientos en PL/SQL para vender, anular, abonar y calcular los informes). Así una base que ya tenía datos se actualiza sin perderlos.
 
 ![Modelo entidad-relación](diagramas/mer.png)
 

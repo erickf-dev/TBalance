@@ -82,6 +82,14 @@ public class DatabaseStorageProvider implements StorageProvider {
     }
 
     @Override
+    public java.util.Optional<DatabaseRoutines> rutinas(String perfilId) {
+        if (bd.getDialecto().motor() == sistemainventario.model.DatabaseEngine.ORACLE) {
+            return java.util.Optional.of(new OracleRoutines(bd, perfilId));
+        }
+        return java.util.Optional.empty();
+    }
+
+    @Override
     public void close() {
         bd.close();
     }

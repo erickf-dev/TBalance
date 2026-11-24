@@ -116,6 +116,11 @@ public class AuditTrail {
         if (fallo) {
             return;
         }
+        if ("anularVenta".equals(metodo) && contexto.getServiciosActivos()
+                .map(s -> s.ventas().anotaAnulacionEnLaBase()).orElse(false)) {
+            // con Oracle, SP_ANULAR_VENTA ya la anotó en AUDITORIA: no se repite
+            return;
+        }
         String perfil = esGeneral(metodo) ? null : momento.perfilId();
         registrar(persona, perfil, nombreLegible(metodo, argumentos), detalle(metodo, argumentos, texto));
     }

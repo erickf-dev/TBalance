@@ -1,0 +1,10 @@
+-- =====================================================================
+-- TBalance - PostgreSQL
+-- Cambio v8: procedimientos y funciones (solo Oracle).
+--
+-- En Oracle, el cambio v8 crea las funciones (04_funciones.sql) y los
+-- procedimientos (05_procedimientos.sql) en PL/SQL. En PostgreSQL no se
+-- crea nada: vender, anular y abonar siguen funcionando con la lógica de
+-- Java, igual que con los archivos JSON. Este archivo existe solo para que
+-- las dos bases lleguen a la misma versión (8) y no cambia ninguna tabla.
+-- =====================================================================
