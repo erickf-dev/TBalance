@@ -27,6 +27,11 @@ public class ProfileJdbcRepository extends JdbcRepository<Profile> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_PERFILES";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("NOMBRE", "DESCRIPCION", "COLOR", "TIPO_NEGOCIO", "FECHA_CREACION", "ACTIVO");
     }
@@ -53,7 +58,7 @@ public class ProfileJdbcRepository extends JdbcRepository<Profile> {
     @Override
     protected void completar(List<Profile> perfiles) {
         Map<String, Map<String, String>> porPerfil = new LinkedHashMap<>();
-        bd.consultar("SELECT PERFIL_ID, CLAVE, VALOR FROM PERFIL_CONFIGURACION ORDER BY PERFIL_ID, CLAVE", fila -> {
+        bd.llamar("FN_LISTAR_CONFIGURACION", fila -> {
             porPerfil.computeIfAbsent(fila.getString("PERFIL_ID"), k -> new LinkedHashMap<>())
                     .put(fila.getString("CLAVE"), fila.getString("VALOR"));
             return null;
@@ -66,11 +71,10 @@ public class ProfileJdbcRepository extends JdbcRepository<Profile> {
     @Override
     protected void guardarHijos(Connection conexion, Profile perfil, boolean nuevo) throws SQLException {
         if (!nuevo) {
-            Database.actualizar(conexion, "DELETE FROM PERFIL_CONFIGURACION WHERE PERFIL_ID = ?", perfil.getId());
+            Database.procedimiento(conexion, "SP_BORRAR_CONFIGURACION", perfil.getId());
         }
         for (Map.Entry<String, String> dato : perfil.getConfiguracion().entrySet()) {
-            Database.actualizar(conexion, "INSERT INTO PERFIL_CONFIGURACION (PERFIL_ID, CLAVE, VALOR) VALUES (?, ?, ?)",
-                    perfil.getId(), dato.getKey(), texto(dato.getValue()));
+            Database.procedimiento(conexion, "SP_AGREGAR_CONFIGURACION", perfil.getId(), dato.getKey(), texto(dato.getValue()));
         }
     }
 }

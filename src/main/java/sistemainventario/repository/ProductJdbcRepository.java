@@ -29,6 +29,11 @@ public class ProductJdbcRepository extends JdbcRepository<Product> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_PRODUCTOS";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("NOMBRE", "CODIGO", "DESCRIPCION", "CATEGORIA", "CATEGORIA_ID", "PROVEEDOR_ID",
                 "PRECIO_COMPRA", "PRECIO_VENTA", "STOCK", "STOCK_MIN", "TIPO", "REQUIERE_VENCIMIENTO",
@@ -38,7 +43,7 @@ public class ProductJdbcRepository extends JdbcRepository<Product> {
     @Override
     protected Object[] valores(Product p) {
         return new Object[]{p.getNombre(), texto(p.getCodigo()), texto(p.getDescripcion()), texto(p.getCategoria()),
-                referenciaValida("CATEGORIA", p.getCategoriaId()), referenciaValida("PROVEEDOR", p.getProveedorId()),
+                referenciaValida("FN_EXISTE_CATEGORIA", p.getCategoriaId()), referenciaValida("FN_EXISTE_PROVEEDOR", p.getProveedorId()),
                 p.getPrecioCompra(), p.getPrecioVenta(), p.getStock(), p.getStockMin(), texto(p.getTipo()),
                 p.isRequiereVencimiento(), dia(p.getFechaVencimiento()), p.isActivo()};
     }

@@ -22,6 +22,7 @@ package service {
 class AuditService {
   - historial : Repository<AuditEntry>
   + registrar()
+  + {static} nuevoId() : String
 }
 class BackupService {
   - archivador : ZipArchiver
@@ -51,6 +52,8 @@ class CostService {
   - inventario : InventoryService
   - movimientos : MovementService
   - proveedores : SupplierService
+  - rutinas : DatabaseRoutines
+  + usarRutinas() : CostService
   + resumen() : Summary
 }
 class CreditService {
@@ -93,12 +96,6 @@ abstract class EntityService {
   + validarDeshabilitar()
   + {abstract} validar()
   + ... (2 más)
-}
-class FileSnapshot {
-  - directorioDatos : Path
-  + prepararCarpeta() : Path
-  + liberarCarpeta()
-  + restaurarDesde()
 }
 class GlobalConfigService {
   - repositorio : GlobalConfigRepository
@@ -179,15 +176,17 @@ class SaleService {
   - inventario : InventoryService
   - ventas : Repository<Sale>
   - medioPermitido : Predicate<String>
+  - rutinas : DatabaseRoutines
   + usarMediosDePago()
+  + usarRutinas()
+  + rutinas() : Optional<DatabaseRoutines>
+  + anotaAnulacionEnLaBase() : boolean
   + aceptaMedioPago() : boolean
   + registrar() : Sale
   + listarTodas() : List<Sale>
   + listarAnuladas() : List<Sale>
   + anular() : Sale
-  + obtener() : Sale
-  + getTotalVentas() : double
-  + getTotalTransacciones() : int
+  + ... (3 más)
 }
 class SessionService {
   - reloj : LongSupplier
@@ -204,13 +203,11 @@ class SessionService {
 }
 class StorageService {
   - ajustes : DatabaseSettingsRepository
-  - directorioDatos : Path
   - copiador : DataTransferService
   + leer() : DatabaseSettings
   + abrir() : Apertura
   + probar() : String
   + guardar()
-  + exportarAArchivos()
 }
 class SupplierService {
   + validar()
@@ -238,7 +235,6 @@ CostService --> MovementService
 CostService --> SupplierService
 CreditService --> SaleService
 DataSnapshot <|.. DatabaseSnapshot
-DataSnapshot <|.. FileSnapshot
 DatabaseSnapshot --> DataTransferService
 EntityService <|-- CategoryService
 EntityService <|-- InventoryService

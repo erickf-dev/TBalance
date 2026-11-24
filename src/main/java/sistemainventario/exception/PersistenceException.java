@@ -1,7 +1,7 @@
 package sistemainventario.exception;
 
 /**
- * Error técnico al leer o escribir los archivos JSON de datos.
+ * Error técnico al leer o escribir los datos (Oracle o archivos).
  *
  * <p>Sustituye el patrón de P2 de imprimir en consola y continuar, que podía
  * ocultar pérdidas de información. Ahora el error se propaga hasta la capa

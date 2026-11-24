@@ -38,6 +38,13 @@ public class SessionController {
     public String estadoSesion() {
         Map<String, Object> estado = new LinkedHashMap<>();
         estado.put("primeraVez", contexto.getUsuarios().esPrimeraVez());
+        estado.put("sinConexion", !contexto.estaConectado());
+        if (!contexto.estaConectado()) {
+            // solo sin conexión: para llenar el formulario de conexión (nunca la contraseña)
+            estado.put("avisoConexion", contexto.getAvisoAlmacenamiento());
+            estado.put("urlOracle", contexto.getAjustesBaseDeDatos().url());
+            estado.put("usuarioOracle", contexto.getAjustesBaseDeDatos().usuario());
+        }
         estado.put("sesion", contexto.getSesion().actual().map(this::describirSesion).orElse(null));
         estado.put("minutosInactividad", SessionService.MINUTOS_INACTIVIDAD);
         return BridgeResponse.json(estado);

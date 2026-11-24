@@ -19,7 +19,6 @@
         <gson.version>2.10.1</gson.version>
         <zxing.version>3.5.3</zxing.version>
         <webcam.version>0.3.12</webcam.version>
-        <postgresql.version>42.7.4</postgresql.version>
         <ojdbc.version>21.9.0.0</ojdbc.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mainClass>sistemainventario.Launcher</mainClass>
@@ -71,12 +70,7 @@
             <version>1.7.36</version>
         </dependency>
 
-        <!-- Drivers JDBC: PostgreSQL y Oracle (18c XE en adelante) -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>${postgresql.version}</version>
-        </dependency>
+        <!-- Driver JDBC de Oracle (18c XE en adelante) -->
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>

@@ -23,6 +23,11 @@ public class CreditPaymentJdbcRepository extends JdbcRepository<CreditPayment> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_ABONOS";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("CLIENTE_DOCUMENTO", "CLIENTE", "MONTO", "METODO_PAGO", "REFERENCIA_PAGO", "NOTA", "FECHA",
                 "USUARIO_ID", "REGISTRADO_POR", "ESTADO", "FECHA_ANULACION", "MOTIVO_ANULACION", "ANULADA_POR");

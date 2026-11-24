@@ -107,16 +107,12 @@ class CustomerDebt {
   + estaAlDia() : boolean
 }
 enum DatabaseEngine {
-  JSON
-  POSTGRESQL
   ORACLE
   - etiqueta : String
   - urlPorDefecto : String
-  + esRelacional() : boolean
-  + {static} desde() : DatabaseEngine
 }
 class DatabaseSettings <<record>> {
-  + usaBaseDeDatos() : boolean
+  + estaConfigurada() : boolean
 }
 interface Deshabilitable {
   + {abstract} isActivo() : boolean

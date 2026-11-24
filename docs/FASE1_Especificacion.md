@@ -22,7 +22,7 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 
 ## Resumen
 
-TBalance es un programa de escritorio para llevar el inventario y las ventas de negocios pequeños, como tiendas de barrio, droguerías y ferreterías. Una misma persona puede manejar varios negocios, y cada uno guarda por separado sus productos, categorías, proveedores, entradas, salidas, ventas y fiados. Cada persona entra con su usuario y ve solo lo que su rol le permite: dueño, administrador o cajero. El programa avisa qué productos se están agotando o están por vencer, muestra cuánto se vende y se gana, lleva la cuenta de lo que deben los clientes que compran fiado y deja registrado quién hizo cada cosa. Además permite vender leyendo etiquetas QR con la cámara del computador o con un celular, hacer copias de seguridad y consultar a un asistente con inteligencia artificial. Está hecho en Java y guarda los datos en PostgreSQL, en Oracle o en archivos del computador. El proyecto parte del sistema construido en Programación II; en Programación III se organizó en capas, se aplicaron los patrones GRASP y los principios SOLID vistos en clase y se agregaron las funciones nuevas.
+TBalance es un programa de escritorio para llevar el inventario y las ventas de negocios pequeños, como tiendas de barrio, droguerías y ferreterías. Una misma persona puede manejar varios negocios, y cada uno guarda por separado sus productos, categorías, proveedores, entradas, salidas, ventas y fiados. Cada persona entra con su usuario y ve solo lo que su rol le permite: dueño, administrador o cajero. El programa avisa qué productos se están agotando o están por vencer, muestra cuánto se vende y se gana, lleva la cuenta de lo que deben los clientes que compran fiado y deja registrado quién hizo cada cosa. Además permite vender leyendo etiquetas QR con la cámara del computador o con un celular, hacer copias de seguridad y consultar a un asistente con inteligencia artificial. Está hecho en Java y guarda los datos en una base de datos Oracle, donde están también las consultas y las operaciones principales (funciones y procedimientos en PL/SQL). El proyecto parte del sistema construido en Programación II; en Programación III se organizó en capas, se aplicaron los patrones GRASP y los principios SOLID vistos en clase y se agregaron las funciones nuevas.
 
 ## 1. Introducción
 
@@ -69,7 +69,7 @@ Desarrollar un programa de escritorio en Java para gestionar el inventario y las
 1. Organizar el sistema de Programación II en tres capas (presentación, lógica de negocio y acceso a datos) sin perder los datos que ya tenían los usuarios.
 2. Modelar el negocio con clases que usen encapsulamiento, herencia, polimorfismo, clases abstractas e interfaces.
 3. Implementar la gestión de negocios, productos, categorías, proveedores, entradas, salidas, ventas y fiados, validando los datos.
-4. Guardar la información en una base de datos relacional (PostgreSQL u Oracle) y mantener la opción de archivos.
+4. Guardar la información en una base de datos Oracle y hacer dentro de ella, con funciones y procedimientos en PL/SQL, las consultas y las operaciones que tocan varias tablas (vender, anular, abonar).
 5. Controlar el acceso con usuarios y roles, y registrar quién hace cada acción.
 6. Implementar copias de seguridad, etiquetas QR, venta por QR, informes de ventas y un asistente con inteligencia artificial.
 7. Trabajar en equipo con Git y GitHub, con una rama por integrante y Pull Requests aprobados por otro compañero.
@@ -78,7 +78,7 @@ Desarrollar un programa de escritorio en Java para gestionar el inventario y las
 
 ### 4.1 Descripción general
 
-TBalance tiene tres capas. La **presentación** es una página web (HTML, CSS y JavaScript) que se abre en una ventana de Microsoft Edge; si el computador no tiene Edge, se abre en una ventana de JavaFX. La página le pide todo a Java por medio de un objeto llamado `javaBridge`. La **lógica de negocio** está en los servicios y en las clases del modelo, que aplican las reglas (por ejemplo, no vender más de lo que hay en stock). El **acceso a datos** está en los repositorios, que guardan en PostgreSQL, en Oracle o en archivos JSON. La arquitectura se explica en la [Fase 2](FASE2_Arquitectura_y_Diseno.md).
+TBalance tiene tres capas. La **presentación** es una página web (HTML, CSS y JavaScript) que se abre en una ventana de Microsoft Edge; si el computador no tiene Edge, se abre en una ventana de JavaFX. La página le pide todo a Java por medio de un objeto llamado `javaBridge`. La **lógica de negocio** está en los servicios y en las clases del modelo, que aplican las reglas (por ejemplo, no vender más de lo que hay en stock). El **acceso a datos** está en los repositorios, que llaman a las funciones y procedimientos de Oracle. La arquitectura se explica en la [Fase 2](FASE2_Arquitectura_y_Diseno.md).
 
 Secciones del programa: Inicio de sesión, Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas (con venta por QR), Fiados, Informes, Costos, Mis negocios, Usuarios, Historial y Copias de seguridad, más el asistente "Pregúntale a TBalance" en la barra superior.
 
@@ -103,7 +103,7 @@ Secciones del programa: Inicio de sesión, Hoy, Productos, Categorías, Proveedo
 | RF15 | Informes de ventas | Ver las ventas de hoy, la semana, el mes, el año o un rango de fechas, comparadas con el período anterior: número de ventas, ticket promedio, ganancia real, gráfica por día, semana o mes, productos más vendidos y ventas por medio de pago. |
 | RF16 | Exportar informes | Guardar el informe en Excel (cuatro hojas) en la carpeta Documentos/TBalance o imprimirlo en PDF. |
 | RF17 | Asistente con inteligencia artificial | Hacerle preguntas al asistente (por ejemplo, "¿qué le falta de Postobón?" o "¿quién me debe?"). El asistente también prepara ventas, entradas, salidas, cambios de precio y productos nuevos, que solo se guardan cuando el usuario pulsa Confirmar. Usa Google Gemini en su versión gratuita y es lo único que necesita internet. |
-| RF18 | Elegir dónde se guardan los datos | Elegir entre archivos del computador, PostgreSQL u Oracle (en el computador o en la nube); probar la conexión y empezar a usarla. La primera vez TBalance crea las tablas y copia los negocios que ya existían. Un computador nuevo puede conectarse, desde la pantalla de inicio, a la base que ya usa el negocio. |
+| RF18 | Conectar con Oracle | Escribir la dirección, el usuario y la contraseña de Oracle (en el computador o en la nube), probar la conexión y empezar a usarla. La primera vez TBalance crea las tablas, las funciones y los procedimientos. Si Oracle no responde, la pantalla de inicio pide de nuevo la conexión. |
 | RF27 | Trabajar desde varios computadores | Con la base en la nube, el dueño, el administrador y el cajero trabajan cada uno en su computador con los mismos datos. Cada pantalla se actualiza sola, en pocos segundos, cuando otro computador guarda algo, y antes de vender se revisa el stock real para que dos cajas no vendan la misma unidad. |
 | RF19 | Anular movimientos | Las ventas, entradas y salidas no se borran: se anulan con un motivo, el stock se corrige y quedan en una lista de anuladas. |
 | RF20 | Consultar costos | Ver cuánto costó el inventario actual, cuánto se compró en un período por producto y por proveedor, y qué productos no tienen costo registrado. |
@@ -120,8 +120,8 @@ Secciones del programa: Inicio de sesión, Hoy, Productos, Categorías, Proveedo
 |---|---|---|
 | RNF01 | Plataforma | Programa de escritorio en Java 17 o superior (se ejecuta con JDK 21) con JavaFX 21; se compila y se ejecuta con Maven. La interfaz se abre en Microsoft Edge, que viene con Windows 10 y 11. |
 | RNF02 | Funcionamiento sin internet | Todo funciona sin conexión excepto el asistente. Las fuentes, los estilos y las librerías vienen dentro del proyecto. |
-| RNF03 | Base de datos | Los datos se guardan en PostgreSQL (11 o superior) u Oracle (18c XE o superior), en el computador o en la nube (por ejemplo, Neon u Oracle Autonomous Database), o en archivos JSON. Cuando hay una versión nueva, TBalance agrega solo las tablas o columnas que faltan, sin borrar datos. Si la conexión se corta, TBalance se vuelve a conectar solo. |
-| RNF04 | Integridad de los datos | Nada que tenga historial se borra: se deshabilita o se anula. Los archivos se escriben primero en un temporal para no dejarlos a medias. |
+| RNF03 | Base de datos | Los datos se guardan en Oracle (18c XE o superior), en el computador o en la nube (Oracle Autonomous Database). Las consultas y los cambios se hacen con funciones y procedimientos en PL/SQL. Cuando hay una versión nueva, TBalance agrega solo las tablas, columnas, funciones o procedimientos que faltan, sin borrar datos. Si la conexión se corta, TBalance se vuelve a conectar solo. |
+| RNF04 | Integridad de los datos | Nada que tenga historial se borra: se deshabilita o se anula. Cada operación va en una transacción: si algo falla, Oracle deshace todo (ROLLBACK). |
 | RNF05 | Validación y mensajes | Las reglas se revisan en Java y los errores se le muestran al usuario como un aviso claro (por ejemplo, "Para fiar escriba la cédula del cliente"). |
 | RNF06 | Seguridad de las cuentas | Las contraseñas se guardan cifradas. Después de 5 intentos fallidos el usuario se bloquea 5 minutos y la sesión se cierra tras 30 minutos sin uso. Los permisos se revisan en Java antes de cada acción, no solo ocultando botones. |
 | RNF07 | Datos privados fuera del código | La clave del asistente y la contraseña de la base de datos se guardan solo en el computador (carpeta `.inventariopro` del usuario), nunca en el código ni en GitHub. |
@@ -143,7 +143,7 @@ Secciones del programa: Inicio de sesión, Hoy, Productos, Categorías, Proveedo
 
 | Integrante | Usuario GitHub | Rol | Responsabilidades |
 |---|---|---|---|
-| Kevin Jhosep Mercado | @kjhosepmercadom | Líder e integrador | Dueño del repositorio; servicios y controladores; base de datos (PostgreSQL y Oracle), borrado lógico, copias en la base, historial y fiados; Pull Requests de `dev` a `main` y etiquetas de versión. |
+| Kevin Jhosep Mercado | @kjhosepmercadom | Líder e integrador | Dueño del repositorio; servicios y controladores; base de datos en Oracle, borrado lógico, copias en la base, historial y fiados; Pull Requests de `dev` a `main` y etiquetas de versión. |
 | Reinaldo Padilla Pedroza | @rjpadillap | Persistencia, seguridad y documentación | Repositorios con archivos, copias de seguridad, lector QR y cámara; usuarios y roles; asistente por rol; documentación por fases y diagramas. |
 | Dair José Quintero | @djosequintero | Modelo e interfaz | Modelo del negocio, interfaz web, ventana de Edge, celular como lector QR y capturas de pantalla. |
 
@@ -197,7 +197,7 @@ El estado de cada tarea y los commits están en la [Fase 3](FASE3_Desarrollo.md#
 
 ## 6. Conclusiones
 
-1. Separar el programa en capas permitió cambiar de archivos a base de datos creando repositorios nuevos, sin tocar las reglas del negocio ni la interfaz.
+1. Separar el programa en capas permitió pasar de archivos a una base de datos Oracle creando repositorios nuevos, sin tocar la interfaz.
 2. Dejar cada regla en la clase que tiene los datos (el producto controla su stock, la venta calcula su total) evitó repetir código y errores.
 3. Revisar los permisos en Java, y no solo en la pantalla, hizo que el cajero no pueda ver costos ni hacer lo que no le corresponde, aunque intente llamar la función directamente.
 4. No borrar nada con historial (deshabilitar y anular) y anotar quién hace cada acción le da al dueño control sobre su negocio y sobre sus empleados.
@@ -211,7 +211,7 @@ El estado de cada tarea y los commits están en la [Fase 3](FASE3_Desarrollo.md#
 - Chacon, S. y Straub, B. (2014). *Pro Git* (2.ª ed.). Apress. https://git-scm.com/book/es/v2
 - Oracle. *Java SE 17 Documentation*. https://docs.oracle.com/en/java/javase/17/
 - OpenJFX. *JavaFX 21 Documentation*. https://openjfx.io/
-- The PostgreSQL Global Development Group. *PostgreSQL Documentation*. https://www.postgresql.org/docs/
+- Oracle. *PL/SQL Language Reference*. https://docs.oracle.com/en/database/oracle/oracle-database/21/lnpls/
 - Oracle. *Oracle Database 18c Express Edition*. https://docs.oracle.com/en/database/oracle/oracle-database/18/xeinl/
 - Google. *Gson*. https://github.com/google/gson
 - ZXing Project. *ZXing ("Zebra Crossing")*. https://github.com/zxing/zxing

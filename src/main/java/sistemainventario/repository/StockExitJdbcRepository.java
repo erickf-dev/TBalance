@@ -23,6 +23,11 @@ public class StockExitJdbcRepository extends JdbcRepository<StockExit> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_SALIDAS";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("PRODUCTO_ID", "CANTIDAD", "FECHA", "MOTIVO", "TIPO", "ESTADO", "FECHA_REGISTRO", "FECHA_ANULACION", "MOTIVO_ANULACION", "ANULADA_POR");
     }

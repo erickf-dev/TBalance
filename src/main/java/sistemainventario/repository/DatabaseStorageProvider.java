@@ -11,7 +11,7 @@ import sistemainventario.model.User;
 
 import java.util.Objects;
 
-/** Repositorios JDBC sobre PostgreSQL u Oracle; todos comparten una conexión. */
+/** Repositorios JDBC sobre Oracle; todos comparten una conexión. */
 public class DatabaseStorageProvider implements StorageProvider {
 
     private final Database bd;
@@ -83,10 +83,7 @@ public class DatabaseStorageProvider implements StorageProvider {
 
     @Override
     public java.util.Optional<DatabaseRoutines> rutinas(String perfilId) {
-        if (bd.getDialecto().motor() == sistemainventario.model.DatabaseEngine.ORACLE) {
-            return java.util.Optional.of(new OracleRoutines(bd, perfilId));
-        }
-        return java.util.Optional.empty();
+        return java.util.Optional.of(new OracleRoutines(bd, perfilId));
     }
 
     @Override

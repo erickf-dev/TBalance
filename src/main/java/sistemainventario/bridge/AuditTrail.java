@@ -53,7 +53,7 @@ public class AuditTrail {
             Map.entry("crearRespaldo", "Creó una copia de seguridad"),
             Map.entry("restaurarRespaldo", "Restauró una copia de seguridad"),
             Map.entry("eliminarRespaldo", "Eliminó una copia de seguridad"),
-            Map.entry("guardarAlmacenamiento", "Cambió dónde se guardan los datos"),
+            Map.entry("guardarAlmacenamiento", "Cambió la conexión con Oracle"),
             Map.entry("asistenteConfigurar", "Configuró el asistente"),
             Map.entry("asistenteConfirmar", "Confirmó una acción del asistente"),
             Map.entry("exportarInformeExcel", "Exportó un informe"),

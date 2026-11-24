@@ -16,31 +16,33 @@ skinparam package {
 }
 hide empty members
 
-title Diagrama de clases — acceso a datos con PostgreSQL y Oracle (repository) — TBalance v3.5.0
+title Diagrama de clases — acceso a datos con Oracle (repository) — TBalance v3.5.0
 
 package repository {
 class AuditJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : AuditEntry
 }
 class CategoryJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : Category
-  + antesDeEliminar()
 }
 class CreditPaymentJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : CreditPayment
 }
 class Database {
   - config : DatabaseSettings
-  - dialecto : SqlDialect
+  - oracle : OracleDialect
   - conexion : Connection
   - ultimoUso : long
   - seguimiento : Boolean
@@ -50,13 +52,13 @@ class Database {
   + nombreMotor() : String
   + probar()
   + tieneTablas() : boolean
-  + crearTablas()
   + versionEsquema() : int
   + {static} versionActual() : int
   + actualizarEsquema() : int
   + estaVacia() : boolean
+  + contarNegocios() : int
   + ejecutarScript()
-  + ... (7 más)
+  + ... (10 más)
 }
 class DatabaseBackupRepository {
   - bd : Database
@@ -67,6 +69,14 @@ class DatabaseBackupRepository {
   + eliminar()
   + ubicacion() : String
   + carpeta() : Path
+}
+interface DatabaseRoutines {
+  + {abstract} registrarVenta() : double
+  + {abstract} anularVenta()
+  + {abstract} registrarAbono() : String
+  + {abstract} saldoCliente() : double
+  + {abstract} valorInventario() : double
+  + {abstract} utilidadPeriodo() : double
 }
 class DatabaseSettingsRepository {
   - archivo : Path
@@ -84,7 +94,7 @@ class DatabaseStorageProvider {
   + categorias() : Repository<Category>
   + proveedores() : Repository<Supplier>
   + entradas() : Repository<StockEntry>
-  + ... (4 más)
+  + ... (5 más)
 }
 abstract class JdbcRepository {
   - bd : Database
@@ -93,53 +103,42 @@ abstract class JdbcRepository {
   - generacionCache : long
   + {abstract} tabla() : String
   + {abstract} columnas() : List<String>
+  + {abstract} funcionListar() : String
   + {abstract} valores() : Object[]
   + {abstract} leer() : T
   + completar()
   + guardarHijos()
-  + antesDeEliminar()
   + refrescar()
   + listarTodos() : List<T>
   + ... (15 más)
 }
-class JsonStorageProvider {
-  - directorioDatos : Path
-  - directorios : ProfileDirectory
-  + vaciarArchivos()
-  + nombre() : String
-  + perfiles() : Repository<Profile>
-  + usuarios() : Repository<User>
-  + auditoria() : Repository<AuditEntry>
-  + productos() : Repository<Product>
-  + categorias() : Repository<Category>
-  + proveedores() : Repository<Supplier>
-  + entradas() : Repository<StockEntry>
-  + ... (3 más)
-}
 class OracleDialect {
-  + motor() : DatabaseEngine
-  + carpetaScripts() : String
-  + nombreDriver() : String
   + tablaExiste() : boolean
   + separarSentencias() : List<String>
   + mensajeDeDisparador() : Optional<String>
+  + erroresDeRutinas() : Optional<String>
 }
-class PostgresDialect {
-  + motor() : DatabaseEngine
-  + carpetaScripts() : String
-  + nombreDriver() : String
-  + tablaExiste() : boolean
-  + separarSentencias() : List<String>
-  + mensajeDeDisparador() : Optional<String>
+class OracleRoutines {
+  - bd : Database
+  - perfilId : String
+  + registrarVenta() : double
+  + anularVenta()
+  + registrarAbono() : String
+  + saldoCliente() : double
+  + valorInventario() : double
+  + utilidadPeriodo() : double
+  + {static} itemsJson() : String
 }
 class ProductJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : Product
 }
 class ProfileJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : Profile
@@ -148,29 +147,35 @@ class ProfileJdbcRepository {
 }
 class SaleJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : Sale
   + completar()
   + guardarHijos()
 }
-interface SqlDialect {
-  + {abstract} motor() : DatabaseEngine
-  + {abstract} carpetaScripts() : String
-  + {abstract} nombreDriver() : String
-  + {abstract} tablaExiste() : boolean
-  + {abstract} separarSentencias() : List<String>
-  + {abstract} mensajeDeDisparador() : Optional<String>
-  + {static} para() : SqlDialect
+class SinConexionStorageProvider {
+  + nombre() : String
+  + perfiles() : Repository<Profile>
+  + usuarios() : Repository<User>
+  + auditoria() : Repository<AuditEntry>
+  + productos() : Repository<Product>
+  + categorias() : Repository<Category>
+  + proveedores() : Repository<Supplier>
+  + entradas() : Repository<StockEntry>
+  + salidas() : Repository<StockExit>
+  + ... (2 más)
 }
 class StockEntryJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : StockEntry
 }
 class StockExitJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : StockExit
@@ -185,19 +190,20 @@ interface StorageProvider {
   + {abstract} proveedores() : Repository<Supplier>
   + {abstract} entradas() : Repository<StockEntry>
   + {abstract} salidas() : Repository<StockExit>
-  + ... (3 más)
+  + ... (4 más)
 }
 class SupplierJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : Supplier
   + completar()
   + guardarHijos()
-  + antesDeEliminar()
 }
 class UserJdbcRepository {
   + tabla() : String
+  + funcionListar() : String
   + columnas() : List<String>
   + valores() : Object[]
   + leer() : User
@@ -208,8 +214,9 @@ class UserJdbcRepository {
 interface BackupStore <<otro diagrama>>
 interface Repository <<otro diagrama>>
 BackupStore <|.. DatabaseBackupRepository
-Database --> SqlDialect
+Database --> OracleDialect
 DatabaseBackupRepository --> Database
+DatabaseRoutines <|.. OracleRoutines
 DatabaseStorageProvider --> Database
 JdbcRepository --> Database
 JdbcRepository <|-- AuditJdbcRepository
@@ -222,9 +229,8 @@ JdbcRepository <|-- StockEntryJdbcRepository
 JdbcRepository <|-- StockExitJdbcRepository
 JdbcRepository <|-- SupplierJdbcRepository
 JdbcRepository <|-- UserJdbcRepository
+OracleRoutines --> Database
 Repository <|.. JdbcRepository
-SqlDialect <|.. OracleDialect
-SqlDialect <|.. PostgresDialect
 StorageProvider <|.. DatabaseStorageProvider
-StorageProvider <|.. JsonStorageProvider
+StorageProvider <|.. SinConexionStorageProvider
 @enduml

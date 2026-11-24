@@ -8,9 +8,9 @@ import java.util.List;
 /**
  * Dónde se guardan las copias de seguridad (archivos .zip con los datos en JSON).
  *
- * <p>Con archivos JSON quedan en la carpeta {@code respaldos}
- * ({@link BackupRepository}); con PostgreSQL u Oracle quedan dentro de la misma
- * base, en la tabla RESPALDO ({@link DatabaseBackupRepository}).</p>
+ * <p>Normalmente quedan dentro de Oracle, en la tabla RESPALDO
+ * ({@link DatabaseBackupRepository}); la carpeta {@code respaldos}
+ * ({@link BackupRepository}) solo se usa mientras no hay conexión.</p>
  */
 public interface BackupStore {
 

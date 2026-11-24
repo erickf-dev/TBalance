@@ -4,19 +4,45 @@
 --
 -- Ejecutar como TBALANCE con F5 en SQL Developer, DESPUÉS de que TBalance
 -- se haya conectado una vez (así ya existen las funciones y los
--- procedimientos). Crea un negocio de prueba, vende, abona y anula, muestra
--- los resultados y al final deshace todo con ROLLBACK.
+-- procedimientos). Crea un negocio de prueba con los procedimientos para
+-- guardar, lee sus productos con una función de consulta, vende, abona y
+-- anula, muestra los resultados y al final deshace todo con ROLLBACK.
 -- =====================================================================
 
 SET SERVEROUTPUT ON
 
-INSERT INTO PERFIL (ID, NOMBRE, TIPO_NEGOCIO, FECHA_CREACION)
-VALUES ('PRUEBA', 'Negocio de prueba', 'TIENDA', SYSDATE);
+-- 0. Crear el negocio y dos productos con los procedimientos para guardar
+--    (los mismos que usa TBalance; P_NUEVO = 1 agrega, 0 cambia)
+BEGIN
+  SP_GUARDAR_PERFIL(P_NUEVO => 1, P_ID => 'PRUEBA', P_NOMBRE => 'Negocio de prueba', P_DESCRIPCION => NULL,
+                    P_COLOR => NULL, P_TIPO_NEGOCIO => 'TIENDA', P_FECHA_CREACION => SYSDATE, P_ACTIVO => 1);
+  SP_GUARDAR_PRODUCTO(P_NUEVO => 1, P_PERFIL_ID => 'PRUEBA', P_ID => '1', P_NOMBRE => 'Arroz 500 g',
+                      P_CODIGO => NULL, P_DESCRIPCION => NULL, P_CATEGORIA => NULL, P_CATEGORIA_ID => NULL,
+                      P_PROVEEDOR_ID => NULL, P_PRECIO_COMPRA => 2500, P_PRECIO_VENTA => 3500, P_STOCK => 10,
+                      P_STOCK_MIN => 2, P_TIPO => NULL, P_REQUIERE_VENCIMIENTO => 0, P_FECHA_VENCIMIENTO => NULL,
+                      P_ACTIVO => 1);
+  SP_GUARDAR_PRODUCTO(P_NUEVO => 1, P_PERFIL_ID => 'PRUEBA', P_ID => '2', P_NOMBRE => 'Aceite 1 L',
+                      P_CODIGO => NULL, P_DESCRIPCION => NULL, P_CATEGORIA => NULL, P_CATEGORIA_ID => NULL,
+                      P_PROVEEDOR_ID => NULL, P_PRECIO_COMPRA => 9000, P_PRECIO_VENTA => 12000, P_STOCK => 5,
+                      P_STOCK_MIN => 1, P_TIPO => NULL, P_REQUIERE_VENCIMIENTO => 0, P_FECHA_VENCIMIENTO => NULL,
+                      P_ACTIVO => 1);
+END;
+/
 
-INSERT INTO PRODUCTO (PERFIL_ID, ID, NOMBRE, PRECIO_COMPRA, PRECIO_VENTA, STOCK, STOCK_MIN)
-VALUES ('PRUEBA', '1', 'Arroz 500 g', 2500, 3500, 10, 2);
-INSERT INTO PRODUCTO (PERFIL_ID, ID, NOMBRE, PRECIO_COMPRA, PRECIO_VENTA, STOCK, STOCK_MIN)
-VALUES ('PRUEBA', '2', 'Aceite 1 L', 9000, 12000, 5, 1);
+-- Leer los productos con la función de consulta (devuelve un cursor)
+DECLARE
+  c SYS_REFCURSOR;
+  p PRODUCTO%ROWTYPE;
+BEGIN
+  c := FN_LISTAR_PRODUCTOS('PRUEBA');
+  LOOP
+    FETCH c INTO p;
+    EXIT WHEN c%NOTFOUND;
+    DBMS_OUTPUT.PUT_LINE('Producto ' || p.ID || ': ' || p.NOMBRE || ', stock ' || p.STOCK);
+  END LOOP;
+  CLOSE c;
+END;
+/
 
 -- 1. Valor del inventario: 10 x 2500 + 5 x 9000 = 70000
 SELECT FN_VALOR_INVENTARIO('PRUEBA') AS VALOR_INVENTARIO FROM DUAL;

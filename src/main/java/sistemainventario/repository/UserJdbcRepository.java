@@ -30,6 +30,11 @@ public class UserJdbcRepository extends JdbcRepository<User> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_USUARIOS";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("NOMBRE", "USUARIO", "CLAVE", "ACTIVO", "INTENTOS_FALLIDOS", "BLOQUEADO_HASTA",
                 "FECHA_CREACION", "ULTIMO_INGRESO");
@@ -59,7 +64,7 @@ public class UserJdbcRepository extends JdbcRepository<User> {
     @Override
     protected void completar(List<User> usuarios) {
         Map<String, List<Acceso>> porUsuario = new LinkedHashMap<>();
-        bd.consultar("SELECT USUARIO_ID, PERFIL_ID, ROL FROM NEGOCIO_USUARIO ORDER BY USUARIO_ID, PERFIL_ID", fila -> {
+        bd.llamar("FN_LISTAR_ACCESOS", fila -> {
             porUsuario.computeIfAbsent(fila.getString("USUARIO_ID"), k -> new ArrayList<>())
                     .add(new Acceso(fila.getString("PERFIL_ID"), Rol.desde(fila.getString("ROL"))));
             return null;
@@ -72,11 +77,10 @@ public class UserJdbcRepository extends JdbcRepository<User> {
     @Override
     protected void guardarHijos(Connection conexion, User usuario, boolean nuevo) throws SQLException {
         if (!nuevo) {
-            Database.actualizar(conexion, "DELETE FROM NEGOCIO_USUARIO WHERE USUARIO_ID = ?", usuario.getId());
+            Database.procedimiento(conexion, "SP_BORRAR_ACCESOS", usuario.getId());
         }
         for (Acceso acceso : usuario.getAccesos()) {
-            Database.actualizar(conexion, "INSERT INTO NEGOCIO_USUARIO (USUARIO_ID, PERFIL_ID, ROL) VALUES (?, ?, ?)",
-                    usuario.getId(), acceso.getPerfilId(), acceso.getRol().name());
+            Database.procedimiento(conexion, "SP_AGREGAR_ACCESO", usuario.getId(), acceso.getPerfilId(), acceso.getRol().name());
         }
     }
 }

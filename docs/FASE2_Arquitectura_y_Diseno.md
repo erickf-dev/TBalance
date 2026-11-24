@@ -15,7 +15,7 @@ Integrantes: Kevin Jhosep Mercado · Reinaldo Padilla Pedroza · Dair José Quin
 |---|---|---|
 | Presentación | `resources/html`, `view`, `bridge` | La página web que ve el usuario, la ventana que la muestra y los controladores que reciben lo que el usuario hace. |
 | Lógica de negocio | `service`, `model` | Las reglas del negocio: vender, registrar mercancía, calcular la deuda de un cliente, revisar permisos. |
-| Acceso a datos | `repository`, `ia`, `dispositivo` | Guardar y leer los datos (PostgreSQL, Oracle o archivos JSON), hablar con el asistente en internet y usar la cámara o el celular. |
+| Acceso a datos | `repository`, `ia`, `dispositivo` | Guardar y leer los datos en Oracle (llamando a sus funciones y procedimientos), hablar con el asistente en internet y usar la cámara o el celular. |
 | Transversal | `util`, `exception` | Utilidades que usan todas las capas (fechas, textos, códigos QR, cifrado de contraseñas) y los errores del proyecto. |
 | Raíz | `sistemainventario` | `Launcher` y `Main` arrancan el programa; `AppContext` crea los objetos y los conecta. |
 
@@ -29,11 +29,13 @@ El sistema tiene **154 clases**: 126 concretas, 5 abstractas, 13 interfaces, 5 e
 
 ![Diagrama de clases del modelo](diagramas/clases-modelo.png)
 
-### 2.2 Acceso a datos con archivos (`repository`)
+### 2.2 Contenido de las copias de seguridad (`repository`)
 
-![Diagrama de clases de persistencia con archivos](diagramas/clases-persistencia.png)
+TBalance ya no guarda los negocios en archivos. Estas clases solo escriben y leen el contenido de una copia de seguridad (el .zip que se guarda en la tabla `RESPALDO`).
 
-### 2.3 Acceso a datos con PostgreSQL y Oracle (`repository`)
+![Diagrama de clases de las copias de seguridad](diagramas/clases-persistencia.png)
+
+### 2.3 Acceso a datos con Oracle (`repository`)
 
 ![Diagrama de clases de persistencia con base de datos](diagramas/clases-persistencia-bd.png)
 
@@ -71,8 +73,8 @@ Los diagramas se generan a partir del código; sus fuentes están en [`docs/diag
 | 10 | `Category` | Concreta | `model` | Lógica de negocio | Agrupación lógica de productos dentro de un perfil (por ejemplo "Medicamentos" o "Herramientas"). |
 | 11 | `CreditPayment` | Concreta | `model` | Lógica de negocio | Abono de un cliente para pagar lo que quedó debiendo de sus ventas fiadas; no se borra, se anula con motivo. |
 | 12 | `CustomerDebt` | Concreta | `model` | Lógica de negocio | Cuenta de un cliente que compró fiado: cuánto se le fió, cuánto ha abonado y cuánto debe. |
-| 13 | `DatabaseEngine` | Enumeración | `model` | Lógica de negocio | Dónde guarda TBalance los datos de los negocios. |
-| 14 | `DatabaseSettings` | Registro | `model` | Lógica de negocio | Conexión a la base de datos elegida en este computador. |
+| 13 | `DatabaseEngine` | Enumeración | `model` | Lógica de negocio | Base de datos que usa TBalance: Oracle. |
+| 14 | `DatabaseSettings` | Registro | `model` | Lógica de negocio | Conexión a Oracle de este computador. |
 | 15 | `Deshabilitable` | Interfaz | `model` | Lógica de negocio | Registro que no se borra sino que se deshabilita (borrado lógico). |
 | 16 | `GlobalConfig` | Concreta | `model` | Lógica de negocio | Configuración general: qué negocio está abierto y la lista de negocios. |
 | 17 | `IdentifiedEntity` | Abstracta | `model` | Lógica de negocio | Clase base de todo lo que se guarda: le da a cada objeto su ID. |
@@ -91,7 +93,7 @@ Los diagramas se generan a partir del código; sus fuentes están en [`docs/diag
 | 30 | `Supplier` | Concreta | `model` | Lógica de negocio | Distribuidor o fabricante que abastece productos al negocio. |
 | 31 | `User` | Concreta | `model` | Lógica de negocio | Persona que usa TBalance, con su contraseña cifrada y sus accesos a los negocios. |
 | 32 | `AssistantException` | Concreta | `exception` | Transversal | Error al hablar con el modelo de lenguaje (sin internet, clave inválida, límite gratuito alcanzado...). |
-| 33 | `PersistenceException` | Concreta | `exception` | Transversal | Error al leer o escribir los datos (archivos o base de datos). |
+| 33 | `PersistenceException` | Concreta | `exception` | Transversal | Error al leer o escribir los datos (Oracle o archivos). |
 | 34 | `ValidationException` | Concreta | `exception` | Transversal | Error de una regla del negocio o de un dato mal escrito; su mensaje se le muestra al usuario. |
 | 35 | `AssistantConfigRepository` | Concreta | `repository` | Acceso a datos | Guarda la clave y el modelo del asistente en ~/.inventariopro/asistente.json. |
 | 36 | `AuditJdbcRepository` | Concreta | `repository` | Acceso a datos | Historial de acciones en la tabla AUDITORIA. |
@@ -102,56 +104,56 @@ Los diagramas se generan a partir del código; sus fuentes están en [`docs/diag
 | 41 | `CategoryRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las categorías de un perfil en categorias.json. |
 | 42 | `CreditPaymentJdbcRepository` | Concreta | `repository` | Acceso a datos | Abonos de los clientes que deben, en la tabla ABONO. |
 | 43 | `CreditPaymentRepository` | Concreta | `repository` | Acceso a datos | Abonos de los clientes que deben, en abonos.json de cada negocio. |
-| 44 | `Database` | Concreta | `repository` | Acceso a datos | Conexión JDBC a PostgreSQL u Oracle y utilidades para ejecutar SQL. |
-| 45 | `DatabaseBackupRepository` | Concreta | `repository` | Acceso a datos | Copias de seguridad dentro de PostgreSQL u Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna binaria (BYTEA o BLOB). |
-| 46 | `DatabaseSettingsRepository` | Concreta | `repository` | Acceso a datos | Guarda en ~/.inventariopro/basedatos.json qué base de datos usa este computador (motor, URL, usuario y clave). |
-| 47 | `DatabaseStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios JDBC sobre PostgreSQL u Oracle; todos comparten una conexión. |
-| 48 | `GlobalConfigRepository` | Concreta | `repository` | Acceso a datos | Persiste la GlobalConfig (perfil activo y lista de perfiles) en configuracion-global.json. |
-| 49 | `JdbcRepository` | Abstracta | `repository` | Acceso a datos | Repositorio genérico sobre una tabla de PostgreSQL u Oracle (acceso a datos con JDBC). |
-| 50 | `JsonFileStore` | Concreta | `repository` | Acceso a datos | Lectura y escritura de un archivo de texto JSON en disco. |
-| 51 | `JsonRepository` | Abstracta | `repository` | Acceso a datos | Implementación genérica de Repository que guarda una lista de entidades en un archivo JSON y la mantiene en memoria (caché). |
-| 52 | `JsonStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios en archivos JSON: data/perfiles.json y una carpeta por negocio. |
-| 53 | `LabelRepository` | Concreta | `repository` | Acceso a datos | Guarda las etiquetas generadas como imágenes PNG en ~/.inventariopro/etiquetas/ y las convierte a Base64 para mostrarlas en la vista. |
-| 54 | `OracleDialect` | Concreta | `repository` | Acceso a datos | Dialecto de Oracle (18c Express Edition o superior). |
-| 55 | `PaymentQrRepository` | Concreta | `repository` | Acceso a datos | Imagen del QR de cobro (Bre-B) de cada negocio, en ~/.inventariopro/qr-cobro/.img. |
-| 56 | `PostgresDialect` | Concreta | `repository` | Acceso a datos | Dialecto de PostgreSQL (11 o superior). |
-| 57 | `ProductJdbcRepository` | Concreta | `repository` | Acceso a datos | Productos de un negocio en la tabla PRODUCTO. |
-| 58 | `ProductRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los productos de un perfil en productos.json. |
-| 59 | `ProfileDirectory` | Concreta | `repository` | Acceso a datos | Administra las carpetas físicas de cada perfil: ~/.inventariopro/data/perfiles//. |
-| 60 | `ProfileJdbcRepository` | Concreta | `repository` | Acceso a datos | Perfiles (negocios) en la tabla PERFIL y su configuración en PERFIL_CONFIGURACION. |
-| 61 | `ProfileRepository` | Concreta | `repository` | Acceso a datos | Persistencia global de la lista de perfiles en perfiles.json. |
-| 62 | `ReportExcelWriter` | Concreta | `repository` | Acceso a datos | Guarda un SalesReport como libro de Excel (.xlsx) con formato de informe: encabezado con el negocio y el período, tablas con estilos, filas alternadas, totales con fórmulas, filtros, barras de datos, encabezados fijos y pie de página con el número de página para imprimir. |
-| 63 | `Repository` | Interfaz | `repository` | Acceso a datos | Contrato de acceso a datos para cualquier entidad del sistema. |
-| 64 | `SaleJdbcRepository` | Concreta | `repository` | Acceso a datos | Ventas de un negocio en las tablas VENTA y DETALLE_VENTA. |
-| 65 | `SaleRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las ventas de un perfil en ventas.json. |
-| 66 | `SqlDialect` | Interfaz | `repository` | Acceso a datos | Diferencias entre PostgreSQL y Oracle (tipos de datos, consultas de catálogo). |
-| 67 | `StockEntryJdbcRepository` | Concreta | `repository` | Acceso a datos | Entradas de inventario de un negocio en la tabla ENTRADA. |
-| 68 | `StockEntryRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las entradas de inventario de un perfil en entradas.json. |
-| 69 | `StockExitJdbcRepository` | Concreta | `repository` | Acceso a datos | Salidas de inventario de un negocio en la tabla SALIDA. |
-| 70 | `StockExitRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las salidas de inventario de un perfil en salidas.json. |
-| 71 | `StorageProvider` | Interfaz | `repository` | Acceso a datos | Entrega los repositorios de TBalance, sean de archivos JSON o de base de datos. |
-| 72 | `SupplierJdbcRepository` | Concreta | `repository` | Acceso a datos | Proveedores de un negocio en la tabla PROVEEDOR. |
-| 73 | `SupplierRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los proveedores de un perfil en proveedores.json. |
-| 74 | `UserJdbcRepository` | Concreta | `repository` | Acceso a datos | Personas en la tabla USUARIO y sus accesos en NEGOCIO_USUARIO (qué negocio y con qué rol). |
-| 75 | `UserRepository` | Concreta | `repository` | Acceso a datos | Personas que usan TBalance, en usuarios.json (junto a perfiles.json). |
-| 76 | `ZipArchiver` | Concreta | `repository` | Acceso a datos | Comprime una carpeta en un archivo .zip y la extrae de nuevo. |
-| 77 | `GeminiClient` | Concreta | `ia` | Acceso a datos | Cliente de la API de Google Gemini (capa gratuita) con llamadas a funciones. |
-| 78 | `LanguageModel` | Interfaz | `ia` | Acceso a datos | Modelo de lenguaje en la nube que usa el asistente. |
-| 79 | `SecureConnection` | Concreta | `ia` | Acceso a datos | Prepara el cliente HTTP del asistente para que se conecte como lo hace Edge en el mismo computador. |
-| 80 | `AssistantProposal` | Concreta | `service` | Lógica de negocio | Cambio que el asistente propone y que solo se hace si el usuario lo confirma (registrar una venta, una entrada de mercancía, cambiar un precio...). |
-| 81 | `AssistantService` | Concreta | `service` | Lógica de negocio | Maneja la conversación con el asistente y guarda lo que propone hasta que el usuario confirma. |
-| 82 | `AssistantSettingsService` | Concreta | `service` | Lógica de negocio | Guarda y prueba la configuración del asistente. |
-| 83 | `AssistantTools` | Concreta | `service` | Lógica de negocio | Funciones del inventario que el asistente puede usar. |
-| 84 | `AuditService` | Concreta | `service` | Lógica de negocio | Anota acciones en el historial y las lista con filtros (persona, fechas, negocio). |
-| 85 | `BackupService` | Concreta | `service` | Lógica de negocio | Crea, lista, restaura y elimina las copias de seguridad. |
-| 86 | `CategoryService` | Concreta | `service` | Lógica de negocio | Casos de uso de las categorías de un perfil. |
-| 87 | `CostService` | Concreta | `service` | Lógica de negocio | Costos del negocio por sus productos: cuánto cuesta cada producto, cuánto costó todo lo que hay en inventario y cuánto se ha comprado (entradas) en un periodo. |
-| 88 | `CreditService` | Concreta | `service` | Lógica de negocio | Calcula quién debe y cuánto (ventas fiadas menos abonos) y registra y anula abonos. |
-| 89 | `DataSnapshot` | Interfaz | `service` | Lógica de negocio | Cómo se sacan y se reponen los datos para las copias de seguridad. |
-| 90 | `DataTransferService` | Concreta | `service` | Lógica de negocio | Copia todos los negocios de un almacenamiento a otro: de los archivos JSON a PostgreSQL u Oracle la primera vez que se conecta, y de la base a los archivos para las copias de seguridad. |
-| 91 | `DatabaseSnapshot` | Concreta | `service` | Lógica de negocio | Copias de seguridad cuando los datos están en PostgreSQL u Oracle. |
-| 92 | `EntityService` | Abstracta | `service` | Lógica de negocio | Servicio base para las entidades con CRUD simple (productos, categorías y proveedores). |
-| 93 | `FileSnapshot` | Concreta | `service` | Lógica de negocio | Copias de seguridad cuando los datos están en archivos JSON. |
+| 44 | `Database` | Concreta | `repository` | Acceso a datos | Conexión con Oracle: llama a las funciones de consulta y a los procedimientos dentro de transacciones. |
+| 45 | `DatabaseBackupRepository` | Concreta | `repository` | Acceso a datos | Copias de seguridad dentro de Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna BLOB. |
+| 46 | `DatabaseRoutines` | Interfaz | `repository` | Acceso a datos | Operaciones que hace Oracle con sus procedimientos y funciones (vender, anular, abonar, saldo, utilidad, valor del inventario). |
+| 47 | `DatabaseSettingsRepository` | Concreta | `repository` | Acceso a datos | Guarda en ~/.inventariopro/basedatos.json cómo se conecta este computador a Oracle (URL, usuario y clave). |
+| 48 | `DatabaseStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios JDBC sobre Oracle; todos comparten una conexión. |
+| 49 | `GlobalConfigRepository` | Concreta | `repository` | Acceso a datos | Persiste la GlobalConfig (perfil activo y lista de perfiles) en configuracion-global.json. |
+| 50 | `JdbcRepository` | Abstracta | `repository` | Acceso a datos | Repositorio genérico sobre una tabla de Oracle: lee con FN_LISTAR_ y guarda con SP_GUARDAR_ y SP_BORRAR_. |
+| 51 | `JsonFileStore` | Concreta | `repository` | Acceso a datos | Lectura y escritura de un archivo de texto JSON en disco. |
+| 52 | `JsonRepository` | Abstracta | `repository` | Acceso a datos | Guarda una lista de objetos en un archivo JSON; solo se usa dentro de las copias de seguridad. |
+| 53 | `JsonStorageProvider` | Concreta | `repository` | Acceso a datos | Repositorios en archivos JSON; solo se usan para el contenido de las copias de seguridad. |
+| 54 | `LabelRepository` | Concreta | `repository` | Acceso a datos | Guarda las etiquetas generadas como imágenes PNG en ~/.inventariopro/etiquetas/ y las convierte a Base64 para mostrarlas en la vista. |
+| 55 | `OracleDialect` | Concreta | `repository` | Acceso a datos | Separa los scripts de Oracle, revisa si una tabla existe y convierte los errores de RAISE_APPLICATION_ERROR en mensajes. |
+| 56 | `OracleRoutines` | Concreta | `repository` | Acceso a datos | Llama con CallableStatement a los procedimientos y funciones de Oracle para vender, anular, abonar e informes. |
+| 57 | `PaymentQrRepository` | Concreta | `repository` | Acceso a datos | Imagen del QR de cobro (Bre-B) de cada negocio, en ~/.inventariopro/qr-cobro/.img. |
+| 58 | `ProductJdbcRepository` | Concreta | `repository` | Acceso a datos | Productos de un negocio en la tabla PRODUCTO. |
+| 59 | `ProductRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los productos de un perfil en productos.json. |
+| 60 | `ProfileDirectory` | Concreta | `repository` | Acceso a datos | Administra las carpetas físicas de cada perfil: ~/.inventariopro/data/perfiles//. |
+| 61 | `ProfileJdbcRepository` | Concreta | `repository` | Acceso a datos | Perfiles (negocios) en la tabla PERFIL y su configuración en PERFIL_CONFIGURACION. |
+| 62 | `ProfileRepository` | Concreta | `repository` | Acceso a datos | Persistencia global de la lista de perfiles en perfiles.json. |
+| 63 | `ReportExcelWriter` | Concreta | `repository` | Acceso a datos | Guarda un SalesReport como libro de Excel (.xlsx) con formato de informe: encabezado con el negocio y el período, tablas con estilos, filas alternadas, totales con fórmulas, filtros, barras de datos, encabezados fijos y pie de página con el número de página para imprimir. |
+| 64 | `Repository` | Interfaz | `repository` | Acceso a datos | Contrato de acceso a datos para cualquier entidad del sistema. |
+| 65 | `SaleJdbcRepository` | Concreta | `repository` | Acceso a datos | Ventas de un negocio en las tablas VENTA y DETALLE_VENTA. |
+| 66 | `SaleRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las ventas de un perfil en ventas.json. |
+| 67 | `SinConexionStorageProvider` | Concreta | `repository` | Acceso a datos | Lo que usa TBalance mientras no hay conexión con Oracle: todo vacío y sin poder guardar. |
+| 68 | `StockEntryJdbcRepository` | Concreta | `repository` | Acceso a datos | Entradas de inventario de un negocio en la tabla ENTRADA. |
+| 69 | `StockEntryRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las entradas de inventario de un perfil en entradas.json. |
+| 70 | `StockExitJdbcRepository` | Concreta | `repository` | Acceso a datos | Salidas de inventario de un negocio en la tabla SALIDA. |
+| 71 | `StockExitRepository` | Concreta | `repository` | Acceso a datos | Persistencia de las salidas de inventario de un perfil en salidas.json. |
+| 72 | `StorageProvider` | Interfaz | `repository` | Acceso a datos | Entrega los repositorios de TBalance: los de Oracle, los vacíos sin conexión o los de una copia de seguridad. |
+| 73 | `SupplierJdbcRepository` | Concreta | `repository` | Acceso a datos | Proveedores de un negocio en la tabla PROVEEDOR. |
+| 74 | `SupplierRepository` | Concreta | `repository` | Acceso a datos | Persistencia de los proveedores de un perfil en proveedores.json. |
+| 75 | `UserJdbcRepository` | Concreta | `repository` | Acceso a datos | Personas en la tabla USUARIO y sus accesos en NEGOCIO_USUARIO (qué negocio y con qué rol). |
+| 76 | `UserRepository` | Concreta | `repository` | Acceso a datos | Personas que usan TBalance, en usuarios.json (junto a perfiles.json). |
+| 77 | `ZipArchiver` | Concreta | `repository` | Acceso a datos | Comprime una carpeta en un archivo .zip y la extrae de nuevo. |
+| 78 | `GeminiClient` | Concreta | `ia` | Acceso a datos | Cliente de la API de Google Gemini (capa gratuita) con llamadas a funciones. |
+| 79 | `LanguageModel` | Interfaz | `ia` | Acceso a datos | Modelo de lenguaje en la nube que usa el asistente. |
+| 80 | `SecureConnection` | Concreta | `ia` | Acceso a datos | Prepara el cliente HTTP del asistente para que se conecte como lo hace Edge en el mismo computador. |
+| 81 | `AssistantProposal` | Concreta | `service` | Lógica de negocio | Cambio que el asistente propone y que solo se hace si el usuario lo confirma (registrar una venta, una entrada de mercancía, cambiar un precio...). |
+| 82 | `AssistantService` | Concreta | `service` | Lógica de negocio | Maneja la conversación con el asistente y guarda lo que propone hasta que el usuario confirma. |
+| 83 | `AssistantSettingsService` | Concreta | `service` | Lógica de negocio | Guarda y prueba la configuración del asistente. |
+| 84 | `AssistantTools` | Concreta | `service` | Lógica de negocio | Funciones del inventario que el asistente puede usar. |
+| 85 | `AuditService` | Concreta | `service` | Lógica de negocio | Anota acciones en el historial y las lista con filtros (persona, fechas, negocio). |
+| 86 | `BackupService` | Concreta | `service` | Lógica de negocio | Crea, lista, restaura y elimina las copias de seguridad. |
+| 87 | `CategoryService` | Concreta | `service` | Lógica de negocio | Casos de uso de las categorías de un perfil. |
+| 88 | `CostService` | Concreta | `service` | Lógica de negocio | Costos del negocio por sus productos: cuánto cuesta cada producto, cuánto costó todo lo que hay en inventario y cuánto se ha comprado (entradas) en un periodo. |
+| 89 | `CreditService` | Concreta | `service` | Lógica de negocio | Calcula quién debe y cuánto (ventas fiadas menos abonos) y registra y anula abonos. |
+| 90 | `DataSnapshot` | Interfaz | `service` | Lógica de negocio | Cómo se sacan y se reponen los datos para las copias de seguridad. |
+| 91 | `DataTransferService` | Concreta | `service` | Lógica de negocio | Copia todos los negocios de un almacenamiento a otro, para las copias de seguridad: de Oracle a los archivos del .zip al crearla, y de esos archivos a Oracle al restaurarla. |
+| 92 | `DatabaseSnapshot` | Concreta | `service` | Lógica de negocio | Copias de seguridad de los datos de Oracle. |
+| 93 | `EntityService` | Abstracta | `service` | Lógica de negocio | Servicio base para las entidades con CRUD simple (productos, categorías y proveedores). |
 | 94 | `GlobalConfigService` | Concreta | `service` | Lógica de negocio | Lectura y actualización de la GlobalConfig. |
 | 95 | `InventoryService` | Concreta | `service` | Lógica de negocio | Casos de uso del catálogo de productos: CRUD, búsqueda, filtros y alertas de stock y vencimiento. |
 | 96 | `LabelService` | Concreta | `service` | Lógica de negocio | Genera etiquetas con código QR para los productos: una etiqueta individual (vista previa o imagen) y hojas listas para imprimir. |
@@ -164,7 +166,7 @@ Los diagramas se generan a partir del código; sus fuentes están en [`docs/diag
 | 103 | `ReportService` | Concreta | `service` | Lógica de negocio | Calcula los informes de ventas de un período. |
 | 104 | `SaleService` | Concreta | `service` | Lógica de negocio | Registro y consulta de ventas. |
 | 105 | `SessionService` | Concreta | `service` | Lógica de negocio | Guarda quién inició sesión y cierra la sesión después de 30 minutos sin uso. |
-| 106 | `StorageService` | Concreta | `service` | Lógica de negocio | Decide dónde se guardan los datos (archivos JSON, PostgreSQL u Oracle) y prepara ese almacenamiento. |
+| 106 | `StorageService` | Concreta | `service` | Lógica de negocio | Conecta TBalance con Oracle y prepara la base. |
 | 107 | `SupplierService` | Concreta | `service` | Lógica de negocio | Casos de uso de los proveedores de un perfil. |
 | 108 | `UserService` | Concreta | `service` | Lógica de negocio | Casos de uso de las personas que usan TBalance: la primera cuenta (el dueño), iniciar sesión, crear usuarios de un negocio, deshabilitarlos y cambiar contraseñas. |
 | 109 | `AccessPolicy` | Concreta | `bridge` | Presentación | Revisa en Java, antes de cada llamada de la página, que la persona tenga la sesión abierta y el permiso que pide esa acción en el negocio abierto. |
@@ -243,6 +245,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `almacenamiento` | `StorageService` | Almacenamiento (StorageService) |
 | `almacenActual` | `StorageProvider` | Almacen actual (StorageProvider) |
 | `avisoAlmacenamiento` | `String` | Aviso almacenamiento |
+| `conectado` | `boolean` | Conectado |
 | `gestorPerfiles` | `ProfileService` | Gestor perfiles (ProfileService) |
 | `serviciosActivos` | `ProfileServices` | Servicios activos (ProfileServices) |
 | `usuarios` | `UserService` | Usuarios (UserService) |
@@ -255,7 +258,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `recargar()` | `void` | Construye de nuevo los repositorios y servicios leyendo los archivos JSON |
+| `recargar()` | `void` | Se conecta de nuevo con Oracle y vuelve a armar los repositorios y servicios |
 | `getUsuarios()` | `UserService` | Personas que usan TBalance |
 | `getAuditoria()` | `AuditService` | Historial de acciones (quién hizo qué) |
 | `iniciarSesion(String usuario, String clave)` | `User` | La persona que entró |
@@ -266,10 +269,11 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `puedeCrearNegocios()` | `boolean` | True si la persona puede crear negocios: es dueño de alguno, o es la primera cuenta y todavía no hay negocios |
 | `esDuenoDe(String perfilId)` | `boolean` | True si la persona con sesión es dueño de ese negocio |
 | `registrarNegocioCreado(String perfilId)` | `void` | Da acceso de dueño a quien acaba de crear un negocio |
-| `cambiarAlmacenamiento(DatabaseSettings nueva)` | `String` | Cambia dónde se guardan los datos |
+| `cambiarAlmacenamiento(DatabaseSettings nueva)` | `String` | Cambia la conexión con Oracle de este computador (la prueba antes de guardarla) |
+| `estaConectado()` | `boolean` | True si hay conexión con Oracle |
 | `getAjustesBaseDeDatos()` | `DatabaseSettings` | Configuración de la base de datos de este computador |
 | `getAlmacenamiento()` | `StorageService` | Servicio que prueba y guarda la configuración de la base |
-| `getAlmacenEnUso()` | `String` | Nombre del almacenamiento en uso ("Archivos JSON", "PostgreSQL", "Oracle") |
+| `getAlmacenEnUso()` | `String` | "Oracle", o "Sin conexión" si Oracle no respondió |
 | `getAvisoAlmacenamiento()` | `String` | Aviso pendiente sobre el almacenamiento (migración o error de conexión), o null |
 | `restaurarRespaldo(String nombre)` | `Backup` | Restaura respaldo |
 | `getAjustesAsistente()` | `AssistantSettingsService` | Configuración del asistente (clave y modelo, fuera de los datos de los perfiles) |
@@ -574,10 +578,10 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Enumeración |
 | Herencia | — |
-| Responsabilidad | Dónde guarda TBalance los datos de los negocios. |
+| Responsabilidad | Base de datos que usa TBalance: Oracle. |
 | Archivo | [DatabaseEngine.java](../src/main/java/sistemainventario/model/DatabaseEngine.java) |
 
-**Valores:** `JSON`, `POSTGRESQL`, `ORACLE`
+**Valores:** `ORACLE`
 
 **Atributos**
 
@@ -591,10 +595,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | Método | Retorna | Descripción |
 |---|---|---|
 | `DatabaseEngine(String etiqueta, String urlPorDefecto)` | — | Constructor |
-| `getEtiqueta()` | `String` | Nombre para mostrar en la interfaz |
-| `getUrlPorDefecto()` | `String` | URL JDBC sugerida para una instalación local |
-| `esRelacional()` | `boolean` | True si el motor es una base de datos relacional |
-| `desde(String nombre)` *(static)* | `DatabaseEngine` | El motor correspondiente |
+| `getEtiqueta()` | `String` | Nombre para mostrar |
+| `getUrlPorDefecto()` | `String` | URL JDBC sugerida |
 
 ##### DatabaseSettings
 
@@ -602,18 +604,19 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Registro |
 | Herencia | — |
-| Responsabilidad | Conexión a la base de datos elegida en este computador. |
+| Responsabilidad | Conexión a Oracle de este computador. |
 | Archivo | [DatabaseSettings.java](../src/main/java/sistemainventario/model/DatabaseSettings.java) |
 
 **Datos:** `(DatabaseEngine motor, String url, String usuario, String clave)`
 
-**Constantes:** `ARCHIVOS`
+**Constantes:** `POR_DEFECTO`
 
 **Métodos**
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `usaBaseDeDatos()` | `boolean` | True si los datos van a PostgreSQL u Oracle |
+| `DatabaseSettings(String url, String usuario, String clave)` | — | Constructor |
+| `estaConfigurada()` | `boolean` | True si ya se escribieron los datos de conexión en este computador |
 
 ##### Deshabilitable
 
@@ -1162,7 +1165,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | hereda de `RuntimeException` |
-| Responsabilidad | Error al leer o escribir los datos (archivos o base de datos). |
+| Responsabilidad | Error al leer o escribir los datos (Oracle o archivos). |
 | Archivo | [PersistenceException.java](../src/main/java/sistemainventario/exception/PersistenceException.java) |
 
 **Métodos**
@@ -1227,7 +1230,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `AuditJdbcRepository(Database bd)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(AuditEntry e)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `AuditEntry` | La entidad |
 
@@ -1318,10 +1322,10 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `CategoryJdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(Category c)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `Category` | La entidad |
-| `antesDeEliminar(Connection conexion, String id)` | `void` | Los productos de la categoría quedan sin categoría (la llave foránea no lo permitiría) |
 
 ##### CategoryRepository
 
@@ -1355,7 +1359,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `CreditPaymentJdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(CreditPayment a)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `CreditPayment` | La entidad |
 
@@ -1382,7 +1387,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | implementa `AutoCloseable` |
-| Responsabilidad | Conexión JDBC a PostgreSQL u Oracle y utilidades para ejecutar SQL. |
+| Responsabilidad | Conexión con Oracle: llama a las funciones de consulta y a los procedimientos dentro de transacciones. |
 | Archivo | [Database.java](../src/main/java/sistemainventario/repository/Database.java) |
 
 **Atributos**
@@ -1390,38 +1395,42 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `config` | `DatabaseSettings` | Config (DatabaseSettings) |
-| `dialecto` | `SqlDialect` | Dialecto (SqlDialect) |
+| `oracle` | `OracleDialect` | Oracle (OracleDialect) |
 | `conexion` | `Connection` | Conexion |
 | `ultimoUso` | `long` | Ultimo uso |
-| `seguimiento` | `Boolean` | Null mientras no se sepa si la base tiene la tabla CAMBIO_VERSION (cambio v7) |
+| `seguimiento` | `Boolean` | Null mientras no se sepa si la base ya tiene todo en Oracle (cambio v9) |
 | `versionConocida` | `long` | Version conocida |
 | `generacion` | `long` | Generacion |
 | `ultimaRevision` | `long` | Ultima revision |
 
-**Constantes:** `SCRIPTS_INICIALES`, `SEGUNDOS_VALIDACION`, `VALIDAR_TRAS_MS`, `REVISAR_CAMBIOS_CADA_MS`, `CLAVE_CAMBIOS`
+**Constantes:** `SCRIPTS_INICIALES`, `VERSION_TODO_EN_ORACLE`, `CARPETA`, `SEGUNDOS_VALIDACION`, `VALIDAR_TRAS_MS`, `REVISAR_CAMBIOS_CADA_MS`, `CLAVE_CAMBIOS`, `CURSOR`
 
 **Métodos**
 
 | Método | Retorna | Descripción |
 |---|---|---|
 | `Database(DatabaseSettings config)` | — | Constructor |
-| `getDialecto()` | `SqlDialect` | El dialecto del motor configurado |
-| `nombreMotor()` | `String` | Nombre del motor para los mensajes |
-| `probar()` | `void` | Abre la conexión y comprueba que responde |
+| `nombreMotor()` | `String` | "Oracle" |
+| `probar()` | `void` | Abre la conexión (lanza una excepción con un mensaje claro si no se puede) |
 | `tieneTablas()` | `boolean` | True si ya existen las tablas de TBalance |
-| `crearTablas()` | `void` | Crea las tablas y los disparadores con los scripts del motor |
-| `versionEsquema()` | `int` | La versión del esquema que tiene la base (0 si no tiene tablas de TBalance) |
-| `versionActual()` *(static)* | `int` | La versión que dejan todos los cambios aplicados |
-| `actualizarEsquema()` | `int` | Deja la base en la versión actual: si no hay tablas las crea y después aplica, en orden, los cambios que falten |
-| `estaVacia()` | `boolean` | True si la tabla PERFIL no tiene filas |
-| `ejecutarScript(String recurso)` | `void` | Ejecuta todas las sentencias de un script de los recursos |
-| `consultar(String sql, LectorDeFila<T> lector, Object... parametros)` | `List<T>` | Ejecuta una consulta y lee cada fila |
-| `transaccion(Trabajo<T> trabajo)` | `T` | Ejecuta un trabajo en una transacción: confirma si todo salió bien y deshace todo si hubo un error |
-| `actualizar(Connection conexion, String sql, Object... parametros)` *(static)* | `int` | Ejecuta INSERT, UPDATE o DELETE con la conexión de una transacción |
-| `traducir(SQLException error, String accion)` | `RuntimeException` | Convierte un error de la base en una excepción de TBalance: los mensajes de los disparadores llegan como ValidationException (el usuario los ve tal cual); el resto como PersistenceException |
-| `revisarCambios(boolean ahora)` | `long` | Pregunta a la base si otro equipo guardó algo desde la última vez |
-| `generacion()` | `long` | El número de cambios de otros equipos que ya se conocen (sin consultar la base) |
-| `close()` | `void` | Cierra la conexión |
+| `versionEsquema()` | `int` | Versión del esquema: 0 sin tablas, 1 con las tablas iniciales y después la última anotada en ESQUEMA_VERSION |
+| `versionActual()` *(static)* | `int` | Versión a la que este programa deja el esquema |
+| `actualizarEsquema()` | `int` | Crea las tablas si no existen y aplica, en orden y una sola vez, los cambios que falten (tablas nuevas, funciones y procedimientos) |
+| `estaVacia()` | `boolean` | True si no hay ningún negocio (FN_CONTAR_NEGOCIOS) |
+| `contarNegocios()` | `int` | Cuántos negocios hay, o -1 si la base todavía no tiene las funciones de consulta |
+| `ejecutarScript(String archivo)` | `void` | Ejecuta un script de sql/oracle dentro de una transacción |
+| `llamar(String funcion, LectorDeFila<T> lector, Object... parametros)` | `List<T>` | Llama a una función de Oracle que devuelve un cursor y lee sus filas |
+| `llamar(Connection conexion, String funcion, LectorDeFila<T> lector, Object... parametros)` | `List<T>` | Igual que llamarString,, dentro de una transacción |
+| `llamarNumero(String funcion, Object... parametros)` | `long` | Llama a una función de Oracle que devuelve un número entero |
+| `llamarDecimal(String funcion, Object... parametros)` | `double` | Llama a una función de Oracle que devuelve un número con decimales |
+| `procedimiento(Connection conexion, String procedimiento, Object... parametros)` *(static)* | `void` | Llama a un procedimiento almacenado dentro de una transacción |
+| `llamar(Trabajo<T> trabajo)` | `T` | Llama a procedimientos que cambian datos por su cuenta (por ejemplo, SP_REGISTRAR_VENTA) |
+| `transaccion(Trabajo<T> trabajo)` | `T` | Ejecuta un trabajo en una transacción: COMMIT si termina bien, ROLLBACK si falla |
+| `traducir(SQLException error, String accion)` | `RuntimeException` | Convierte un error de Oracle en un mensaje para el usuario |
+| `revisarCambios(boolean ahora)` | `long` | Pregunta a Oracle si otro computador guardó algo (FN_VERSION_CAMBIOS) |
+| `generacion()` | `long` | El número actual de revisarCambiosboolean sin preguntar a la base |
+| `close()` | `void` | Cierra la conexión (se vuelve a abrir sola si se necesita) |
+| `asignarUno(PreparedStatement sentencia, int posicion, Object valor)` *(static)* | `void` | Asigna un parámetro de una llamada |
 
 ##### DatabaseBackupRepository
 
@@ -1429,7 +1438,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | implementa `BackupStore` |
-| Responsabilidad | Copias de seguridad dentro de PostgreSQL u Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna binaria (BYTEA o BLOB). |
+| Responsabilidad | Copias de seguridad dentro de Oracle: cada copia es una fila de la tabla RESPALDO con el .zip en una columna BLOB. |
 | Archivo | [DatabaseBackupRepository.java](../src/main/java/sistemainventario/repository/DatabaseBackupRepository.java) |
 
 **Atributos**
@@ -1453,13 +1462,33 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `ubicacion()` | `String` | Dónde están las copias, para mostrarlo ("C:\\...\\respaldos" o "la base de datos Oracle") |
 | `carpeta()` | `Path` | La carpeta de las copias, o null si están en una base de datos |
 
+##### DatabaseRoutines
+
+| Campo | Valor |
+|---|---|
+| Tipo | Interfaz |
+| Herencia | — |
+| Responsabilidad | Operaciones que hace Oracle con sus procedimientos y funciones (vender, anular, abonar, saldo, utilidad, valor del inventario). |
+| Archivo | [DatabaseRoutines.java](../src/main/java/sistemainventario/repository/DatabaseRoutines.java) |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `registrarVenta(Sale venta)` *(abstracto)* | `double` | SP_REGISTRAR_VENTA: revisa el stock, guarda la venta con su detalle y descuenta las unidades, todo en una transacción |
+| `anularVenta(String ventaId, String motivo, AuditEntry historial)` *(abstracto)* | `void` | SP_ANULAR_VENTA: anula la venta, devuelve el stock y la anota en el historial |
+| `registrarAbono(CreditPayment abono)` *(abstracto)* | `String` | SP_REGISTRAR_ABONO: revisa que no pase de la deuda y guarda el abono |
+| `saldoCliente(String claveCliente)` *(abstracto)* | `double` | FN_SALDO_CLIENTE |
+| `valorInventario()` *(abstracto)* | `double` | FN_VALOR_INVENTARIO: cuánto costó lo que hay en inventario |
+| `utilidadPeriodo(LocalDate desde, LocalDate hasta)` *(abstracto)* | `double` | FN_UTILIDAD_PERIODO |
+
 ##### DatabaseSettingsRepository
 
 | Campo | Valor |
 |---|---|
 | Tipo | Concreta |
 | Herencia | — |
-| Responsabilidad | Guarda en ~/.inventariopro/basedatos.json qué base de datos usa este computador (motor, URL, usuario y clave). |
+| Responsabilidad | Guarda en ~/.inventariopro/basedatos.json cómo se conecta este computador a Oracle (URL, usuario y clave). |
 | Archivo | [DatabaseSettingsRepository.java](../src/main/java/sistemainventario/repository/DatabaseSettingsRepository.java) |
 
 **Atributos**
@@ -1473,7 +1502,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | Método | Retorna | Descripción |
 |---|---|---|
 | `DatabaseSettingsRepository(Path archivo)` | — | Constructor |
-| `leer()` | `DatabaseSettings` | La configuración guardada o, si no hay, archivos JSON |
+| `leer()` | `DatabaseSettings` | La configuración guardada o, si no hay, la de Oracle local sin clave |
 | `guardar(DatabaseSettings config)` | `void` | Guarda |
 
 ##### DatabaseStorageProvider
@@ -1482,7 +1511,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | implementa `StorageProvider` |
-| Responsabilidad | Repositorios JDBC sobre PostgreSQL u Oracle; todos comparten una conexión. |
+| Responsabilidad | Repositorios JDBC sobre Oracle; todos comparten una conexión. |
 | Archivo | [DatabaseStorageProvider.java](../src/main/java/sistemainventario/repository/DatabaseStorageProvider.java) |
 
 **Atributos**
@@ -1497,7 +1526,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `DatabaseStorageProvider(Database bd)` | — | Constructor |
 | `getBaseDeDatos()` | `Database` | La conexión, para crear tablas o copiar datos |
-| `nombre()` | `String` | Nombre del almacenamiento para mostrar ("PostgreSQL", "Oracle"...) |
+| `nombre()` | `String` | Nombre para mostrar ("Oracle" o "Sin conexión") |
 | `perfiles()` | `Repository<Profile>` | Repositorio de perfiles |
 | `usuarios()` | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
 | `auditoria()` | `Repository<AuditEntry>` | Historial de acciones (quién hizo qué) |
@@ -1508,6 +1537,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `abonos(String perfilId)` | `Repository<CreditPayment>` | Abonos de los clientes que deben (fiados) |
 | `salidas(String perfilId)` | `Repository<StockExit>` | Repositorio de salidas del negocio |
 | `ventas(String perfilId)` | `Repository<Sale>` | Repositorio de ventas del negocio |
+| `rutinas(String perfilId)` | `Optional<DatabaseRoutines>` | Los procedimientos y funciones de la base, si el motor los tiene (vacío mientras no hay conexión) |
 | `close()` | `void` | Libera la conexión, si la hay |
 
 ##### GlobalConfigRepository
@@ -1542,7 +1572,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Abstracta |
 | Herencia | implementa `Repository` |
-| Responsabilidad | Repositorio genérico sobre una tabla de PostgreSQL u Oracle (acceso a datos con JDBC). |
+| Responsabilidad | Repositorio genérico sobre una tabla de Oracle: lee con FN_LISTAR_ y guarda con SP_GUARDAR_ y SP_BORRAR_. |
 | Archivo | [JdbcRepository.java](../src/main/java/sistemainventario/repository/JdbcRepository.java) |
 
 **Atributos**
@@ -1562,12 +1592,12 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `JdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` *(abstracto)* | `String` | Nombre de la tabla |
-| `columnas()` *(abstracto)* | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `columnas()` *(abstracto)* | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
+| `funcionListar()` *(abstracto)* | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
 | `valores(T entidad)` *(abstracto)* | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` *(abstracto)* | `T` | La entidad |
 | `completar(List<T> entidades)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
 | `guardarHijos(Connection conexion, T entidad, boolean nueva)` | `void` | Escribe los datos de tablas hijas después del INSERT o del UPDATE |
-| `antesDeEliminar(Connection conexion, String id)` | `void` | Prepara el borrado (por ejemplo, quitar referencias) |
 | `refrescar()` | `void` | Pregunta ya a la base si otro equipo cambió algo y, si es así, recarga |
 | `listarTodos()` | `List<T>` | Copia de todas las entidades almacenadas |
 | `buscarPorId(String id)` | `Optional<T>` | La entidad, o vacío si no existe |
@@ -1578,7 +1608,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `eliminar(String id)` | `boolean` | True si existía y fue eliminada |
 | `siguienteIdNumerico()` | `String` | El siguiente ID numérico disponible (mayor ID + 1) |
 | `porPerfil()` | `boolean` | True si la tabla pertenece a un negocio (tiene PERFIL_ID) |
-| `referenciaValida(String tablaReferida, String id)` | `Object` | El ID si existe en ese negocio; si no, un nulo (para no romper la llave foránea) |
+| `referenciaValida(String funcionExiste, String id)` | `Object` | El ID si existe en ese negocio; si no, un nulo (para no romper la llave foránea) |
 | `texto(String valor)` *(static)* | `Object` | Texto o nulo de tipo VARCHAR |
 | `dia(String iso)` *(static)* | `Object` | Fecha (columna DATE) a partir de "yyyy-MM-dd", o nulo |
 | `momento(String iso)` *(static)* | `Object` | Fecha y hora (columna TIMESTAMP) a partir de "yyyy-MM-dd" o "yyyy-MM-ddTHH:mm:ss", o nulo |
@@ -1618,7 +1648,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Abstracta |
 | Herencia | implementa `Repository` |
-| Responsabilidad | Implementación genérica de Repository que guarda una lista de entidades en un archivo JSON y la mantiene en memoria (caché). |
+| Responsabilidad | Guarda una lista de objetos en un archivo JSON; solo se usa dentro de las copias de seguridad. |
 | Archivo | [JsonRepository.java](../src/main/java/sistemainventario/repository/JsonRepository.java) |
 
 **Atributos**
@@ -1650,7 +1680,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | implementa `StorageProvider` |
-| Responsabilidad | Repositorios en archivos JSON: data/perfiles.json y una carpeta por negocio. |
+| Responsabilidad | Repositorios en archivos JSON; solo se usan para el contenido de las copias de seguridad. |
 | Archivo | [JsonStorageProvider.java](../src/main/java/sistemainventario/repository/JsonStorageProvider.java) |
 
 **Atributos**
@@ -1666,7 +1696,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `JsonStorageProvider(Path directorioDatos)` | — | Constructor |
 | `vaciarArchivos()` | `void` | Borra perfiles.json y las carpetas de los negocios (no toca la configuración global) |
-| `nombre()` | `String` | Nombre del almacenamiento para mostrar ("PostgreSQL", "Oracle"...) |
+| `nombre()` | `String` | Nombre para mostrar ("Oracle" o "Sin conexión") |
 | `perfiles()` | `Repository<Profile>` | Repositorio de perfiles |
 | `usuarios()` | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
 | `auditoria()` | `Repository<AuditEntry>` | Historial de acciones (quién hizo qué) |
@@ -1709,8 +1739,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | Campo | Valor |
 |---|---|
 | Tipo | Concreta |
-| Herencia | implementa `SqlDialect` |
-| Responsabilidad | Dialecto de Oracle (18c Express Edition o superior). |
+| Herencia | — |
+| Responsabilidad | Separa los scripts de Oracle, revisa si una tabla existe y convierte los errores de RAISE_APPLICATION_ERROR en mensajes. |
 | Archivo | [OracleDialect.java](../src/main/java/sistemainventario/repository/OracleDialect.java) |
 
 **Constantes:** `COMANDO_SQLPLUS`
@@ -1719,12 +1749,39 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `motor()` | `DatabaseEngine` | Motor al que corresponde este dialecto |
-| `carpetaScripts()` | `String` | Carpeta de los scripts dentro de los recursos (por ejemplo sql/oracle) |
-| `nombreDriver()` | `String` | Nombre del driver JDBC, para los mensajes de error |
-| `tablaExiste(Connection conexion, String tabla)` | `boolean` | True si la tabla existe en el esquema del usuario |
-| `separarSentencias(String script)` | `List<String>` | Sentencias listas para enviar una por una por JDBC |
-| `mensajeDeDisparador(SQLException error)` | `Optional<String>` | El mensaje para el usuario si el error lo lanzó un disparador de TBalance |
+| `tablaExiste(Connection conexion, String tabla)` | `boolean` | True si la tabla existe en el esquema del usuario (USER_TABLES) |
+| `separarSentencias(String script)` | `List<String>` | Sentencias listas para ejecutar, sin ";" ni "/" al final |
+| `mensajeDeDisparador(SQLException error)` | `Optional<String>` | El mensaje de RAISE_APPLICATION_ERROR (códigos -20000 a -20999), si lo es |
+| `erroresDeRutinas(Connection conexion)` | `Optional<String>` | Revisa si alguna función o procedimiento de TBalance quedó con errores (USER_ERRORS) |
+
+##### OracleRoutines
+
+| Campo | Valor |
+|---|---|
+| Tipo | Concreta |
+| Herencia | implementa `DatabaseRoutines` |
+| Responsabilidad | Llama con CallableStatement a los procedimientos y funciones de Oracle para vender, anular, abonar e informes. |
+| Archivo | [OracleRoutines.java](../src/main/java/sistemainventario/repository/OracleRoutines.java) |
+
+**Atributos**
+
+| Atributo | Tipo | Descripción |
+|---|---|---|
+| `bd` | `Database` | Conexión a la base de datos |
+| `perfilId` | `String` | Negocio al que pertenece |
+
+**Métodos**
+
+| Método | Retorna | Descripción |
+|---|---|---|
+| `OracleRoutines(Database bd, String perfilId)` | — | Constructor |
+| `registrarVenta(Sale venta)` | `double` | SP_REGISTRAR_VENTA: revisa el stock, guarda la venta con su detalle y descuenta las unidades, todo en una transacción |
+| `anularVenta(String ventaId, String motivo, AuditEntry h)` | `void` | SP_ANULAR_VENTA: anula la venta, devuelve el stock y la anota en el historial |
+| `registrarAbono(CreditPayment a)` | `String` | SP_REGISTRAR_ABONO: revisa que no pase de la deuda y guarda el abono |
+| `saldoCliente(String claveCliente)` | `double` | FN_SALDO_CLIENTE |
+| `valorInventario()` | `double` | FN_VALOR_INVENTARIO: cuánto costó lo que hay en inventario |
+| `utilidadPeriodo(LocalDate desde, LocalDate hasta)` | `double` | FN_UTILIDAD_PERIODO |
+| `itemsJson(Sale venta)` *(static)* | `String` | Los productos de la venta como texto JSON, para leerlos con JSON_TABLE |
 
 ##### PaymentQrRepository
 
@@ -1752,28 +1809,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `leerComoDataUrl(String perfilId)` | `Optional<String>` | La imagen como "data:image/...;base64,...", si el negocio subió una |
 | `eliminar(String perfilId)` | `void` | Elimina |
 
-##### PostgresDialect
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | implementa `SqlDialect` |
-| Responsabilidad | Dialecto de PostgreSQL (11 o superior). |
-| Archivo | [PostgresDialect.java](../src/main/java/sistemainventario/repository/PostgresDialect.java) |
-
-**Constantes:** `ERROR_DE_DISPARADOR`
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `motor()` | `DatabaseEngine` | Motor al que corresponde este dialecto |
-| `carpetaScripts()` | `String` | Carpeta de los scripts dentro de los recursos (por ejemplo sql/oracle) |
-| `nombreDriver()` | `String` | Nombre del driver JDBC, para los mensajes de error |
-| `tablaExiste(Connection conexion, String tabla)` | `boolean` | True si la tabla existe en el esquema del usuario |
-| `separarSentencias(String script)` | `List<String>` | Sentencias listas para enviar una por una por JDBC |
-| `mensajeDeDisparador(SQLException error)` | `Optional<String>` | El mensaje para el usuario si el error lo lanzó un disparador de TBalance |
-
 ##### ProductJdbcRepository
 
 | Campo | Valor |
@@ -1789,7 +1824,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `ProductJdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(Product p)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `Product` | La entidad |
 
@@ -1853,7 +1889,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `ProfileJdbcRepository(Database bd)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(Profile p)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `Profile` | La entidad |
 | `completar(List<Profile> perfiles)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
@@ -1931,7 +1968,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `SaleJdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(Sale v)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `Sale` | La entidad |
 | `completar(List<Sale> ventas)` | `void` | Lee todo el detalle del negocio en una sola consulta y lo reparte entre las ventas |
@@ -1954,26 +1992,32 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `SaleRepository(Path directorio)` | — | Constructor |
 
-##### SqlDialect
+##### SinConexionStorageProvider
 
 | Campo | Valor |
 |---|---|
-| Tipo | Interfaz |
-| Herencia | — |
-| Responsabilidad | Diferencias entre PostgreSQL y Oracle (tipos de datos, consultas de catálogo). |
-| Archivo | [SqlDialect.java](../src/main/java/sistemainventario/repository/SqlDialect.java) |
+| Tipo | Concreta |
+| Herencia | implementa `StorageProvider` |
+| Responsabilidad | Lo que usa TBalance mientras no hay conexión con Oracle: todo vacío y sin poder guardar. |
+| Archivo | [SinConexionStorageProvider.java](../src/main/java/sistemainventario/repository/SinConexionStorageProvider.java) |
+
+**Constantes:** `MENSAJE`
 
 **Métodos**
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `motor()` *(abstracto)* | `DatabaseEngine` | Motor al que corresponde este dialecto |
-| `carpetaScripts()` *(abstracto)* | `String` | Carpeta de los scripts dentro de los recursos (por ejemplo sql/oracle) |
-| `nombreDriver()` *(abstracto)* | `String` | Nombre del driver JDBC, para los mensajes de error |
-| `tablaExiste(Connection conexion, String tabla)` *(abstracto)* | `boolean` | True si la tabla existe en el esquema del usuario |
-| `separarSentencias(String script)` *(abstracto)* | `List<String>` | Sentencias listas para enviar una por una por JDBC |
-| `mensajeDeDisparador(SQLException error)` *(abstracto)* | `Optional<String>` | El mensaje para el usuario si el error lo lanzó un disparador de TBalance |
-| `para(DatabaseEngine motor)` *(static)* | `SqlDialect` | El dialecto de ese motor |
+| `nombre()` | `String` | Nombre para mostrar ("Oracle" o "Sin conexión") |
+| `perfiles()` | `Repository<Profile>` | Repositorio de perfiles |
+| `usuarios()` | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
+| `auditoria()` | `Repository<AuditEntry>` | Historial de acciones (quién hizo qué) |
+| `productos(String perfilId)` | `Repository<Product>` | Repositorio de productos del negocio |
+| `categorias(String perfilId)` | `Repository<Category>` | Repositorio de categorías del negocio |
+| `proveedores(String perfilId)` | `Repository<Supplier>` | Repositorio de proveedores del negocio |
+| `entradas(String perfilId)` | `Repository<StockEntry>` | Repositorio de entradas del negocio |
+| `salidas(String perfilId)` | `Repository<StockExit>` | Repositorio de salidas del negocio |
+| `ventas(String perfilId)` | `Repository<Sale>` | Repositorio de ventas del negocio |
+| `abonos(String perfilId)` | `Repository<CreditPayment>` | Abonos de los clientes que deben (fiados) |
 
 ##### StockEntryJdbcRepository
 
@@ -1990,7 +2034,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `StockEntryJdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(StockEntry e)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `StockEntry` | La entidad |
 
@@ -2026,7 +2071,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `StockExitJdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(StockExit s)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `StockExit` | La entidad |
 
@@ -2053,14 +2099,14 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Interfaz |
 | Herencia | extiende `AutoCloseable` |
-| Responsabilidad | Entrega los repositorios de TBalance, sean de archivos JSON o de base de datos. |
+| Responsabilidad | Entrega los repositorios de TBalance: los de Oracle, los vacíos sin conexión o los de una copia de seguridad. |
 | Archivo | [StorageProvider.java](../src/main/java/sistemainventario/repository/StorageProvider.java) |
 
 **Métodos**
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `nombre()` *(abstracto)* | `String` | Nombre del almacenamiento para mostrar ("PostgreSQL", "Oracle"...) |
+| `nombre()` *(abstracto)* | `String` | Nombre para mostrar ("Oracle" o "Sin conexión") |
 | `perfiles()` *(abstracto)* | `Repository<Profile>` | Repositorio de perfiles |
 | `usuarios()` *(abstracto)* | `Repository<User>` | Personas que usan TBalance, con sus accesos a los negocios |
 | `auditoria()` *(abstracto)* | `Repository<AuditEntry>` | Historial de acciones (quién hizo qué) |
@@ -2071,6 +2117,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `salidas(String perfilId)` *(abstracto)* | `Repository<StockExit>` | Repositorio de salidas del negocio |
 | `ventas(String perfilId)` *(abstracto)* | `Repository<Sale>` | Repositorio de ventas del negocio |
 | `abonos(String perfilId)` *(abstracto)* | `Repository<CreditPayment>` | Abonos de los clientes que deben (fiados) |
+| `rutinas(String perfilId)` | `Optional<DatabaseRoutines>` | Los procedimientos y funciones de la base, si el motor los tiene (vacío mientras no hay conexión) |
 | `close()` | `void` | Libera la conexión, si la hay |
 
 ##### SupplierJdbcRepository
@@ -2088,12 +2135,12 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `SupplierJdbcRepository(Database bd, String perfilId)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(Supplier p)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `Supplier` | La entidad |
 | `completar(List<Supplier> proveedores)` | `void` | Lee de PROVEEDOR_CATEGORIA los tipos de producto de todos los proveedores del negocio |
 | `guardarHijos(Connection conexion, Supplier proveedor, boolean nuevo)` | `void` | Reescribe los tipos de producto del proveedor (solo categorías que existen en el negocio) |
-| `antesDeEliminar(Connection conexion, String id)` | `void` | Los productos del proveedor quedan sin proveedor (la llave foránea no lo permitiría) |
 
 ##### SupplierRepository
 
@@ -2127,7 +2174,8 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `UserJdbcRepository(Database bd)` | — | Constructor |
 | `tabla()` | `String` | Nombre de la tabla |
-| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID |
+| `funcionListar()` | `String` | Función de Oracle que devuelve las filas, por ejemplo FN_LISTAR_PRODUCTOS |
+| `columnas()` | `List<String>` | Columnas que se escriben, sin PERFIL_ID ni ID (mismo orden que los parámetros de SP_GUARDAR) |
 | `valores(User u)` | `Object[]` | Valores en el mismo orden de columnas |
 | `leer(ResultSet fila)` | `User` | La entidad |
 | `completar(List<User> usuarios)` | `void` | Completa las entidades leídas con datos de otras tablas (por ejemplo el detalle de las ventas) |
@@ -2375,6 +2423,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `AuditService(Repository<AuditEntry> historial)` | — | Constructor |
 | `registrar(AuditEntry entrada)` | `void` | Registra |
+| `nuevoId()` *(static)* | `String` | Un ID nuevo para una fila del historial |
 
 ##### BackupService
 
@@ -2456,12 +2505,14 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `inventario` | `InventoryService` | Inventario (InventoryService) |
 | `movimientos` | `MovementService` | Movimientos (MovementService) |
 | `proveedores` | `SupplierService` | Proveedores (SupplierService) |
+| `rutinas` | `DatabaseRoutines` | FN_VALOR_INVENTARIO (solo Oracle); null para sumar en Java |
 
 **Métodos**
 
 | Método | Retorna | Descripción |
 |---|---|---|
 | `CostService(InventoryService inventario, MovementService movimientos, SupplierService proveedores)` | — | Constructor |
+| `usarRutinas(DatabaseRoutines rutinas)` | `CostService` | Este servicio |
 | `resumen(LocalDate desde, LocalDate hasta)` | `Summary` | Costos del inventario y compras del periodo |
 
 ##### CreditService
@@ -2518,7 +2569,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | — |
-| Responsabilidad | Copia todos los negocios de un almacenamiento a otro: de los archivos JSON a PostgreSQL u Oracle la primera vez que se conecta, y de la base a los archivos para las copias de seguridad. |
+| Responsabilidad | Copia todos los negocios de un almacenamiento a otro, para las copias de seguridad: de Oracle a los archivos del .zip al crearla, y de esos archivos a Oracle al restaurarla. |
 | Archivo | [DataTransferService.java](../src/main/java/sistemainventario/service/DataTransferService.java) |
 
 **Métodos**
@@ -2535,7 +2586,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | implementa `DataSnapshot` |
-| Responsabilidad | Copias de seguridad cuando los datos están en PostgreSQL u Oracle. |
+| Responsabilidad | Copias de seguridad de los datos de Oracle. |
 | Archivo | [DatabaseSnapshot.java](../src/main/java/sistemainventario/service/DatabaseSnapshot.java) |
 
 **Atributos**
@@ -2585,30 +2636,6 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `validar(T entidad)` *(abstracto)* | `void` | Paso variable: reglas de validación propias de la entidad |
 | `generarId()` *(abstracto)* | `String` | Paso variable: estrategia de generación de ID de la entidad |
 | `nombreEntidad()` *(abstracto)* | `String` | Nombre legible de la entidad para mensajes de error |
-
-##### FileSnapshot
-
-| Campo | Valor |
-|---|---|
-| Tipo | Concreta |
-| Herencia | implementa `DataSnapshot` |
-| Responsabilidad | Copias de seguridad cuando los datos están en archivos JSON. |
-| Archivo | [FileSnapshot.java](../src/main/java/sistemainventario/service/FileSnapshot.java) |
-
-**Atributos**
-
-| Atributo | Tipo | Descripción |
-|---|---|---|
-| `directorioDatos` | `Path` | Directorio datos |
-
-**Métodos**
-
-| Método | Retorna | Descripción |
-|---|---|---|
-| `FileSnapshot(Path directorioDatos)` | — | Constructor |
-| `prepararCarpeta()` | `Path` | Carpeta con los datos en JSON, lista para comprimir |
-| `liberarCarpeta(Path carpeta)` | `void` | Liberar carpeta |
-| `restaurarDesde(Path carpeta)` | `void` | Reemplaza los datos actuales por los de una copia |
 
 ##### GlobalConfigService
 
@@ -2899,6 +2926,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `inventario` | `InventoryService` | Inventario (InventoryService) |
 | `ventas` | `Repository<Sale>` | Ventas |
 | `medioPermitido` | `Predicate<String>` | Medios de pago que acepta el negocio; por defecto, todos |
+| `rutinas` | `DatabaseRoutines` | Procedimientos de la base (solo Oracle); null si se usa la lógica de Java |
 
 **Métodos**
 
@@ -2906,6 +2934,9 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `SaleService(InventoryService inventario, Repository<Sale> ventas)` | — | Constructor |
 | `usarMediosDePago(Predicate<String> medioPermitido)` | `void` | Usar medios de pago |
+| `usarRutinas(DatabaseRoutines rutinas)` | `void` | Usar rutinas |
+| `rutinas()` | `Optional<DatabaseRoutines>` | Los procedimientos y funciones de la base, si se usan |
+| `anotaAnulacionEnLaBase()` | `boolean` | True si la base anota la anulación en el historial (SP_ANULAR_VENTA) |
 | `aceptaMedioPago(String metodo)` | `boolean` | True si el negocio acepta ese medio |
 | `registrar(Sale venta)` | `Sale` | La venta registrada con ID, fecha, estado y total |
 | `listarTodas()` | `List<Sale>` | Ventas vigentes (sin las anuladas), de la más reciente a la más antigua |
@@ -2913,6 +2944,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | `anular(String id, String motivo)` | `Sale` | Anula una venta: queda en el historial con el motivo, deja de contar en los totales y el stock de sus productos se devuelve |
 | `obtener(String id)` | `Sale` | La venta (vigente o anulada) |
 | `anular(String id, String motivo, String quien)` | `Sale` | Igual que anularString,, dejando anotado quién anuló |
+| `anular(String id, String motivo, AuditEntry historial)` | `Sale` | Anula una venta dejando anotado quién lo hizo |
 | `getTotalVentas()` | `double` | Suma de los totales de las ventas completadas |
 | `getTotalTransacciones()` | `int` | Cantidad de ventas completadas |
 
@@ -2955,7 +2987,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|
 | Tipo | Concreta |
 | Herencia | — |
-| Responsabilidad | Decide dónde se guardan los datos (archivos JSON, PostgreSQL u Oracle) y prepara ese almacenamiento. |
+| Responsabilidad | Conecta TBalance con Oracle y prepara la base. |
 | Archivo | [StorageService.java](../src/main/java/sistemainventario/service/StorageService.java) |
 
 **Atributos**
@@ -2963,19 +2995,17 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | Atributo | Tipo | Descripción |
 |---|---|---|
 | `ajustes` | `DatabaseSettingsRepository` | Ajustes (DatabaseSettingsRepository) |
-| `directorioDatos` | `Path` | Directorio datos |
 | `copiador` | `DataTransferService` | Copiador (DataTransferService) |
 
 **Métodos**
 
 | Método | Retorna | Descripción |
 |---|---|---|
-| `StorageService(DatabaseSettingsRepository ajustes, Path directorioDatos, DataTransferService copiador)` | — | Constructor |
-| `leer()` | `DatabaseSettings` | La configuración guardada en este computador |
-| `abrir()` | `Apertura` | Abre el almacenamiento configurado |
-| `probar(DatabaseSettings config)` | `String` | Prueba una configuración sin guardarla |
-| `guardar(DatabaseSettings config)` | `void` | Prueba (si es una base) y guarda la configuración |
-| `exportarAArchivos(StorageProvider base)` | `void` | Copia los datos de la base a los archivos JSON de este computador |
+| `StorageService(DatabaseSettingsRepository ajustes, DataTransferService copiador)` | — | Constructor |
+| `leer()` | `DatabaseSettings` | La conexión guardada en este computador |
+| `abrir()` | `Apertura` | Abre Oracle con la conexión guardada |
+| `probar(DatabaseSettings config)` | `String` | Prueba una conexión sin guardarla |
+| `guardar(DatabaseSettings config)` | `void` | Prueba la conexión y, si funciona, la guarda en este computador |
 
 ##### SupplierService
 
@@ -3672,7 +3702,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|
 | `StorageController(AppContext contexto, ViewNotifier notificador)` | — | Constructor |
 | `revisarCambios()` | `String` | Número que cambia cuando otro equipo guardó algo en la misma base; la pantalla lo consulta cada pocos segundos para actualizarse sola |
-| `obtenerAlmacenamiento()` | `String` | JSON con el motor, la URL, el usuario, el almacenamiento en uso, el aviso pendiente y los motores |
+| `obtenerAlmacenamiento()` | `String` | JSON con la URL, el usuario, si hay conexión y el aviso pendiente |
 | `probarAlmacenamiento(String datosJson)` | `String` | El resultado de la prueba o "ERROR: ..." |
 | `guardarAlmacenamiento(String datosJson)` | `String` | Guarda la configuración y empieza a usarla (crea tablas y copia datos si hace falta) |
 | `conectarBaseExistente(String datosJson)` | `String` | Desde la pantalla de inicio de un computador nuevo (antes de que exista algún usuario), se conecta a la base que ya usa el negocio, por ejemplo en la nube |
@@ -4245,7 +4275,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|---|
 | Herencia | `IdentifiedEntity` | `Product`, `Category`, `Supplier`, `Profile`, `Sale`, `InventoryMovement`, `User`, `AuditEntry`, `CreditPayment` | Todo lo que se guarda tiene un ID; lo heredan de esta clase. |
 | Herencia | `InventoryMovement` | `StockEntry`, `StockExit` | Una entrada suma stock y una salida lo resta; cada una sobrescribe `aplicarA(Product)`. |
-| Herencia | `JsonRepository<T>` | `ProductRepository`, `CategoryRepository`, `SupplierRepository`, `StockEntryRepository`, `StockExitRepository`, `SaleRepository`, `ProfileRepository`, `UserRepository`, `AuditRepository`, `CreditPaymentRepository` | Cada una solo dice en qué archivo guarda; leer y escribir lo hace la clase padre. |
+| Herencia | `JsonRepository<T>` | `ProductRepository`, `CategoryRepository`, `SupplierRepository`, `StockEntryRepository`, `StockExitRepository`, `SaleRepository`, `ProfileRepository`, `UserRepository`, `AuditRepository`, `CreditPaymentRepository` | Cada una solo dice en qué archivo de la copia de seguridad va; leer y escribir lo hace la clase padre. |
 | Herencia | `JdbcRepository<T>` | `ProductJdbcRepository`, `CategoryJdbcRepository`, `SupplierJdbcRepository`, `StockEntryJdbcRepository`, `StockExitJdbcRepository`, `SaleJdbcRepository`, `ProfileJdbcRepository`, `UserJdbcRepository`, `AuditJdbcRepository`, `CreditPaymentJdbcRepository` | Cada una dice su tabla y sus columnas; consultar, insertar y actualizar lo hace la clase padre. |
 | Herencia | `EntityService<T>` | `InventoryService`, `CategoryService`, `SupplierService` | Comparten el paso a paso de guardar; cada una pone su validación. |
 | Herencia | `RuntimeException` | `ValidationException`, `PersistenceException`, `AssistantException` | Los errores propios del proyecto. |
@@ -4256,7 +4286,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 | Composición | `ReportService` | `SalesReport` | El servicio arma el informe completo de un período. |
 | Agregación | `CustomerDebt` | `Sale`, `CreditPayment` | La cuenta de un cliente reúne sus ventas fiadas y sus abonos, que existen por su cuenta. |
 | Agregación | `CreditService` | `SaleService`, `Repository<CreditPayment>` | Recibe las ventas y los abonos del negocio por el constructor. |
-| Agregación | `EntityService<T>`, `MovementService`, `SaleService` | `Repository<T>` | Reciben el repositorio por el constructor; no saben si es de archivos o de base de datos. |
+| Agregación | `EntityService<T>`, `MovementService`, `SaleService` | `Repository<T>` | Reciben el repositorio por el constructor; no saben cómo se guarda. |
 | Agregación | `AppContext` | `StorageProvider`, `ProfileService`, `BackupService`, `UserService`, `AuditService`, `SessionService` | El contexto guarda estos objetos y los cambia cuando se cambia de base de datos. |
 | Agregación | `ProfileServicesFactory` | `StorageProvider` | Pide los repositorios de cada negocio al almacenamiento que esté en uso. |
 | Agregación | `JdbcRepository<T>` | `Database` | Todos los repositorios de la base comparten una conexión. |
@@ -4271,7 +4301,7 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 |---|---|---|---|
 | `IdentifiedEntity` | ninguno | 9 entidades (Product, Sale, User…) | Da a todo lo que se guarda su ID y la comparación por ID. |
 | `InventoryMovement` | `aplicarA(Product)`, `getPrefijoId()` | `StockEntry`, `StockExit` | Cada movimiento dice cómo cambia el stock; el servicio no pregunta de qué tipo es. |
-| `JsonRepository<T>` | ninguno | 10 repositorios de archivos | Escribe una sola vez cómo se guarda una lista en un archivo JSON. |
+| `JsonRepository<T>` | ninguno | 10 repositorios de la copia de seguridad | Escribe una sola vez cómo se guarda una lista en un archivo JSON dentro de la copia. |
 | `JdbcRepository<T>` | `tabla()`, `columnas()`, `valores(T)`, `leer(ResultSet)` | 10 repositorios de base de datos | Escribe una sola vez cómo se consulta y se guarda en una tabla. |
 | `EntityService<T>` | `validar(T)`, `generarId()`, `nombreEntidad()` | `InventoryService`, `CategoryService`, `SupplierService` | Guardar sigue siempre los mismos pasos; cada servicio completa los suyos. |
 
@@ -4279,11 +4309,11 @@ Para cada clase: su tipo, su responsabilidad, sus atributos y sus métodos públ
 
 | Interfaz | Métodos principales | La implementan | Para qué sirve |
 |---|---|---|---|
-| `Repository<T>` | listarTodos, buscarPorId, agregar, actualizar, eliminar | `JsonRepository<T>`, `JdbcRepository<T>` | Los servicios guardan igual sin importar si es archivo o base de datos. |
-| `StorageProvider` | perfiles, usuarios, productos, ventas, abonos… | `JsonStorageProvider`, `DatabaseStorageProvider` | Entrega todos los repositorios del almacenamiento elegido. |
-| `SqlDialect` | motor, tablaExiste, separarSentencias | `PostgresDialect`, `OracleDialect` | Guarda lo poco que cambia entre PostgreSQL y Oracle. |
+| `Repository<T>` | listarTodos, buscarPorId, agregar, actualizar, eliminar | `JsonRepository<T>`, `JdbcRepository<T>` | Los servicios guardan igual en Oracle o dentro de una copia de seguridad. |
+| `StorageProvider` | perfiles, usuarios, productos, ventas, abonos… | `DatabaseStorageProvider`, `SinConexionStorageProvider`, `JsonStorageProvider` | Entrega todos los repositorios: los de Oracle, los vacíos mientras no hay conexión o los de una copia de seguridad. |
+| `DatabaseRoutines` | registrarVenta, anularVenta, registrarAbono, saldoCliente… | `OracleRoutines` | Las operaciones que hace Oracle con sus procedimientos y funciones. |
 | `BackupStore` | listar, guardar, leer, eliminar | `BackupRepository`, `DatabaseBackupRepository` | Las copias se guardan en una carpeta o dentro de la base. |
-| `DataSnapshot` | prepararCarpeta, restaurarDesde | `FileSnapshot`, `DatabaseSnapshot` | Saca y repone los datos para una copia de seguridad. |
+| `DataSnapshot` | prepararCarpeta, restaurarDesde | `DatabaseSnapshot` | Saca y repone los datos para una copia de seguridad. |
 | `Deshabilitable` | isActivo, setActivo | `Product`, `Category`, `Supplier`, `Profile`, `User` | Lo que se deshabilita en lugar de borrarse. |
 | `Anulable` | anular, isAnulada | `Sale`, `InventoryMovement`, `CreditPayment` | Lo que se anula con motivo en lugar de borrarse. |
 | `Camera` | abrir, capturar, cerrar | `WebcamCamera`, `PhoneCamera` | La venta por QR funciona igual con la webcam o con el celular. |
@@ -4334,7 +4364,7 @@ Todas las pantallas comparten la misma distribución: a la izquierda, el menú c
 | **Experto en información** | `Sale` | Conoce sus renglones: calcula su total y revisa su medio de pago (un fiado necesita nombre y cédula). |
 | **Experto en información** | `CustomerDebt` | Tiene lo fiado y lo abonado de un cliente: calcula cuánto debe. |
 | **Experto en información** | `Rol` | Sabe qué permisos tiene cada rol y responde si una persona puede hacer algo. |
-| **Bajo acoplamiento** | `Repository<T>` | Los servicios dependen de esta interfaz y no saben si los datos van a archivos, a PostgreSQL o a Oracle. Por eso se agregó la base de datos sin tocar los servicios. |
+| **Bajo acoplamiento** | `Repository<T>` | Los servicios dependen de esta interfaz y no saben cómo se guardan los datos. Por eso se pasó de archivos a Oracle sin tocar los servicios. |
 | **Bajo acoplamiento** | `Camera`, `LanguageModel`, `ViewNotifier` | La venta por QR, el asistente y los controladores no dependen de una cámara, de un proveedor de IA ni de una ventana en particular. |
 | **Alta cohesión** | Controladores del paquete `bridge` | Cada controlador se ocupa de un solo tema; en Programación II un solo `JavaBridge` hacía todo. |
 | **Alta cohesión** | `AccessPolicy` y `AuditTrail` | Uno solo revisa permisos y el otro solo anota el historial; ningún controlador tiene que hacerlo. |
@@ -4348,8 +4378,8 @@ Todas las pantallas comparten la misma distribución: a la izquierda, el menú c
 | **SRP** | `AccessPolicy` / `AuditTrail` / controladores | Revisar permisos, anotar el historial y atender la acción del usuario están en clases distintas. |
 | **SRP** | `ReportService` / `ReportExportService` / `ReportExcelWriter` | Calcular el informe, decidir dónde se guarda y escribir el archivo de Excel están separados. |
 | **SRP** | `UserService` / `SessionService` / `PasswordHasher` | Administrar usuarios, recordar quién inició sesión y cifrar contraseñas están separados. |
-| **OCP** (abierto a extensión, cerrado a modificación) | `Repository<T>` con `JsonRepository<T>` y `JdbcRepository<T>` | Para guardar en base de datos se agregaron clases nuevas; los servicios no se modificaron. |
-| **OCP** | `StorageProvider` con `JsonStorageProvider` y `DatabaseStorageProvider` | Otro motor de base de datos sería otra implementación (más un `SqlDialect`), sin cambiar el resto. |
+| **OCP** (abierto a extensión, cerrado a modificación) | `Repository<T>` con `JsonRepository<T>` y `JdbcRepository<T>` | Para guardar en Oracle se agregaron clases nuevas; los servicios no se modificaron. |
+| **OCP** | `StorageProvider` con `DatabaseStorageProvider` y `SinConexionStorageProvider` | El estado "sin conexión" se agregó como otra implementación, sin cambiar los servicios. |
 | **OCP** | `InventoryMovement.aplicarA(Product)` | Un tipo de movimiento nuevo sería otra subclase; `MovementService` no cambia. |
 | **OCP** | `Camera` con `WebcamCamera` y `PhoneCamera` | El celular como lector se agregó con una clase nueva; la venta por QR no cambió. |
 

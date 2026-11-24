@@ -12,14 +12,15 @@ import sistemainventario.model.User;
 /**
  * Fábrica de los repositorios de TBalance (patrón fábrica abstracta).
  *
- * <p>Hay dos familias: {@link JsonStorageProvider} (archivos JSON) y
- * {@link DatabaseStorageProvider} (PostgreSQL u Oracle con JDBC). Los servicios
+ * <p>TBalance usa {@link DatabaseStorageProvider} (Oracle con JDBC);
+ * {@link SinConexionStorageProvider} mientras no hay conexión y
+ * {@link JsonStorageProvider} solo dentro de las copias de seguridad. Los servicios
  * reciben {@link Repository} y no saben cuál se está usando; cambiar de
  * almacenamiento no obliga a tocar la lógica de negocio.</p>
  */
 public interface StorageProvider extends AutoCloseable {
 
-    /** @return nombre del almacenamiento para mostrar ("PostgreSQL", "Oracle"...) */
+    /** @return nombre para mostrar ("Oracle" o "Sin conexión") */
     String nombre();
 
     /** @return repositorio de perfiles */
@@ -76,7 +77,7 @@ public interface StorageProvider extends AutoCloseable {
     /**
      * @param perfilId ID del negocio
      * @return los procedimientos y funciones de la base, si el motor los tiene
-     *         (solo Oracle); vacío con archivos JSON y con PostgreSQL
+     *         (vacío mientras no hay conexión)
      */
     default java.util.Optional<DatabaseRoutines> rutinas(String perfilId) {
         return java.util.Optional.empty();
