@@ -1,7 +1,9 @@
 package sistemainventario.bridge;
 
 import sistemainventario.exception.ValidationException;
+import sistemainventario.model.AuditEntry;
 import sistemainventario.model.Permiso;
+import sistemainventario.model.Profile;
 import sistemainventario.model.Rol;
 import sistemainventario.model.User;
 import sistemainventario.util.DateUtil;
@@ -10,6 +12,7 @@ import sistemainventario.AppContext;
 import sistemainventario.model.StockEntry;
 import sistemainventario.model.StockExit;
 import sistemainventario.model.Sale;
+import sistemainventario.service.AuditService;
 import sistemainventario.service.MovementService;
 import sistemainventario.service.SaleService;
 import sistemainventario.util.JsonUtil;
@@ -104,7 +107,12 @@ public class TransactionController {
                 throw new ValidationException("Solo puede anular sus propias ventas en los primeros "
                         + Rol.MINUTOS_ANULAR_PROPIA + " minutos. Pídaselo al administrador o al dueño.");
             }
-            ventas().anular(id, motivo, quien.getNombre());
+            String perfilId = contexto.getPerfilActivoId();
+            String negocio = contexto.getGestorPerfiles().buscarPorId(perfilId).map(Profile::getNombre).orElse(perfilId);
+            AuditEntry historial = new AuditEntry(DateUtil.ahora(), quien.getId(), quien.getNombre(), rol.getEtiqueta(),
+                    perfilId, negocio, "Anuló una venta", null);
+            historial.setId(AuditService.nuevoId());
+            ventas().anular(id, motivo, historial);
         });
     }
 

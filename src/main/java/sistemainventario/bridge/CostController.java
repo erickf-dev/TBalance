@@ -26,6 +26,7 @@ public class CostController {
         return BridgeResponse.ejecutar(() -> {
             ProfileServices s = contexto.requerirServiciosActivos();
             CostService costos = new CostService(s.inventario(), s.movimientos(), s.proveedores());
+            s.ventas().rutinas().ifPresent(costos::usarRutinas);
             return BridgeResponse.json(costos.resumen(fecha(desde), fecha(hasta)));
         });
     }

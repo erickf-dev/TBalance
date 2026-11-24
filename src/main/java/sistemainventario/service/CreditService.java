@@ -86,10 +86,18 @@ public class CreditService {
             throw new ValidationException("No se recibieron los datos del abono");
         }
         abono.validar();
-        abonos.refrescar();
         if (!ventas.aceptaMedioPago(abono.getMetodoPago())) {
             throw new ValidationException("Este negocio no tiene activo el pago con " + abono.getMetodoPago());
         }
+        if (ventas.rutinas().isPresent()) {
+            // Oracle: SP_REGISTRAR_ABONO revisa la deuda (FN_SALDO_CLIENTE) y guarda el abono
+            abono.setId(IdGenerator.conPrefijo(CreditPayment.PREFIJO_ID));
+            abono.setFecha(DateUtil.ahora());
+            abono.setEstado(CreditPayment.VIGENTE);
+            abono.setCliente(ventas.rutinas().get().registrarAbono(abono));
+            return abono;
+        }
+        abonos.refrescar();
         CustomerDebt cuenta = obtenerCuenta(abono.getClienteDocumento());
         if (cuenta.estaAlDia()) {
             throw new ValidationException(cuenta.getCliente() + " no debe nada");

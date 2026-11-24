@@ -26,6 +26,8 @@ public class CostService {
     private final InventoryService inventario;
     private final MovementService movimientos;
     private final SupplierService proveedores;
+    /** FN_VALOR_INVENTARIO (solo Oracle); {@code null} para sumar en Java. */
+    private sistemainventario.repository.DatabaseRoutines rutinas;
 
     /**
      * Costo de un producto.
@@ -85,6 +87,15 @@ public class CostService {
     }
 
     /**
+     * @param rutinas funciones de la base (solo Oracle)
+     * @return este servicio
+     */
+    public CostService usarRutinas(sistemainventario.repository.DatabaseRoutines rutinas) {
+        this.rutinas = rutinas;
+        return this;
+    }
+
+    /**
      * @param desde primer día del periodo de compras (incluido), o {@code null} sin límite
      * @param hasta último día del periodo de compras (incluido), o {@code null} sin límite
      * @return costos del inventario y compras del periodo
@@ -106,6 +117,10 @@ public class CostService {
             }
         }
         productos.sort(Comparator.comparingDouble(ProductCost::costoStock).reversed());
+        if (rutinas != null) {
+            // Oracle: el valor del inventario lo calcula FN_VALOR_INVENTARIO
+            valor = rutinas.valorInventario();
+        }
 
         List<Purchase> compras = new ArrayList<>();
         Map<String, Double> porProveedor = new LinkedHashMap<>();

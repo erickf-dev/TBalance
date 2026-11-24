@@ -73,6 +73,15 @@ public interface StorageProvider extends AutoCloseable {
      */
     Repository<sistemainventario.model.CreditPayment> abonos(String perfilId);
 
+    /**
+     * @param perfilId ID del negocio
+     * @return los procedimientos y funciones de la base, si el motor los tiene
+     *         (solo Oracle); vacío con archivos JSON y con PostgreSQL
+     */
+    default java.util.Optional<DatabaseRoutines> rutinas(String perfilId) {
+        return java.util.Optional.empty();
+    }
+
     /** Libera la conexión, si la hay. */
     @Override
     default void close() {

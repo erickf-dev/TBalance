@@ -23,7 +23,7 @@ public class AuditService {
 
     /** @param entrada acción a anotar (se le pone un ID único) */
     public void registrar(AuditEntry entrada) {
-        entrada.setId("H-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8));
+        entrada.setId(nuevoId());
         historial.agregar(entrada);
     }
 
@@ -36,6 +36,11 @@ public class AuditService {
      * @param limite          cuántas devolver como máximo
      * @return entradas de la más reciente a la más antigua
      */
+    /** @return un ID nuevo para una fila del historial */
+    public static String nuevoId() {
+        return "H-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
     public List<AuditEntry> listar(Collection<String> negocios, boolean incluirGenerales, String usuarioId,
                                    String desde, String hasta, int limite) {
         return historial.filtrar(e -> (e.getPerfilId() == null ? incluirGenerales : negocios.contains(e.getPerfilId()))
