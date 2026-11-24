@@ -16,7 +16,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-/** Repositorios en archivos JSON: {@code data/perfiles.json} y una carpeta por negocio. */
+/**
+ * Repositorios en archivos JSON. TBalance ya no guarda los negocios en
+ * archivos: solo se usan como formato dentro del .zip de una copia de
+ * seguridad (los datos de Oracle se escriben aquí y se comprimen, y al
+ * restaurar se leen de aquí y se vuelven a guardar en Oracle).
+ */
 public class JsonStorageProvider implements StorageProvider {
 
     private final Path directorioDatos;

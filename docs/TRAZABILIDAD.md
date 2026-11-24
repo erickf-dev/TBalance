@@ -19,7 +19,7 @@ Cada fila dice dónde está aplicado el patrón o principio en el código de la 
 | Experto en información | [`CustomerDebt`](../src/main/java/sistemainventario/model/CustomerDebt.java) | Calcula cuánto debe un cliente con lo fiado y lo abonado. |
 | Experto en información | [`Rol`](../src/main/java/sistemainventario/model/Rol.java) | Sabe qué permisos tiene cada rol. |
 | Experto en información | [`Profile.aceptaMedioPago`](../src/main/java/sistemainventario/model/Profile.java) | El negocio sabe qué medios de pago recibe. |
-| Bajo acoplamiento | [`Repository<T>`](../src/main/java/sistemainventario/repository/Repository.java) | Los servicios no saben si los datos van a archivos, a PostgreSQL o a Oracle. |
+| Bajo acoplamiento | [`Repository<T>`](../src/main/java/sistemainventario/repository/Repository.java) | Los servicios no saben cómo se guardan los datos en Oracle. |
 | Bajo acoplamiento | [`StorageProvider`](../src/main/java/sistemainventario/repository/StorageProvider.java) | Solo `AppContext` elige el almacenamiento; el resto pide los repositorios. |
 | Bajo acoplamiento | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java), [`LanguageModel`](../src/main/java/sistemainventario/ia/LanguageModel.java) | La venta por QR y el asistente no dependen de una cámara ni de un proveedor de IA en particular. |
 | Alta cohesión | Controladores del paquete [`bridge`](../src/main/java/sistemainventario/bridge) | Cada uno se ocupa de un solo tema. |
@@ -35,7 +35,7 @@ Cada fila dice dónde está aplicado el patrón o principio en el código de la 
 | SRP | [`ReportService`](../src/main/java/sistemainventario/service/ReportService.java) / [`ReportExportService`](../src/main/java/sistemainventario/service/ReportExportService.java) / [`ReportExcelWriter`](../src/main/java/sistemainventario/repository/ReportExcelWriter.java) | Calcular el informe, decidir dónde se guarda y escribir el Excel están separados. |
 | SRP | [`BackupService`](../src/main/java/sistemainventario/service/BackupService.java) / [`ZipArchiver`](../src/main/java/sistemainventario/repository/ZipArchiver.java) / [`BackupStore`](../src/main/java/sistemainventario/repository/BackupStore.java) | Coordinar la copia, comprimir y guardar el archivo están separados. |
 | OCP | [`JsonRepository<T>`](../src/main/java/sistemainventario/repository/JsonRepository.java) y [`JdbcRepository<T>`](../src/main/java/sistemainventario/repository/JdbcRepository.java) | Guardar en base de datos se agregó con clases nuevas, sin cambiar los servicios. |
-| OCP | [`SqlDialect`](../src/main/java/sistemainventario/repository/SqlDialect.java) | Otro motor de base de datos sería un dialecto nuevo. |
+| OCP | [`DatabaseRoutines`](../src/main/java/sistemainventario/repository/DatabaseRoutines.java) | Las operaciones de Oracle están detrás de una interfaz; los servicios no cambian si cambia el procedimiento. |
 | OCP | [`InventoryMovement.aplicarA`](../src/main/java/sistemainventario/model/InventoryMovement.java) | Un tipo de movimiento nuevo sería otra subclase; `MovementService` no cambia. |
 | OCP | [`Camera`](../src/main/java/sistemainventario/dispositivo/Camera.java) | El celular como lector (`PhoneCamera`) se agregó sin cambiar la venta por QR. |
 

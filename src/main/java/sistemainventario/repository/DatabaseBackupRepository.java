@@ -9,8 +9,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.CallableStatement;
+import java.sql.Types;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -20,8 +20,9 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Copias de seguridad dentro de PostgreSQL u Oracle: cada copia es una fila de
- * la tabla RESPALDO con el .zip en una columna binaria (BYTEA o BLOB). Así,
+ * Copias de seguridad dentro de Oracle: cada copia es una fila de la tabla
+ * RESPALDO con el .zip en una columna BLOB. Se leen con FN_LISTAR_COPIAS y
+ * FN_LEER_COPIA y se guardan con SP_GUARDAR_COPIA y SP_BORRAR_COPIA. Así,
  * con base de datos, las copias no quedan en archivos del computador.
  */
 public class DatabaseBackupRepository implements BackupStore {
@@ -38,7 +39,7 @@ public class DatabaseBackupRepository implements BackupStore {
 
     @Override
     public List<Backup> listar() {
-        return bd.consultar("SELECT NOMBRE, FECHA, TAMANO FROM RESPALDO ORDER BY FECHA DESC",
+        return bd.llamar("FN_LISTAR_COPIAS",
                 fila -> new Backup(fila.getString("NOMBRE"),
                         fila.getTimestamp("FECHA").toLocalDateTime().format(FORMATO_FECHA), fila.getLong("TAMANO")));
     }
@@ -46,7 +47,7 @@ public class DatabaseBackupRepository implements BackupStore {
     @Override
     public boolean existe(String nombre) {
         validarNombre(nombre);
-        return bd.consultar("SELECT COUNT(*) FROM RESPALDO WHERE NOMBRE = ?", fila -> fila.getInt(1), nombre).get(0) > 0;
+        return bd.llamarNumero("FN_EXISTE_COPIA", nombre) > 0;
     }
 
     @Override
@@ -55,9 +56,11 @@ public class DatabaseBackupRepository implements BackupStore {
         try {
             byte[] contenido = Files.readAllBytes(zip);
             LocalDateTime ahora = LocalDateTime.now().withNano(0);
-            bd.transaccion(c -> Database.actualizar(c,
-                    "INSERT INTO RESPALDO (NOMBRE, FECHA, TAMANO, CONTENIDO) VALUES (?, ?, ?, ?)",
-                    nombre, Timestamp.valueOf(ahora), (long) contenido.length, new Database.Binario(contenido)));
+            bd.transaccion(c -> {
+                Database.procedimiento(c, "SP_GUARDAR_COPIA",
+                        nombre, Timestamp.valueOf(ahora), (long) contenido.length, new Database.Binario(contenido));
+                return null;
+            });
             Files.deleteIfExists(zip);
             return new Backup(nombre, ahora.format(FORMATO_FECHA), contenido.length);
         } catch (IOException e) {
@@ -68,22 +71,14 @@ public class DatabaseBackupRepository implements BackupStore {
     @Override
     public void leer(String nombre, Path destino) {
         validarNombre(nombre);
-        boolean encontrada = bd.transaccion(c -> {
-            try (PreparedStatement consulta = c.prepareStatement("SELECT CONTENIDO FROM RESPALDO WHERE NOMBRE = ?")) {
-                consulta.setString(1, nombre);
-                try (ResultSet fila = consulta.executeQuery()) {
-                    if (!fila.next()) {
-                        return false;
-                    }
-                    try (InputStream entrada = fila.getBinaryStream(1)) {
-                        Files.copy(entrada, destino, StandardCopyOption.REPLACE_EXISTING);
-                    } catch (IOException e) {
-                        throw new SQLException("No se pudo escribir la copia en " + destino, e);
-                    }
-                    return true;
-                }
+        boolean encontrada = bd.transaccion(c -> !bd.llamar(c, "FN_LEER_COPIA", fila -> {
+            try (InputStream entrada = fila.getBinaryStream("CONTENIDO")) {
+                Files.copy(entrada, destino, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new SQLException("No se pudo escribir la copia en " + destino, e);
             }
-        });
+            return true;
+        }, nombre).isEmpty());
         if (!encontrada) {
             throw new ValidationException("La copia de seguridad " + nombre + " no existe");
         }
@@ -92,7 +87,14 @@ public class DatabaseBackupRepository implements BackupStore {
     @Override
     public void eliminar(String nombre) {
         validarNombre(nombre);
-        int borradas = bd.transaccion(c -> Database.actualizar(c, "DELETE FROM RESPALDO WHERE NOMBRE = ?", nombre));
+        int borradas = bd.transaccion(c -> {
+            try (CallableStatement llamada = c.prepareCall("{call SP_BORRAR_COPIA(?, ?)}")) {
+                llamada.setString(1, nombre);
+                llamada.registerOutParameter(2, Types.NUMERIC);
+                llamada.execute();
+                return llamada.getInt(2);
+            }
+        });
         if (borradas == 0) {
             throw new ValidationException("La copia de seguridad " + nombre + " no existe");
         }
@@ -100,7 +102,7 @@ public class DatabaseBackupRepository implements BackupStore {
 
     @Override
     public String ubicacion() {
-        return "la base de datos " + bd.nombreMotor() + " (tabla RESPALDO)";
+        return "la base de datos Oracle (tabla RESPALDO)";
     }
 
     @Override

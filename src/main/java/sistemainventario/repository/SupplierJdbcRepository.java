@@ -27,6 +27,11 @@ public class SupplierJdbcRepository extends JdbcRepository<Supplier> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_PROVEEDORES";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("NOMBRE", "CONTACTO", "TELEFONO", "EMAIL", "DIRECCION", "CATEGORIA", "ACTIVO");
     }
@@ -55,8 +60,7 @@ public class SupplierJdbcRepository extends JdbcRepository<Supplier> {
     @Override
     protected void completar(List<Supplier> proveedores) {
         Map<String, List<String>> porProveedor = new LinkedHashMap<>();
-        bd.consultar("SELECT PROVEEDOR_ID, CATEGORIA_ID FROM PROVEEDOR_CATEGORIA WHERE PERFIL_ID = ? "
-                        + "ORDER BY PROVEEDOR_ID, CATEGORIA_ID",
+        bd.llamar("FN_LISTAR_PROVEEDOR_CATEGORIAS",
                 fila -> porProveedor.computeIfAbsent(fila.getString("PROVEEDOR_ID"), k -> new ArrayList<>())
                         .add(fila.getString("CATEGORIA_ID")), perfilId);
         for (Supplier proveedor : proveedores) {
@@ -68,22 +72,12 @@ public class SupplierJdbcRepository extends JdbcRepository<Supplier> {
     @Override
     protected void guardarHijos(Connection conexion, Supplier proveedor, boolean nuevo) throws SQLException {
         if (!nuevo) {
-            Database.actualizar(conexion, "DELETE FROM PROVEEDOR_CATEGORIA WHERE PERFIL_ID = ? AND PROVEEDOR_ID = ?",
-                    perfilId, proveedor.getId());
+            Database.procedimiento(conexion, "SP_BORRAR_TIPOS_PROVEEDOR", perfilId, proveedor.getId());
         }
         for (String categoriaId : proveedor.getCategoriaIds()) {
-            if (referenciaValida("CATEGORIA", categoriaId) instanceof String) {
-                Database.actualizar(conexion,
-                        "INSERT INTO PROVEEDOR_CATEGORIA (PERFIL_ID, PROVEEDOR_ID, CATEGORIA_ID) VALUES (?, ?, ?)",
-                        perfilId, proveedor.getId(), categoriaId);
+            if (referenciaValida("FN_EXISTE_CATEGORIA", categoriaId) instanceof String) {
+                Database.procedimiento(conexion, "SP_AGREGAR_TIPO_PROVEEDOR", perfilId, proveedor.getId(), categoriaId);
             }
         }
-    }
-
-    /** Los productos del proveedor quedan sin proveedor (la llave foránea no lo permitiría). */
-    @Override
-    protected void antesDeEliminar(Connection conexion, String id) throws SQLException {
-        Database.actualizar(conexion, "UPDATE PRODUCTO SET PROVEEDOR_ID = NULL WHERE PERFIL_ID = ? AND PROVEEDOR_ID = ?",
-                perfilId, id);
     }
 }

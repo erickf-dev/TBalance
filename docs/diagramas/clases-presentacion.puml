@@ -28,7 +28,7 @@ class AppContext {
   - exportadorInformes : ReportExportService
   - almacenamiento : StorageService
   - almacenActual : StorageProvider
-  - ... (6 más)
+  - ... (7 más)
   + recargar()
   + iniciarSesion() : User
   + crearPrimerDueno() : User
@@ -38,7 +38,7 @@ class AppContext {
   + puedeCrearNegocios() : boolean
   + esDuenoDe() : boolean
   + registrarNegocioCreado()
-  + ... (14 más)
+  + ... (15 más)
 }
 class Launcher {
   + {static} main()

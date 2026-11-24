@@ -10,8 +10,8 @@ import java.time.LocalDate;
  * Operaciones que hace la base de datos por su cuenta, con procedimientos y
  * funciones almacenados (PL/SQL en Oracle).
  *
- * <p>Solo la tiene Oracle ({@link OracleRoutines}). Con los archivos JSON y
- * con PostgreSQL no hay rutinas y los servicios usan su lógica en Java.</p>
+ * <p>La implementa {@link OracleRoutines}. Mientras no hay conexión no hay
+ * rutinas, pero entonces tampoco se puede entrar a TBalance.</p>
  */
 public interface DatabaseRoutines {
 

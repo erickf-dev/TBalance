@@ -7,138 +7,107 @@ import sistemainventario.repository.Database;
 import sistemainventario.repository.DatabaseBackupRepository;
 import sistemainventario.repository.DatabaseSettingsRepository;
 import sistemainventario.repository.DatabaseStorageProvider;
-import sistemainventario.repository.JsonStorageProvider;
+import sistemainventario.repository.SinConexionStorageProvider;
 import sistemainventario.repository.StorageProvider;
 
 import java.nio.file.Path;
 import java.util.Objects;
 
 /**
- * Decide dónde se guardan los datos (archivos JSON, PostgreSQL u Oracle) y
- * prepara ese almacenamiento.
+ * Conecta TBalance con Oracle y prepara la base.
  *
- * <p>La primera vez que se conecta a una base vacía crea las tablas y los
- * disparadores y copia ahí los negocios de los archivos JSON. Si la base no
- * responde al iniciar, TBalance sigue con los archivos y muestra un aviso, en
- * vez de no abrir.</p>
+ * <p>La primera vez que se conecta a una base vacía crea las tablas, los
+ * disparadores, las funciones y los procedimientos. Si Oracle no responde al
+ * abrir, TBalance no guarda nada: muestra el error y pide los datos de
+ * conexión.</p>
  */
 public class StorageService {
 
     private final DatabaseSettingsRepository ajustes;
-    private final Path directorioDatos;
     private final DataTransferService copiador;
 
     /**
-     * Almacenamiento listo para usar.
+     * Base de datos lista para usar (o sin conexión).
      *
-     * @param almacen fábrica de repositorios
+     * @param almacen   fábrica de repositorios
      * @param copias    cómo se sacan y reponen los datos en las copias de seguridad
-     * @param respaldos dónde se guardan las copias si es una base de datos ({@code null}: en la carpeta)
-     * @param aviso     mensaje para el usuario (migración hecha o error de conexión), o {@code null}
+     * @param respaldos dónde se guardan las copias ({@code null} si no hay conexión)
+     * @param aviso     mensaje para el usuario (error de conexión), o {@code null}
+     * @param conectado {@code true} si hay conexión con Oracle
      */
-    public record Apertura(StorageProvider almacen, DataSnapshot copias, BackupStore respaldos, String aviso) {
+    public record Apertura(StorageProvider almacen, DataSnapshot copias, BackupStore respaldos, String aviso,
+                           boolean conectado) {
     }
 
     /**
-     * @param ajustes         archivo {@code basedatos.json}
-     * @param directorioDatos carpeta {@code data}
-     * @param copiador        servicio que copia entre almacenamientos
+     * @param ajustes  archivo {@code basedatos.json}
+     * @param copiador servicio que copia los datos para las copias de seguridad
      */
-    public StorageService(DatabaseSettingsRepository ajustes, Path directorioDatos, DataTransferService copiador) {
+    public StorageService(DatabaseSettingsRepository ajustes, DataTransferService copiador) {
         this.ajustes = Objects.requireNonNull(ajustes);
-        this.directorioDatos = Objects.requireNonNull(directorioDatos);
         this.copiador = Objects.requireNonNull(copiador);
     }
 
-    /** @return la configuración guardada en este computador */
+    /** @return la conexión guardada en este computador */
     public DatabaseSettings leer() {
         return ajustes.leer();
     }
 
     /**
-     * Abre el almacenamiento configurado.
+     * Abre Oracle con la conexión guardada. Crea o actualiza las tablas,
+     * funciones y procedimientos si hace falta.
      *
-     * @return el almacenamiento y, si hace falta, un aviso para el usuario
+     * @return la base abierta, o el estado "sin conexión" con el motivo
      */
     public Apertura abrir() {
         DatabaseSettings config = ajustes.leer();
-        JsonStorageProvider archivos = new JsonStorageProvider(directorioDatos);
-        if (!config.usaBaseDeDatos()) {
-            return new Apertura(archivos, new FileSnapshot(directorioDatos), null, null);
+        if (!config.estaConfigurada()) {
+            return sinConexion("Conecte TBalance con Oracle: escriba la URL, el usuario y la contraseña de la base.");
         }
         Database bd = new Database(config);
         try {
+            bd.actualizarEsquema();
             DatabaseStorageProvider base = new DatabaseStorageProvider(bd);
-            String aviso = preparar(bd, base, archivos);
-            return new Apertura(base, new DatabaseSnapshot(base, copiador), new DatabaseBackupRepository(bd), aviso);
+            return new Apertura(base, new DatabaseSnapshot(base, copiador), new DatabaseBackupRepository(bd), null, true);
         } catch (RuntimeException e) {
             bd.close();
-            return new Apertura(archivos, new FileSnapshot(directorioDatos), null,
-                    e.getMessage() + " Mientras tanto se usan los archivos de este computador.");
+            return sinConexion(e.getMessage());
         }
     }
 
     /**
-     * Prueba una configuración sin guardarla.
+     * Prueba una conexión sin guardarla.
      *
-     * @param config motor, URL, usuario y clave
-     * @return descripción del resultado
-     * @throws ValidationException si faltan datos
-     * @throws sistemainventario.exception.PersistenceException si no se pudo conectar
+     * @param config datos de conexión
+     * @return mensaje para el usuario
      */
     public String probar(DatabaseSettings config) {
-        if (!config.usaBaseDeDatos()) {
-            return "Los datos se guardan en archivos de este computador.";
-        }
         validar(config);
         try (Database bd = new Database(config)) {
             bd.probar();
             if (!bd.tieneTablas()) {
-                return "Conexión correcta con " + bd.nombreMotor()
-                        + ". Al guardar se crean las tablas y se copian sus negocios.";
+                return "Conexión correcta con Oracle. Al guardar se crean las tablas, las funciones y los procedimientos.";
             }
-            int negocios = bd.consultar("SELECT COUNT(*) FROM PERFIL", fila -> fila.getInt(1)).get(0);
-            return "Conexión correcta con " + bd.nombreMotor() + ". La base ya tiene " + negocios
-                    + (negocios == 1 ? " negocio." : " negocios.")
-                    + (negocios == 0 ? " Al guardar se copian sus negocios." : " Al guardar se usan esos.");
+            int negocios = bd.contarNegocios();
+            if (negocios < 0) {
+                return "Conexión correcta con Oracle. Al guardar se actualizan las funciones y los procedimientos.";
+            }
+            return "Conexión correcta con Oracle. La base tiene " + negocios + (negocios == 1 ? " negocio." : " negocios.");
         }
     }
 
     /**
-     * Prueba (si es una base) y guarda la configuración.
+     * Prueba la conexión y, si funciona, la guarda en este computador.
      *
-     * @param config motor, URL, usuario y clave
+     * @param config datos de conexión
      */
     public void guardar(DatabaseSettings config) {
         probar(config);
         ajustes.guardar(config);
     }
 
-    /**
-     * Copia los datos de la base a los archivos JSON de este computador. Se usa
-     * al volver de una base de datos a archivos, para no perder lo hecho en la base.
-     *
-     * @param base almacenamiento en la base de datos
-     */
-    public void exportarAArchivos(StorageProvider base) {
-        JsonStorageProvider archivos = new JsonStorageProvider(directorioDatos);
-        archivos.vaciarArchivos();
-        copiador.copiar(base, archivos);
-    }
-
-    private String preparar(Database bd, DatabaseStorageProvider base, JsonStorageProvider archivos) {
-        bd.actualizarEsquema();
-        if (!bd.estaVacia() || archivos.perfiles().listarTodos().isEmpty()) {
-            return null;
-        }
-        try {
-            DataTransferService.Resumen copiado = copiador.copiar(archivos, base);
-            return "Se copiaron a " + bd.nombreMotor() + " " + copiado.perfiles() + " negocios, "
-                    + copiado.productos() + " productos y " + copiado.ventas() + " ventas.";
-        } catch (RuntimeException e) {
-            copiador.vaciar(new DatabaseStorageProvider(bd));
-            throw e;
-        }
+    private Apertura sinConexion(String motivo) {
+        return new Apertura(new SinConexionStorageProvider(), SIN_DATOS, null, motivo, false);
     }
 
     private static void validar(DatabaseSettings config) {
@@ -146,7 +115,28 @@ public class StorageService {
             throw new ValidationException("Escriba la URL de conexión");
         }
         if (config.usuario().isBlank()) {
-            throw new ValidationException("Escriba el usuario de la base de datos");
+            throw new ValidationException("Escriba el usuario de Oracle");
+        }
+        if (config.clave().isEmpty()) {
+            throw new ValidationException("Escriba la contraseña del usuario de Oracle");
         }
     }
+
+    /** Sin conexión no hay datos para copiar ni dónde restaurar. */
+    public static final DataSnapshot SIN_DATOS = new DataSnapshot() {
+        @Override
+        public Path prepararCarpeta() {
+            throw new ValidationException(SinConexionStorageProvider.MENSAJE);
+        }
+
+        @Override
+        public void liberarCarpeta(Path carpeta) {
+            // no hay nada que liberar
+        }
+
+        @Override
+        public void restaurarDesde(Path carpeta) {
+            throw new ValidationException(SinConexionStorageProvider.MENSAJE);
+        }
+    };
 }

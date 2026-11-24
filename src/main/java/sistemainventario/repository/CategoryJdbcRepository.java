@@ -24,6 +24,11 @@ public class CategoryJdbcRepository extends JdbcRepository<Category> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_CATEGORIAS";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("NOMBRE", "DESCRIPCION", "ACTIVO");
     }
@@ -38,12 +43,5 @@ public class CategoryJdbcRepository extends JdbcRepository<Category> {
         Category c = new Category(fila.getString("ID"), fila.getString("NOMBRE"), fila.getString("DESCRIPCION"));
         c.setActivo(fila.getInt("ACTIVO") == 1);
         return c;
-    }
-
-    /** Los productos de la categoría quedan sin categoría (la llave foránea no lo permitiría). */
-    @Override
-    protected void antesDeEliminar(Connection conexion, String id) throws SQLException {
-        Database.actualizar(conexion, "UPDATE PRODUCTO SET CATEGORIA_ID = NULL WHERE PERFIL_ID = ? AND CATEGORIA_ID = ?",
-                perfilId, id);
     }
 }

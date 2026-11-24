@@ -46,7 +46,7 @@ IdentifiedEntity (abstracta)
     └── StockExit
 
 Repository<T> (interfaz)
-├── JsonRepository<T> (abstracta) → 10 repositorios de archivos
+├── JsonRepository<T> (abstracta) → 10 repositorios para el contenido de las copias de seguridad
 └── JdbcRepository<T> (abstracta) → 10 repositorios de base de datos
 
 EntityService<T> (abstracta)
@@ -57,7 +57,7 @@ EntityService<T> (abstracta)
 
 ### 2.2 Métodos sobrescritos
 
-El proyecto tiene **191 métodos con `@Override`** en 46 clases. Los principales:
+El proyecto tiene **213 métodos con `@Override`** en 46 clases. Los principales:
 
 | Clase | Métodos sobrescritos |
 |---|---|
@@ -66,9 +66,9 @@ El proyecto tiene **191 métodos con `@Override`** en 46 clases. Los principales
 | `IdentifiedEntity` | `equals()`, `hashCode()` |
 | `JsonRepository` | `listarTodos()`, `buscarPorId()`, `existe()`, `filtrar()`, `agregar()`, `actualizar()`, `eliminar()`, `siguienteIdNumerico()` |
 | `JdbcRepository` | `refrescar()`, `listarTodos()`, `buscarPorId()`, `existe()`, `filtrar()`, `agregar()`, `actualizar()`, `eliminar()` … |
-| `ProductJdbcRepository` | `tabla()`, `columnas()`, `valores()`, `leer()` |
-| `SaleJdbcRepository` | `tabla()`, `columnas()`, `valores()`, `leer()`, `completar()`, `guardarHijos()` |
-| `CreditPaymentJdbcRepository` | `tabla()`, `columnas()`, `valores()`, `leer()` |
+| `ProductJdbcRepository` | `tabla()`, `funcionListar()`, `columnas()`, `valores()`, `leer()` |
+| `SaleJdbcRepository` | `tabla()`, `funcionListar()`, `columnas()`, `valores()`, `leer()`, `completar()`, `guardarHijos()` |
+| `CreditPaymentJdbcRepository` | `tabla()`, `funcionListar()`, `columnas()`, `valores()`, `leer()` |
 | `CategoryService` | `validarDeshabilitar()`, `validar()`, `generarId()`, `nombreEntidad()` |
 | `InventoryService` | `validar()`, `generarId()`, `nombreEntidad()` |
 | `SupplierService` | `validar()`, `generarId()`, `nombreEntidad()` |
@@ -80,11 +80,10 @@ El proyecto tiene **191 métodos con `@Override`** en 46 clases. Los principales
 | `GeminiClient` | `generar()` |
 | `SseNotifier` | `ejecutarScript()` |
 | `WebViewNotifier` | `ejecutarScript()` |
-| `JsonStorageProvider` | `nombre()`, `perfiles()`, `usuarios()`, `auditoria()`, `productos()`, `categorias()`, `proveedores()`, `entradas()` … |
 | `DatabaseStorageProvider` | `nombre()`, `perfiles()`, `usuarios()`, `auditoria()`, `productos()`, `categorias()`, `proveedores()`, `entradas()` … |
-| `PostgresDialect` | `motor()`, `carpetaScripts()`, `nombreDriver()`, `tablaExiste()`, `separarSentencias()`, `mensajeDeDisparador()` |
-| `OracleDialect` | `motor()`, `carpetaScripts()`, `nombreDriver()`, `tablaExiste()`, `separarSentencias()`, `mensajeDeDisparador()` |
-| `FileSnapshot` | `prepararCarpeta()`, `liberarCarpeta()`, `restaurarDesde()` |
+| `SinConexionStorageProvider` | `nombre()`, `perfiles()`, `usuarios()`, `auditoria()`, `productos()`, `categorias()`, `proveedores()`, `entradas()` … |
+| `OracleRoutines` | `registrarVenta()`, `anularVenta()`, `registrarAbono()`, `saldoCliente()`, `valorInventario()`, `utilidadPeriodo()` |
+| `JsonStorageProvider` | `nombre()`, `perfiles()`, `usuarios()`, `auditoria()`, `productos()`, `categorias()`, `proveedores()`, `entradas()` … |
 | `DatabaseSnapshot` | `prepararCarpeta()`, `liberarCarpeta()`, `restaurarDesde()` |
 | `Main` | `start()` |
 
@@ -92,13 +91,13 @@ Ejemplo de polimorfismo: `MovementService` registra cualquier `InventoryMovement
 
 ### 2.3 Interfaces
 
-El proyecto tiene 13 interfaces: `Repository<T>`, `StorageProvider`, `SqlDialect`, `BackupStore`, `DataSnapshot`, `Deshabilitable`, `Anulable`, `Camera`, `CameraProvider`, `ViewNotifier`, `FileOpener`, `LanguageModel` y `ScreenTransition`. Están explicadas en la [Fase 2](FASE2_Arquitectura_y_Diseno.md#42-interfaces).
+El proyecto tiene 13 interfaces: `Repository<T>`, `StorageProvider`, `DatabaseRoutines`, `BackupStore`, `DataSnapshot`, `Deshabilitable`, `Anulable`, `Camera`, `CameraProvider`, `ViewNotifier`, `FileOpener`, `LanguageModel` y `ScreenTransition`. Están explicadas en la [Fase 2](FASE2_Arquitectura_y_Diseno.md#42-interfaces).
 
 ### 2.4 Colecciones
 
 | Colección | Veces que se crea | Para qué se usa |
 |---|---|---|
-| `ArrayList` | 75 | Listas: la copia en memoria de cada repositorio, los renglones de una venta, los abonos y ventas de un cliente, filas de informes. |
+| `ArrayList` | 73 | Listas: la copia en memoria de cada repositorio, los renglones de una venta, los abonos y ventas de un cliente, filas de informes. |
 | `LinkedHashMap` | 23 | Mapas que conservan el orden: la configuración de cada negocio, las cuentas de Fiados, los datos que se envían a la pantalla. |
 | `HashMap` | 2 | Búsquedas por nombre donde el orden no importa (métodos del puente, acumulados del informe). |
 | `EnumSet` | 11 | Conjuntos de permisos de cada rol y medios de pago activos. |
@@ -110,66 +109,67 @@ Las listas se declaran como `List<T>` y los mapas como `Map<K, V>`. Se usa `Link
 
 ## 3. Persistencia con base de datos relacional y DAO
 
-TBalance guarda los datos en **PostgreSQL** o en **Oracle** (18c Express Edition o superior), o en archivos JSON. Se elige en **Copias de seguridad → Dónde se guardan los datos**: motor, dirección de conexión, usuario y contraseña, con los botones *Probar conexión* y *Guardar y usar*. Estos datos quedan en `~/.inventariopro/basedatos.json`, solo en ese computador.
+TBalance guarda todos los datos en **Oracle** (18c Express Edition o superior). La conexión se escribe una sola vez: la primera vez que se abre TBalance (o si Oracle no responde) aparece la pantalla **Conectar con Oracle**, con la dirección, el usuario y la contraseña; después el dueño la puede cambiar en **Copias de seguridad → Conexión con Oracle**. Estos datos quedan en `~/.inventariopro/basedatos.json`, solo en ese computador. Sin conexión no se puede entrar ni guardar nada.
 
 Se usó el patrón **DAO** (objeto de acceso a datos): cada tabla tiene una clase que sabe leerla y guardarla, y el resto del programa solo conoce la interfaz `Repository<T>`.
 
 | Pieza | Clase | Qué hace |
 |---|---|---|
 | Interfaz del DAO | `Repository<T>` | Listar, buscar por ID, agregar, actualizar y eliminar. Los servicios solo conocen esta interfaz. |
-| DAO genérico | `JdbcRepository<T>` | Arma las consultas `SELECT`, `INSERT` y `UPDATE` con `PreparedStatement`. Cada cambio va en una transacción: si falla, no queda nada a medias. |
-| DAO por tabla | `ProductJdbcRepository`, `SaleJdbcRepository`, `CreditPaymentJdbcRepository` y 7 más | Cada una dice su tabla, sus columnas y cómo convertir una fila en objeto. `SaleJdbcRepository` guarda la venta y sus productos juntos. |
-| Conexión | `Database` | Abre la conexión, ejecuta los scripts y convierte los errores de la base en mensajes para el usuario. |
-| PostgreSQL u Oracle | `SqlDialect`, `PostgresDialect`, `OracleDialect` | Lo poco que cambia entre los dos motores. |
-| Elegir almacenamiento | `StorageProvider`, `JsonStorageProvider`, `DatabaseStorageProvider` | Entregan los repositorios de archivos o de base de datos. |
-| Copiar los datos | `StorageService`, `DataTransferService` | La primera vez crean las tablas y copian los negocios que había en archivos. |
+| DAO genérico | `JdbcRepository<T>` | Lee llamando a la función de consulta de la tabla (por ejemplo `FN_LISTAR_PRODUCTOS`) y guarda llamando a `SP_GUARDAR_<TABLA>` y `SP_BORRAR_<TABLA>` con `CallableStatement`. Cada cambio va en una transacción: si falla, no queda nada a medias. |
+| DAO por tabla | `ProductJdbcRepository`, `SaleJdbcRepository`, `CreditPaymentJdbcRepository` y 7 más | Cada una dice su tabla, sus columnas, su función de consulta y cómo convertir una fila en objeto. `SaleJdbcRepository` guarda la venta y sus productos juntos. |
+| Ventas, abonos e informes | `OracleRoutines` | Llama a los procedimientos `SP_REGISTRAR_VENTA`, `SP_ANULAR_VENTA` y `SP_REGISTRAR_ABONO` y a las funciones `FN_SALDO_CLIENTE`, `FN_VALOR_INVENTARIO` y `FN_UTILIDAD_PERIODO`. |
+| Conexión | `Database`, `OracleDialect` | Abre la conexión, ejecuta los scripts, llama a las funciones y procedimientos y convierte los errores de Oracle en mensajes para el usuario. |
+| Abrir la base | `StorageService`, `DatabaseStorageProvider`, `SinConexionStorageProvider` | Se conectan con Oracle, crean o actualizan las tablas y entregan los repositorios; si Oracle no responde, TBalance pide los datos de conexión. |
+| Copias de seguridad | `DatabaseSnapshot`, `DataTransferService` | Pasan los datos de Oracle a un .zip (y del .zip a Oracle al restaurar). El .zip se guarda en la tabla `RESPALDO`. |
 
-Los scripts están en `src/main/resources/sql/oracle` y `src/main/resources/sql/postgresql`. TBalance ejecuta `01` y `02` la primera vez, y después cada cambio de `cambios/` una sola vez, en orden, anotándolo en la tabla `ESQUEMA_VERSION`. Así una base que ya tenía datos se actualiza sin perderlos.
+Los scripts están en `src/main/resources/sql/oracle`. TBalance ejecuta `01` y `02` la primera vez, y después cada cambio una sola vez, en orden, anotándolo en la tabla `ESQUEMA_VERSION`. Así una base que ya tenía datos se actualiza sin perderlos.
 
 | Script | Qué hace |
 |---|---|
-| `00_crear_usuario.sql` (Oracle) / `00_crear_base.sql` (PostgreSQL) | Crea el usuario y la base `tbalance`. |
+| `00_crear_usuario.sql` | Crea el usuario `TBALANCE` con sus permisos (también `CREATE PROCEDURE`, para las funciones y procedimientos). |
 | `01_tablas.sql` | Crea las tablas con sus llaves primarias, foráneas y restricciones. |
 | `02_disparadores.sql` | Dos disparadores: uno valida el producto (no deja stock ni precios negativos) y otro guarda el historial de precios. |
 | `03_probar_disparadores.sql` | Prueba los disparadores y deshace los cambios. |
-| `04_funciones.sql` (Oracle) | Funciones en PL/SQL: `FN_SALDO_CLIENTE` (lo que debe un cliente), `FN_VALOR_INVENTARIO` (cuánto costó el inventario), `FN_UTILIDAD_PERIODO` (cuánto se ganó entre dos fechas) y `FN_CLAVE_CLIENTE` (cómo se reconoce a un cliente de fiado). |
-| `05_procedimientos.sql` (Oracle) | Procedimientos en PL/SQL: `SP_REGISTRAR_VENTA`, `SP_ANULAR_VENTA` y `SP_REGISTRAR_ABONO` (ver más abajo). |
-| `06_probar_procedimientos.sql` (Oracle) | Vende, abona y anula en un negocio de prueba, muestra los resultados y deshace todo. |
 | `cambios/v2_borrado_logico.sql` | Columnas para deshabilitar y anular, y tablas `PROVEEDOR_CATEGORIA`, `RESPALDO` y `ESQUEMA_VERSION`. |
 | `cambios/v3_vistas_informes.sql` | Cuatro vistas para informes (ventas por día, ganancia por producto, valor del inventario y compras por mes). |
 | `cambios/v4_usuarios.sql` | Tablas `USUARIO` y `NEGOCIO_USUARIO`, y quién vendió o anuló cada movimiento. |
 | `cambios/v5_historial.sql` | Tabla `AUDITORIA` (historial) y la cédula del cliente en las ventas fiadas. |
 | `cambios/v6_abonos.sql` | Tabla `ABONO` (abonos de los fiados). |
 | `cambios/v7_varios_equipos.sql` | Tabla `CAMBIO_VERSION`: un contador que sube con cada cambio, para que los demás computadores sepan que deben actualizarse. |
-| Cambio v8 | En Oracle ejecuta `04_funciones.sql` y `05_procedimientos.sql`. En PostgreSQL (`cambios/v8_procedimientos.sql`) no crea nada. |
-| `00_crear_usuario_nube.sql` (Oracle) | Crea el usuario `TBALANCE` en Oracle Autonomous Database (nube). |
-| `99_borrar_todo.sql` | Borra todas las tablas (solo para empezar de cero). |
+| `04_funciones.sql` (cambio v8) | `FN_SALDO_CLIENTE`, `FN_VALOR_INVENTARIO`, `FN_UTILIDAD_PERIODO` y `FN_CLAVE_CLIENTE`. |
+| `05_procedimientos.sql` (cambio v8) | `SP_REGISTRAR_VENTA`, `SP_ANULAR_VENTA` y `SP_REGISTRAR_ABONO`. |
+| `06_probar_procedimientos.sql` | Crea un negocio de prueba, vende, abona y anula, muestra los resultados y deshace todo. |
+| `07_funciones_consulta.sql` (cambio v9) | Las 21 funciones de consulta (`FN_LISTAR_...`, `FN_EXISTE_...`, `FN_CONTAR_NEGOCIOS`, `FN_VERSION_CAMBIOS`, `FN_LEER_COPIA`). |
+| `08_procedimientos_guardar.sql` (cambio v9) | Los 31 procedimientos para guardar: `SP_GUARDAR_` y `SP_BORRAR_` de cada tabla, los de las filas hijas (productos de una venta, tipos de un proveedor, accesos de un usuario, ajustes de un negocio), las copias de seguridad y `SP_ANOTAR_CAMBIO`. |
+| `00_crear_usuario_nube.sql` | Crea el usuario `TBALANCE` en Oracle Autonomous Database (nube). |
+| `99_borrar_todo.sql` | Borra todas las tablas, funciones y procedimientos (solo para empezar de cero). |
 
-Los cambios v2 a v8 **solo agregan** tablas, columnas, vistas, funciones o procedimientos: no cambian ni borran lo anterior, así las consultas que ya existían siguen funcionando.
+Los cambios v2 a v9 **solo agregan** tablas, columnas, vistas, funciones o procedimientos: no cambian ni borran lo anterior.
 
-**Procedimientos y funciones en Oracle (enfoque híbrido).** Las consultas sencillas (listar productos, guardar una categoría o un proveedor) siguen en los repositorios de Java, porque pasarlas a PL/SQL no aporta nada. Lo que toca varias tablas a la vez y los cálculos de los informes se hacen dentro de Oracle:
+**Todo el acceso a datos está en Oracle.** El código Java no escribe `SELECT`, `INSERT`, `UPDATE` ni `DELETE`: solo llama a funciones y procedimientos con `CallableStatement`.
 
-| En Oracle | Qué hace | Quién lo llama |
+| Para | En Oracle | En Java |
 |---|---|---|
-| `SP_REGISTRAR_VENTA` | Revisa el stock de todos los productos antes de cambiar nada, guarda la venta y su detalle, descuenta las unidades y calcula el total. | `SaleService.registrar` |
-| `SP_ANULAR_VENTA` | Marca la venta como anulada con el motivo, devuelve las unidades al inventario y anota la anulación en `AUDITORIA`. | `SaleService.anular` |
-| `SP_REGISTRAR_ABONO` | Revisa con `FN_SALDO_CLIENTE` que el abono no pase de la deuda y lo guarda. | `CreditService.registrarAbono` |
-| `FN_VALOR_INVENTARIO` | Suma stock × precio de compra. | `CostService` (pantalla Costos) |
-| `FN_UTILIDAD_PERIODO` | Suma la ganancia de las ventas entre dos fechas. | `ReportService` (Informes) |
+| Leer una tabla | `FN_LISTAR_PRODUCTOS(negocio)` devuelve un cursor (`SYS_REFCURSOR`) con las filas | `Database.llamar("FN_LISTAR_PRODUCTOS", ...)` |
+| Saber si algo existe o contar | `FN_EXISTE_CATEGORIA`, `FN_CONTAR_NEGOCIOS` devuelven un número | `Database.llamarNumero(...)` |
+| Agregar o cambiar una fila | `SP_GUARDAR_PRODUCTO(P_NUEVO, ...)`: con `P_NUEVO = 1` hace el `INSERT`, con `0` el `UPDATE` | `Database.procedimiento(c, "SP_GUARDAR_PRODUCTO", ...)` |
+| Vender, anular, abonar | `SP_REGISTRAR_VENTA`, `SP_ANULAR_VENTA`, `SP_REGISTRAR_ABONO`: revisan las reglas y tocan varias tablas en una sola transacción | `OracleRoutines` |
+| Informes | `FN_UTILIDAD_PERIODO`, `FN_VALOR_INVENTARIO`, `FN_SALDO_CLIENTE` | `ReportService`, `CostService`, `CreditService` |
 
-Java los llama con `CallableStatement` (`{call SP_REGISTRAR_VENTA(...)}` y `{? = call FN_VALOR_INVENTARIO(?)}`) desde la clase `OracleRoutines`. Los procedimientos no hacen `COMMIT`: TBalance los llama dentro de una transacción y hace `COMMIT` si todo salió bien o `ROLLBACK` si el procedimiento rechazó algo (por ejemplo, "Stock insuficiente"), así nunca queda una venta a medias. Java sigue revisando lo que es de la pantalla (que la venta tenga productos, el medio de pago y la cédula para fiar).
+Los parámetros de los procedimientos usan `%TYPE` (por ejemplo `P_NOMBRE IN PRODUCTO.NOMBRE%TYPE`): tienen el mismo tipo que la columna. Los procedimientos no hacen `COMMIT`: TBalance los llama dentro de una transacción y hace `COMMIT` si todo salió bien o `ROLLBACK` si Oracle rechazó algo; el mensaje de `RAISE_APPLICATION_ERROR` (por ejemplo, "Stock insuficiente para Arroz. Disponible: 4") se le muestra tal cual al usuario. Java sigue revisando lo que es de la pantalla (campos obligatorios, permisos de cada rol, el medio de pago).
 
-Con archivos JSON y con PostgreSQL no hay procedimientos: los mismos servicios hacen todo en Java, como antes. Para crear funciones y procedimientos, el usuario de Oracle necesita el permiso `CREATE PROCEDURE` (`GRANT CREATE PROCEDURE TO TBALANCE;` como SYSTEM); si falta, TBalance lo avisa al conectarse.
+Solo quedan cuatro sentencias directas, porque se usan antes de que existan las funciones: ver si una tabla existe, ver en qué versión está la base, anotar una versión nueva y revisar si alguna función o procedimiento quedó con errores (`USER_ERRORS`). Si al crear las funciones falta el permiso `CREATE PROCEDURE`, TBalance lo dice al conectarse con la instrucción exacta.
 
 **Borrado lógico.** Desde el programa no se borra nada que tenga historial. Negocios, categorías, proveedores, productos y usuarios se *deshabilitan* y se pueden volver a habilitar. Ventas, entradas, salidas y abonos se *anulan* con un motivo, el stock o el saldo se corrige y quedan en la lista de anulados.
 
-**Historial.** Cada acción que pasa por el puente (`BridgeInvoker`) se revisa en `AccessPolicy` (¿tiene sesión y permiso?) y luego `AuditTrail` la anota en `AUDITORIA` con la persona, el rol, el negocio y la hora. Nunca se anota una contraseña. Con Oracle, la anulación de una venta la anota `SP_ANULAR_VENTA` y `AuditTrail` no la repite.
+**Historial.** Cada acción que pasa por el puente (`BridgeInvoker`) se revisa en `AccessPolicy` (¿tiene sesión y permiso?) y luego `AuditTrail` la anota en `AUDITORIA` con la persona, el rol, el negocio y la hora. Nunca se anota una contraseña. La anulación de una venta la anota `SP_ANULAR_VENTA` dentro de Oracle y `AuditTrail` no la repite.
 
-**Fiados.** Lo que debe un cliente no se guarda: se calcula sumando sus ventas fiadas vigentes y restando sus abonos vigentes (`CreditService`). Así, si se anula una venta o un abono, la deuda se corrige sola.
+**Fiados.** Lo que debe un cliente no se guarda: se calcula sumando sus ventas fiadas vigentes y restando sus abonos vigentes (`FN_SALDO_CLIENTE` en Oracle; `CreditService` arma la lista de Fiados). Así, si se anula una venta o un abono, la deuda se corrige sola.
 
-**Varios computadores (nube).** La base puede estar en la nube ([guía](GUIA_NUBE.md)) y la usan varios computadores a la vez. Cada repositorio JDBC guarda una copia en memoria para responder rápido; para que no quede vieja, cada vez que un computador guarda algo, `Database` sube el contador de `CAMBIO_VERSION` en la misma transacción. Los demás preguntan ese contador (una consulta corta, como mucho cada 1,5 segundos) y, si cambió, `JdbcRepository` vuelve a leer sus datos. La pantalla hace la misma pregunta cada 5 segundos y se actualiza sola. Antes de vender o sacar mercancía, `SaleService` y `MovementService` piden el dato fresco (`refrescar()`), y el disparador de la tabla `PRODUCTO` no deja el stock en negativo.
+**Varios computadores.** Varios computadores pueden usar la misma base de Oracle a la vez (en una red o en la nube, ver la [guía](GUIA_NUBE.md)). Cada repositorio JDBC guarda una copia en memoria para responder rápido; para que no quede vieja, cada vez que un computador guarda algo, `Database` llama a `SP_ANOTAR_CAMBIO`, que sube el contador de `CAMBIO_VERSION` en la misma transacción. Los demás preguntan ese contador con `FN_VERSION_CAMBIOS` (como mucho cada 1,5 segundos) y, si cambió, `JdbcRepository` vuelve a leer sus datos. La pantalla hace la misma pregunta cada 5 segundos y se actualiza sola. Antes de vender o sacar mercancía, `SaleService` y `MovementService` piden el dato fresco (`refrescar()`), y el disparador de la tabla `PRODUCTO` no deja el stock en negativo.
 
-Los drivers de las bases de datos están en el `pom.xml`: `org.postgresql:postgresql` y `com.oracle.database.jdbc:ojdbc11`.
+El driver de Oracle está en el `pom.xml`: `com.oracle.database.jdbc:ojdbc11`.
 
 ## 4. Interfaz gráfica
 
@@ -184,8 +184,8 @@ La interfaz no se hizo con formularios de NetBeans: es una página web dentro de
 | Secciones | 15: Inicio de sesión, Hoy, Productos, Categorías, Proveedores, Entradas, Salidas, Ventas, Fiados, Informes, Costos, Mis negocios, Usuarios, Historial y Copias de seguridad |
 | Ventanas emergentes (modales) | 14 (producto, categoría, proveedor, entrada, salida, venta, venta por QR, etiqueta QR, cuenta de un cliente, negocio, confirmaciones…) |
 | Botones | 157 |
-| Campos de texto | 81 |
-| Listas desplegables | 18 |
+| Campos de texto | 83 |
+| Listas desplegables | 16 |
 | Tablas | 10 |
 | Panel del asistente | 1 (se abre con el botón "Pregúntale a TBalance" o `Ctrl+K`) |
 
@@ -193,7 +193,7 @@ La interfaz no se hizo con formularios de NetBeans: es una página web dentro de
 
 | Sentido | Cómo funciona | Ejemplo |
 |---|---|---|
-| Pantalla → Java | Los botones y campos usan `onclick` (147), `onchange` (18) y `oninput` (7). La función de JavaScript llama a `javaBridge.<método>()`, que llega al `JavaBridge` en Java. | Registrar abono → `javaBridge.registrarAbono(json)` → `CreditController` → `CreditService.registrarAbono` |
+| Pantalla → Java | Los botones y campos usan `onclick` (147), `onchange` (17) y `oninput` (7). La función de JavaScript llama a `javaBridge.<método>()`, que llega al `JavaBridge` en Java. | Registrar abono → `javaBridge.registrarAbono(json)` → `CreditController` → `CreditService.registrarAbono` |
 | Java → Pantalla | Java ejecuta una función de la página para avisar un cambio. | `cargarEstadoDesdeJava()` después de restaurar una copia; `onAsistenteRespuesta(...)` cuando el asistente contesta. |
 
 Cada método del puente devuelve `OK`, los datos en JSON o `ERROR: mensaje`, y la página muestra el error como un aviso.
@@ -204,7 +204,7 @@ Cada método del puente devuelve `OK`, los datos en JSON o `ERROR: mensaje`, y l
 |---|---|
 | Presentación (`html`, `bridge`) | La página lee el valor y el medio de pago; `CreditController` pone quién lo recibió (tomado de la sesión) y llama al servicio. |
 | Lógica de negocio (`service`, `model`) | `CreditPayment.validar()` revisa los datos y `CreditService` revisa que no pase de lo que el cliente debe. |
-| Acceso a datos (`repository`) | `CreditPaymentJdbcRepository` lo guarda en la tabla `ABONO` (o `CreditPaymentRepository` en `abonos.json`). |
+| Acceso a datos (`repository`) | `OracleRoutines` llama a `SP_REGISTRAR_ABONO`, que revisa la deuda con `FN_SALDO_CLIENTE` y guarda el abono en la tabla `ABONO`. |
 
 ## 5. Buenas prácticas
 
@@ -272,12 +272,12 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `8e40e40` | 2026-11-16 | feat: sales reports by period with Excel export |
 | `73eaead` | 2026-11-16 | feat: AI assistant with Google Gemini (free tier) |
 | `b01c1f7` | 2026-11-16 | feat: reports and assistant controllers in the bridge |
-| v3.5.0 | 2026-11-22 | feat: PostgreSQL and Oracle storage with JDBC DAO and SQL scripts |
-| v3.5.0 | 2026-11-22 | feat: logical deletion, cancellations and the Costs section |
-| v3.5.0 | 2026-11-22 | feat: backups stored inside the database |
-| v3.5.0 | 2026-11-22 | feat: action history (who did what and when) |
-| v3.5.0 | 2026-11-22 | feat: credit sales (fiados) with customer payments |
-| v3.5.0 | 2026-11-22 | feat: several computers on the same database (cloud) |
+| `c90bb54` | 2026-11-22 | feat: PostgreSQL and Oracle storage with JDBC DAO and SQL scripts |
+| `af4dcb4` | 2026-11-22 | feat: logical deletion, cancellations and the Costs section |
+| `9c451dd` | 2026-11-22 | feat: backups stored inside the database |
+| `5db4eb6` | 2026-11-22 | feat: action history (who did what and when) |
+| `ccd69e1` | 2026-11-22 | feat: credit sales (fiados) with customer payments |
+| `462fab0` | 2026-11-22 | feat: several computers on the same database (cloud) |
 
 **Dair José Quintero**
 
@@ -304,9 +304,9 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `8c03c39` | 2026-11-16 | feat(view): open the interface in an Edge app window |
 | `c5fe391` | 2026-11-16 | feat(ui): flat interface with a color per business type, Today view and cash book |
 | `9f00176` | 2026-11-16 | docs: add screenshots of the v3.4.0 interface |
-| v3.5.0 | 2026-11-22 | feat: phone as a wireless QR label reader |
-| v3.5.0 | 2026-11-22 | feat(ui): glass sign-in and windows with the business color |
-| v3.5.0 | 2026-11-22 | docs: screenshots of the v3.5.0 interface |
+| `5ee4cb2` | 2026-11-22 | feat: phone as a wireless QR label reader |
+| `7307d51` | 2026-11-22 | feat(ui): glass sign-in and windows with the business color |
+| `7953303` | 2026-11-22 | docs: screenshots of the v3.5.0 interface |
 
 **Reinaldo Padilla Pedroza**
 
@@ -332,9 +332,9 @@ Además está el commit `Initial commit` con el que GitHub creó el repositorio.
 | `a707362` | 2026-11-16 | docs: update the diagrams for v3.4.0 |
 | `5bbb0ef` | 2026-11-16 | docs: phases 1 and 2 with payments, reports and assistant |
 | `8cfda15` | 2026-11-16 | docs: phases 3 and 4, traceability and README for v3.4.0 |
-| v3.5.0 | 2026-11-22 | feat: sign-in with owner, administrator and cashier roles |
-| v3.5.0 | 2026-11-22 | feat: the assistant respects the role of the user |
-| v3.5.0 | 2026-11-22 | docs: phases 1 to 4, diagrams and README for v3.5.0 |
+| `4c3d9cf` | 2026-11-22 | feat: sign-in with owner, administrator and cashier roles |
+| `ef5d28c` | 2026-11-22 | feat: the assistant respects the role of the user |
+| `251540d` | 2026-11-22 | docs: phases 1 to 4, diagrams and README for v3.5.0 |
 
 ### 7.3 Ramas y fusiones
 
@@ -401,7 +401,8 @@ Las ramas `feature/*` se borran después de fusionarse; en el repositorio quedan
 | Reinaldo Padilla | Inicio de sesión con roles (dueño, administrador y cajero) | Completada | v3.5.0 |
 | Reinaldo Padilla | El asistente respeta el rol y responde quién debe | Completada | v3.5.0 |
 | Reinaldo Padilla | Documentación v3.5.0: fases 1 a 4, diagramas, trazabilidad y README | Completada | v3.5.0 |
-| Kevin Mercado | Procedimientos almacenados de consulta en la base de datos | En progreso | siguiente versión |
+| Equipo | Procedimientos y funciones en PL/SQL para vender, anular, abonar e informes | Completada | después de v3.5.0 |
+| Equipo | Solo Oracle: todas las consultas y los guardados con funciones y procedimientos | Completada | después de v3.5.0 |
 | Equipo | Pruebas unitarias con JUnit | Pendiente | siguiente versión |
 | Equipo | Conectar una pasarela de pago (hoy solo se registra el medio de pago) | Pendiente | trabajo futuro |
-| Equipo | Versión para celular Android y datos en la nube | Pendiente | trabajo futuro |
+| Equipo | Versión para celular Android | Pendiente | trabajo futuro |

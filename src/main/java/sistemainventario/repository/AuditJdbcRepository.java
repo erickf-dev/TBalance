@@ -24,6 +24,11 @@ public class AuditJdbcRepository extends JdbcRepository<AuditEntry> {
     }
 
     @Override
+    protected String funcionListar() {
+        return "FN_LISTAR_HISTORIAL";
+    }
+
+    @Override
     protected List<String> columnas() {
         return List.of("FECHA", "USUARIO_ID", "USUARIO", "ROL", "PERFIL_ID", "PERFIL", "ACCION", "DETALLE");
     }

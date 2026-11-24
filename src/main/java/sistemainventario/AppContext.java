@@ -22,7 +22,6 @@ import sistemainventario.service.ProfileServices;
 import sistemainventario.service.AssistantSettingsService;
 import sistemainventario.service.ReportExportService;
 import sistemainventario.service.DataTransferService;
-import sistemainventario.service.FileSnapshot;
 import sistemainventario.service.StorageService;
 import sistemainventario.service.SessionService;
 import sistemainventario.service.UserService;
@@ -40,7 +39,7 @@ import java.util.Optional;
  * Contexto de la aplicación (Singleton) y raíz de composición.
  *
  * <p>Es el único lugar donde se conectan las implementaciones concretas
- * (repositorios JSON o JDBC, según {@link StorageService}) con los servicios.
+ * (repositorios JDBC de Oracle, según {@link StorageService}) con los servicios.
  * Mantiene los servicios del perfil activo y los reemplaza al cambiar de perfil
  * o de almacenamiento.</p>
  *
@@ -70,6 +69,7 @@ public final class AppContext {
     private final StorageService almacenamiento;
     private StorageProvider almacenActual;
     private String avisoAlmacenamiento;
+    private boolean conectado;
     private ProfileService gestorPerfiles;
     private ProfileServices serviciosActivos;
     private UserService usuarios;
@@ -81,7 +81,7 @@ public final class AppContext {
         JsonFileStore.crearDirectorio(directorioDatos);
         Path carpetaRespaldos = directorioDatos.resolveSibling(CARPETA_RESPALDOS);
         this.respaldosEnCarpeta = new BackupRepository(carpetaRespaldos);
-        this.gestorRespaldo = new BackupService(respaldosEnCarpeta, new FileSnapshot(directorioDatos), new ZipArchiver());
+        this.gestorRespaldo = new BackupService(respaldosEnCarpeta, StorageService.SIN_DATOS, new ZipArchiver());
         this.gestorEtiquetas = new LabelService(new QrGenerator(),
                 new LabelRepository(directorioDatos.resolveSibling(CARPETA_ETIQUETAS)));
         this.ajustesAsistente = new AssistantSettingsService(
@@ -90,13 +90,14 @@ public final class AppContext {
                 ReportExportService.carpetaPorDefecto(Path.of(System.getProperty("user.home"))));
         this.almacenamiento = new StorageService(
                 new DatabaseSettingsRepository(directorioDatos.resolveSibling(ARCHIVO_BASE_DATOS)),
-                directorioDatos, new DataTransferService());
+                new DataTransferService());
         recargar();
     }
 
     /**
-     * Construye de nuevo los repositorios y servicios leyendo los archivos
-     * JSON. Se usa al iniciar y después de restaurar una copia de seguridad.
+     * Se conecta de nuevo con Oracle y vuelve a armar los repositorios y
+     * servicios. Se usa al iniciar, al cambiar la conexión y después de
+     * restaurar una copia de seguridad.
      */
     public void recargar() {
         JsonFileStore.crearDirectorio(directorioDatos);
@@ -106,6 +107,7 @@ public final class AppContext {
         StorageService.Apertura apertura = almacenamiento.abrir();
         this.almacenActual = apertura.almacen();
         this.avisoAlmacenamiento = apertura.aviso();
+        this.conectado = apertura.conectado();
         gestorRespaldo.usar(apertura.respaldos() != null ? apertura.respaldos() : respaldosEnCarpeta, apertura.copias());
         this.gestorPerfiles = new ProfileService(
                 almacenActual.perfiles(),
@@ -243,22 +245,23 @@ public final class AppContext {
     }
 
     /**
-     * Cambia dónde se guardan los datos. Si se pasa de una base de datos a
-     * archivos, primero se copian los datos de la base a los archivos.
+     * Cambia la conexión con Oracle de este computador (la prueba antes de guardarla).
      *
-     * @param nueva motor, URL, usuario y clave
+     * @param nueva datos de conexión
      * @return mensaje para el usuario
      */
     public String cambiarAlmacenamiento(DatabaseSettings nueva) {
-        boolean veniaDeBase = almacenamiento.leer().usaBaseDeDatos() && avisoAlmacenamiento == null;
-        if (veniaDeBase && !nueva.usaBaseDeDatos()) {
-            gestorRespaldo.crear();
-            almacenamiento.exportarAArchivos(almacenActual);
-        }
         almacenamiento.guardar(nueva);
         recargar();
-        String mensaje = "Ahora los datos se guardan en " + almacenActual.nombre() + ".";
-        return avisoAlmacenamiento == null ? mensaje : mensaje + " " + avisoAlmacenamiento;
+        if (!conectado) {
+            throw new ValidationException(avisoAlmacenamiento);
+        }
+        return "TBalance quedó conectado con Oracle.";
+    }
+
+    /** @return {@code true} si hay conexión con Oracle */
+    public boolean estaConectado() {
+        return conectado;
     }
 
     /** @return configuración de la base de datos de este computador */
@@ -271,7 +274,7 @@ public final class AppContext {
         return almacenamiento;
     }
 
-    /** @return nombre del almacenamiento en uso ("Archivos JSON", "PostgreSQL", "Oracle") */
+    /** @return "Oracle", o "Sin conexión" si Oracle no respondió */
     public String getAlmacenEnUso() {
         return almacenActual.nombre();
     }
@@ -367,7 +370,7 @@ public final class AppContext {
     /**
      * Con base de datos, pregunta si otro equipo guardó cambios.
      *
-     * @return número que aumenta cada vez que otro equipo hizo cambios (0 con archivos)
+     * @return número que aumenta cada vez que otro equipo hizo cambios (0 sin conexión)
      */
     public long revisarCambiosDeOtrosEquipos() {
         return almacenActual instanceof sistemainventario.repository.DatabaseStorageProvider bd

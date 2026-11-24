@@ -3,28 +3,38 @@ package sistemainventario.model;
 import java.util.Objects;
 
 /**
- * Conexión a la base de datos elegida en este computador.
+ * Conexión a Oracle de este computador.
  *
- * @param motor   JSON, PostgreSQL u Oracle
- * @param url     URL JDBC (vacía en modo JSON)
- * @param usuario usuario de la base de datos
+ * @param motor   siempre {@link DatabaseEngine#ORACLE}
+ * @param url     URL JDBC, por ejemplo {@code jdbc:oracle:thin:@localhost:1521/XEPDB1}
+ * @param usuario usuario de Oracle (normalmente TBALANCE)
  * @param clave   clave del usuario (solo se guarda en este computador)
  */
 public record DatabaseSettings(DatabaseEngine motor, String url, String usuario, String clave) {
 
-    /** Configuración por defecto: archivos JSON. */
-    public static final DatabaseSettings ARCHIVOS = new DatabaseSettings(DatabaseEngine.JSON, "", "", "");
+    /** Lo que se propone antes de conectar por primera vez: Oracle local, usuario TBALANCE. */
+    public static final DatabaseSettings POR_DEFECTO =
+            new DatabaseSettings(DatabaseEngine.ORACLE, DatabaseEngine.ORACLE.getUrlPorDefecto(), "TBALANCE", "");
 
-    /** Normaliza los textos nulos a vacíos. */
+    /** Normaliza los textos; el motor es siempre Oracle. */
     public DatabaseSettings {
-        motor = Objects.requireNonNullElse(motor, DatabaseEngine.JSON);
+        motor = DatabaseEngine.ORACLE;
         url = url == null ? "" : url.trim();
         usuario = usuario == null ? "" : usuario.trim();
         clave = clave == null ? "" : clave;
     }
 
-    /** @return {@code true} si los datos van a PostgreSQL u Oracle */
-    public boolean usaBaseDeDatos() {
-        return motor.esRelacional();
+    /**
+     * @param url     URL JDBC
+     * @param usuario usuario de Oracle
+     * @param clave   clave
+     */
+    public DatabaseSettings(String url, String usuario, String clave) {
+        this(DatabaseEngine.ORACLE, url, usuario, clave);
+    }
+
+    /** @return {@code true} si ya se escribieron los datos de conexión en este computador */
+    public boolean estaConfigurada() {
+        return !url.isBlank() && !usuario.isBlank() && !Objects.equals(clave, "");
     }
 }

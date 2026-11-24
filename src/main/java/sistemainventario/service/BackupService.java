@@ -20,8 +20,8 @@ import java.util.Objects;
  *
  * <p><b>SRP:</b> solo coordina el respaldo; la compresión la hace
  * {@link ZipArchiver}, sacar y reponer los datos {@link DataSnapshot} y guardar
- * las copias {@link BackupStore} (carpeta con archivos JSON, o tabla RESPALDO
- * dentro de PostgreSQL u Oracle). <b>OCP:</b> un nuevo lugar para las copias es
+ * las copias {@link BackupStore} (tabla RESPALDO dentro de Oracle, o la
+ * carpeta {@code respaldos} mientras no hay conexión). <b>OCP:</b> un nuevo lugar para las copias es
  * otra implementación de {@link BackupStore}, sin tocar este servicio.</p>
  *
  * <p>Antes de restaurar se crea automáticamente una copia del estado actual,

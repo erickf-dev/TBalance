@@ -1,20 +1,14 @@
 package sistemainventario.model;
 
-import java.util.Locale;
-
 /**
- * Dónde guarda TBalance los datos de los negocios.
+ * Base de datos que usa TBalance: Oracle.
  *
- * <p>{@link #JSON} es el modo de siempre (archivos en el computador).
- * {@link #POSTGRESQL} y {@link #ORACLE} guardan en una base de datos
- * relacional a través de JDBC.</p>
+ * <p>TBalance guarda todo en Oracle (18c Express Edition o superior). Las
+ * consultas y los cambios se hacen con funciones y procedimientos almacenados
+ * en PL/SQL; Java solo los llama.</p>
  */
 public enum DatabaseEngine {
 
-    /** Archivos JSON en {@code ~/.inventariopro/data}. */
-    JSON("Archivos de este computador", ""),
-    /** PostgreSQL 11 o superior. */
-    POSTGRESQL("PostgreSQL", "jdbc:postgresql://localhost:5432/tbalance"),
     /** Oracle 18c Express Edition o superior (base conectable XEPDB1). */
     ORACLE("Oracle", "jdbc:oracle:thin:@localhost:1521/XEPDB1");
 
@@ -26,33 +20,13 @@ public enum DatabaseEngine {
         this.urlPorDefecto = urlPorDefecto;
     }
 
-    /** @return nombre para mostrar en la interfaz */
+    /** @return nombre para mostrar */
     public String getEtiqueta() {
         return etiqueta;
     }
 
-    /** @return URL JDBC sugerida para una instalación local */
+    /** @return URL JDBC sugerida */
     public String getUrlPorDefecto() {
         return urlPorDefecto;
-    }
-
-    /** @return {@code true} si el motor es una base de datos relacional */
-    public boolean esRelacional() {
-        return this != JSON;
-    }
-
-    /**
-     * @param nombre nombre del motor (sin importar mayúsculas); vacío o desconocido es JSON
-     * @return el motor correspondiente
-     */
-    public static DatabaseEngine desde(String nombre) {
-        if (nombre == null || nombre.isBlank()) {
-            return JSON;
-        }
-        try {
-            return valueOf(nombre.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            return JSON;
-        }
     }
 }

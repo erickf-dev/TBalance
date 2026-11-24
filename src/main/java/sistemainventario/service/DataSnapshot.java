@@ -5,10 +5,9 @@ import java.nio.file.Path;
 /**
  * Cómo se sacan y se reponen los datos para las copias de seguridad.
  *
- * <p>Una copia siempre es un .zip con los datos en JSON. Con archivos, se
- * comprime la carpeta {@code data} ({@link FileSnapshot}); con base de datos,
- * las tablas se vuelcan a una carpeta temporal y al restaurar se cargan de
- * nuevo en la base ({@link DatabaseSnapshot}).</p>
+ * <p>Una copia es un .zip con los datos en JSON: las tablas de Oracle se
+ * vuelcan a una carpeta temporal y al restaurar se cargan de nuevo en Oracle
+ * ({@link DatabaseSnapshot}).</p>
  */
 public interface DataSnapshot {
 
